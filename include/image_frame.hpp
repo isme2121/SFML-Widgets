@@ -1,0 +1,196 @@
+#pragma once
+#include "widget.hpp"
+#ifdef WIDGETS_HPP
+namespace sfml_widgets
+{
+class ImageFrame : public Widget
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `sf::RenderWindow`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `Frame`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
+
+    ImageFrame(ImageFrame&& other) noexcept;
+    ImageFrame& operator=(ImageFrame&& other) noexcept;
+
+    ImageFrame(const ImageFrame&) = delete;
+    ImageFrame& operator=(const ImageFrame&) = delete;
+
+    ~ImageFrame() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Checks for widget mouse events
+    ///
+    /// Called in the events loop, can recieve the current mouse position based on
+    /// root window view to skip a few steps internally.
+    ///
+    /// Mouse events such as pressing, scrolling, holding are triggered within the
+    /// method while also updating the widget's status such as focus, select, hover
+    /// , and transparent, then trigger a callback if assigned to an event by the user.
+    ///
+    /// @param event Event object from `sf::WindowBase::pollEvent`
+    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
+    ///
+    /// @return true if an event triggers within the widget or a child widget,
+    /// otherwise false.
+    ///
+    /// @note image frame with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
+    /// trigger mouse events.
+    ///
+    /// @see `Widget::bindMouseEvent`, `Widget::unbindMouseEvent`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Checks for widget keyboard events
+    ///
+    /// Captures keyboard events in the events loop, can capture individual
+    /// physical key presses or a sequence of key press events depending on
+    /// available assigned sequences.
+    ///
+    /// @param event Event object from `sf::WindowBase::pollEvent`
+    ///
+    /// @return true if the frame triggers a callback, otherwise false.
+    ///
+    /// @note The frame must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
+    /// trigger key event, widgets with `FLAGS::BLOCKED | FLAGS::RESTRICTED`
+    /// cannot trigger keyboard events.
+    ///
+    /// @see `Widget::bindShortCut`, `Widget::unbindShortCut`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool captureKeyEvents(const sf::Event& event) override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates displayed image on the widget
+    ///
+    /// Takes the path of the image to display on the frame, 
+    /// 
+    /// @param image_path string image_path to image
+    ///
+    /// @return false if process fails to load the image, otherwise returns true
+    ///
+    /// @see `clearImage`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const std::string& image_path);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears the current image data from the widget
+    ///
+    /// @param load_default choose to use the default image with true, otherwise
+    /// keeps the frame empty
+    ///
+    /// @see `setImage`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void clearImage(bool load_default = true);
+
+    TextureStyle m_style = themes::STYLE_CARBON_CYAN;
+private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Draws the widget on master object
+    ///
+    /// @see `Widget::draw`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void drawWidget() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Used to update child widgets for container type Widget or
+    /// add specific rules after updating flags, called in `Widget::configure`
+    ///
+    /// @param mask bits passed by `Widget::configure`
+    ///
+    /// @see `Widget::configure`, `parameters::MODIFIABLE`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void config(FLAGS mask) override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Handles any extra drawables' positions within the image frame,
+    /// called in `Widget::setWidgetPosition`
+    ///
+    /// @see `Widget::setWidgetPosition`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updatePosition() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Handles any extra drawables' sizes within the widget,
+    /// called in `setWidgetSize`
+    ///
+    /// @see `Widget::setWidgetSize`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateSize() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget colors to match current state alongside
+    /// shaders, called in `Widget::Draw`
+    ///
+    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `ACTIVE`
+    /// `HOVERED` respectively.
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateState() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Refresh for clipping shader
+    ///
+    /// Best called after an update in a shader parameter, clip shader handles
+    /// clipping edges on sprites.
+    ///
+    /// @see `Widget::loadClipShader`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateClipShader() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Refresh for color shader
+    ///
+    /// Best called after an update in a shader parameters, color shader
+    /// is applied on background texture that is set via
+    /// `Widget::setBackGroundTexture`.
+    ///
+    /// @see `Widget::loadColorShader`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateColorShader() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads the default image as a placeholder
+    ///
+    /// @return true if process is successful, otherwise false
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool loadDefaultImage();
+
+    sf::Texture m_imageTexture; //!< Image texture
+    sf::Sprite m_imageSprite;   //!< Sprite to display the texture
+    std::string m_imagePath;    //!< Path to currently loaded image
+};
+}
+#endif

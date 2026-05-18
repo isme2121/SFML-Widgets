@@ -1,0 +1,13 @@
+.vscode/
+assets/
+build/
+build-windows/
+test/
+example/
+lib/
+SFML/
+cache/
+external-include/profile.h
+*.sh
+*.cmake
+TestExe
