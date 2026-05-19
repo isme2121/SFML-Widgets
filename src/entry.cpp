@@ -1,5 +1,4 @@
 #include "../include/entry.hpp"
-#include <iostream>
 
 namespace sfml_widgets // entry
 {

@@ -11,3 +11,4 @@ external-include/profile.h
 *.sh
 *.cmake
 TestExe
+main

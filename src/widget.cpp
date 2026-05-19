@@ -140,7 +140,14 @@ void Widget::configure(FLAGS flags)
         if(root->isFlag(FLAGS::HIDDEN)) mask |= FLAGS::HIDDEN;
         if(root->isFlag(FLAGS::BLOCKED)) mask |= FLAGS::BLOCKED;
     }
+
     if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) resetBackGroundTexture(true);
+    
+    // flags that are handled in the events loop should be immediately updated
+    if(checkFlag(m_flags, FLAGS::AUTOHIDE) && checkFlag(m_flags, FLAGS::HOVERED)) resetFlag(m_flags, FLAGS::TRANSPARENT);
+    else if(!checkFlag(m_flags, FLAGS::AUTOHIDE) && checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::TRANSPARENT);
+    else if(checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) setFlag(m_flags, FLAGS::TRANSPARENT);
+
     config(mask);
 }
 

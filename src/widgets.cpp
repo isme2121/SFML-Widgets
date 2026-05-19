@@ -19,7 +19,7 @@ FLAGS operator|(FLAGS first, FLAGS second)
 }
 FLAGS& operator|=(FLAGS& self, FLAGS other)
 {
-    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) | static_cast<std::int32_t>(other | FLAGS::MODIFIED));
+    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) | static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
     return self;
 }
 FLAGS operator^(FLAGS first, FLAGS second)
