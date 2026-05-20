@@ -153,6 +153,11 @@ void ImageFrame::updateSize()
     update();
 }
 
+void ImageFrame::updateRotation(sf::Angle new_angle)
+{
+    m_imageSprite.setRotation(new_angle);
+}
+
 void ImageFrame::updateState()
 {
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;

@@ -206,6 +206,12 @@ private:
     void updateSize() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief matches the current angle value with the rest of the entry
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateRotation(sf::Angle new_angle) override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates widget colors to match current state alongside shaders
     ///
     /// Best called within `Draw` override before drawing, it is also

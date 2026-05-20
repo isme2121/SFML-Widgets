@@ -25,7 +25,7 @@ m_bgShaderPtr(std::move(other.m_bgShaderPtr)), m_bgTexturePtr(std::move(other.m_
 m_size(std::move(other.m_size)), m_position(std::move(other.m_position)), m_flags(std::move(other.m_flags)), m_binds(std::move(other.m_binds)),
 m_events(std::move(other.m_events)), m_memButton(std::move(other.m_memButton)), m_pressEvents(std::move(other.m_pressEvents)),
 m_releaseEvents(std::move(other.m_releaseEvents)), m_holdCallBack(std::move(other.m_holdCallBack)), m_scrollCallBack(std::move(other.m_scrollCallBack)),
-m_hoverCallBack(std::move(other.m_hoverCallBack)), m_radius(other.m_radius), m_cornerPoints(other.m_cornerPoints), m_opacity(other.m_opacity)
+m_gainhoverCallBack(std::move(other.m_gainhoverCallBack)), m_losehoverCallBack(std::move(other.m_losehoverCallBack)), m_radius(other.m_radius), m_cornerPoints(other.m_cornerPoints), m_opacity(other.m_opacity)
 {
     other.m_currentBgColorPtr = nullptr;
     other.m_currentOutlineColorPtr = nullptr;
@@ -73,7 +73,8 @@ Widget& Widget::operator=(Widget&& other) noexcept
         m_releaseEvents = std::move(other.m_releaseEvents);
         m_holdCallBack = std::move(other.m_holdCallBack);
         m_scrollCallBack = std::move(other.m_scrollCallBack);
-        m_hoverCallBack = std::move(other.m_hoverCallBack);
+        m_gainhoverCallBack = std::move(other.m_gainhoverCallBack);
+        m_losehoverCallBack = std::move(other.m_losehoverCallBack);
 
         other.m_currentBgColorPtr = nullptr;
         other.m_currentOutlineColorPtr = nullptr;
@@ -197,8 +198,12 @@ void Widget::bindMouseEvent(W_MouseEventType event_type, MouseCallback callback,
         m_scrollCallBack = std::move(callback);
         break;
 
-    case W_MouseEventType::Hover:
-        m_hoverCallBack = std::move(callback);
+    case W_MouseEventType::HoverSet:
+        m_gainhoverCallBack = std::move(callback);
+        break;
+
+    case W_MouseEventType::HoverLost:
+        m_losehoverCallBack = std::move(callback);
         break;
 
     case W_MouseEventType::FocusSet:
@@ -235,8 +240,12 @@ void Widget::unbindMouseEvent(W_MouseEventType event_type, std::optional<sf::Mou
         m_scrollCallBack = nullptr;
         break;
 
-    case W_MouseEventType::Hover:
-        m_hoverCallBack = nullptr;
+    case W_MouseEventType::HoverSet:
+        m_gainhoverCallBack = nullptr;
+        break;
+
+    case W_MouseEventType::HoverLost:
+        m_losehoverCallBack = nullptr;
         break;
 
     case W_MouseEventType::FocusSet:
@@ -394,6 +403,19 @@ void Widget::setCornerRadius(float radius)
     updateClipShader();
 }
 
+void Widget::rotateWidget(sf::Angle angle)
+{
+    // this->setOrigin(sf::Vector2f(m_size) / 2.f);
+    this->rotate(angle);
+    updateRotation(this->getRotation());
+}
+
+void Widget::setWidgetRotation(sf::Angle new_angle)
+{
+    this->setRotation(new_angle);
+    updateRotation(new_angle);
+}
+
 void Widget::addToQueue(sf::Time after_ms, std::function<void()> callback, bool is_priority)
 {
     if(is_priority && !m_events.empty())
@@ -414,6 +436,21 @@ void Widget::addToQueue(std::size_t after_frames, std::function<void()> callback
     }
     else m_events.emplace_back(std::move(after_frames), std::move(callback));
     checkQueue();
+}
+
+void Widget::addRoutine(sf::Time ms_period, std::function<bool()> callback)
+{
+    m_repeatEvents.emplace_back(ms_period, std::move(callback));
+}
+
+void Widget::addRoutine(std::size_t frames_period, std::function<bool()> callback)
+{
+    m_repeatEvents.emplace_back(frames_period, std::move(callback));
+}
+
+void Widget::clearRoutine()
+{
+    m_repeatEvents.clear();
 }
 
 void Widget::linkWidget(std::shared_ptr<WidgetGroup>& new_group)
@@ -459,6 +496,11 @@ const sf::Vector2f Widget::getAbsolutePosition() const
         root = root->m_master.getFramePtr();
     }
     return results;
+}
+
+sf::Angle Widget::getWidgetRotation() const
+{
+    return this->getRotation();
 }
 
 const sf::FloatRect Widget::getBounds() const
@@ -590,34 +632,24 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
         if(!checkFlag(m_flags, FLAGS::HOVERED))
         {
             setFlag(m_flags, FLAGS::HOVERED);
-            if(m_hoverCallBack) m_hoverCallBack(event);
+            if(m_gainhoverCallBack) m_gainhoverCallBack(event);
         }
         resetFlag(m_flags, FLAGS::TRANSPARENT);
     }
     else
     {
-        resetFlag(m_flags,  FLAGS::HOVERED);
+        if(checkFlag(m_flags, FLAGS::HOVERED))
+        {
+            resetFlag(m_flags,  FLAGS::HOVERED);
+            if(m_losehoverCallBack) m_losehoverCallBack(event);
+        }
+
         bool root_hidden = false;
         if(Frame* root = m_master.getFramePtr()) root_hidden = root->isFlag(FLAGS::TRANSPARENT);
 
         if(checkFlag(m_flags, FLAGS::AUTOHIDE) || root_hidden) setFlag(m_flags, FLAGS::TRANSPARENT);
         else resetFlag(m_flags, FLAGS::TRANSPARENT);
     }
-}
-
-void Widget::addRoutine(sf::Time ms_period, std::function<bool()> callback)
-{
-    m_repeatEvents.emplace_back(ms_period, std::move(callback));
-}
-
-void Widget::addRoutine(std::size_t frames_period, std::function<bool()> callback)
-{
-    m_repeatEvents.emplace_back(frames_period, std::move(callback));
-}
-
-void Widget::clearRoutine()
-{
-    m_repeatEvents.clear();
 }
 
 void Widget::checkQueue()

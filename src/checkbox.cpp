@@ -146,6 +146,11 @@ void CheckBox::updateSize()
     updateText();
 }
 
+void CheckBox::updateRotation(sf::Angle new_angle)
+{
+    m_text.setRotation(new_angle);
+}
+
 void CheckBox::updateState()
 {
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;

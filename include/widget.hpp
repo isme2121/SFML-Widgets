@@ -112,11 +112,11 @@ public:
     /// Possible active state for each callback call:
     /// `~ = not guaranteed`
     ///
-    /// - PRESS: `HOVERED`, `SELECTED`, `ACTIVE~`
+    /// - PRESS: `FOCUSED`, `HOVERED`, `SELECTED`, `ACTIVE~`
     ///
-    /// - RELEASE: `HOVERED`, `SELECTED`
+    /// - RELEASE: `HOVERED`, `FOCUSED`, `SELECTED`
     ///
-    /// - HOLD: `ACTIVE`, `SELECTED~`
+    /// - HOLD: `ACTIVE`, `FOCUSED`, `SELECTED~`
     ///
     /// - SCROLL: `HOVERED`
     ///
@@ -260,6 +260,20 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     void setCornerRadius(float radius);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief similar to `sf::Transformable::rotate` where it adds to the
+    /// current rotation angle of the widget
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void rotateWidget(sf::Angle angle);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief similar to `sf::Transformable::setRotation` where it overwrites
+    /// the widget's rotation angle
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setWidgetRotation(sf::Angle new_angle);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a callback for execution after a certain delay
@@ -378,6 +392,12 @@ public:
     const sf::Vector2f getAbsolutePosition() const;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief returns the current rotation angle of the widget
+    ///
+    ///////////////////////////////////////////////////////////////////
+    sf::Angle getWidgetRotation() const;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns widget bounds based on local view
     ///
     /// Position in bounds would be relative to the root frame if widget
@@ -430,14 +450,6 @@ public:
     bool isFlag(FLAGS bits) const;
 
 protected:
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Draws the shape and updates the necessary functions, called
-    /// within `draw`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    virtual void drawWidget() = 0;
-
     ///////////////////////////////////////////////////////////////////
     /// @brief Main method for triggering mouse callbacks from a widget
     ///
@@ -488,14 +500,11 @@ protected:
     void updateFocus();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates widget colors and shaders depending on the current
-    /// state
-    ///
-    /// Called in `draw` method, The default tested states are:
-    /// `BLOCKED`, `TRANSPARENT`, `ACTIVE`, `HOVERED` respectively.
+    /// @brief Draws the shape and updates the necessary functions, called
+    /// within `draw`
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual void updateState() = 0; 
+    virtual void drawWidget() = 0;
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Used to update child widgets for container type Widget or
@@ -523,6 +532,22 @@ protected:
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateSize() = 0;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief matches the current angle value with the rest of the widget
+    ///
+    ///////////////////////////////////////////////////////////////////
+    virtual void updateRotation(sf::Angle new_angle) = 0;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates widget colors and shaders depending on the current
+    /// state
+    ///
+    /// Called in `draw` method, The default tested states are:
+    /// `BLOCKED`, `TRANSPARENT`, `ACTIVE`, `HOVERED` respectively.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    virtual void updateState() = 0; 
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
@@ -594,7 +619,8 @@ private:
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_releaseEvents;           //!< For mouse release events
     MouseCallback m_holdCallBack = nullptr;                                         //!< Called while holding `ACTIVE_MOUSE_BUTTON` on widget
     MouseCallback m_scrollCallBack = nullptr;                                       //!< Called when scrolling the mouse wheel while hovering on widget
-    MouseCallback m_hoverCallBack = nullptr;                                        //!< Called once when the widget is first hovered
+    MouseCallback m_gainhoverCallBack = nullptr;                                    //!< Called once when the widget is first hovered
+    MouseCallback m_losehoverCallBack = nullptr;                                    //!< Called once when the widget is no longer hovered
     MouseCallback m_gainFocusCallBack = nullptr;                                    //!< Called automatically when widget gains focus
     MouseCallback m_loseFocusCallBack = nullptr;                                    //!< Called automatically when widget loses focus
 
@@ -658,7 +684,8 @@ public:
         Release,
         Hold,
         Scroll,
-        Hover,
+        HoverSet,
+        HoverLost,
         FocusSet,
         FocusLost
     };

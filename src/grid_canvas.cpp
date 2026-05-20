@@ -399,6 +399,12 @@ void GridCanvas::updateSize()
     update();
 }
 
+void GridCanvas::updateRotation(sf::Angle new_angle)
+{
+    m_drawSprite.setRotation(new_angle);
+    for(Cell& c : m_cellMap) c.setRotation(new_angle);
+}
+
 void GridCanvas::updateState()
 {
     m_drawTexture.clear(sf::Color::Transparent);

@@ -213,6 +213,12 @@ private:
     void updateSize() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief matches the current angle value with the rest of the button
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateRotation(sf::Angle new_angle) override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates button colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
@@ -249,7 +255,13 @@ private:
     void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates text size and position if provided
+    /// @brief Updates text position
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTextPosition();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates text size
     ///
     /// Refreshes characters' size based on button's width and alligns 
     /// the text in the center, can move image position if they overlap.
@@ -257,7 +269,7 @@ private:
     /// @see `setText`
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateText();
+    void updateTextSize();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates image position if image is available

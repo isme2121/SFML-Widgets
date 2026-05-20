@@ -79,12 +79,6 @@ Button::~Button()
     clearImage();
 }
 
-void Button::drawWidget()
-{
-    if(checkFlag(m_flags, FLAGS::IMAGE)) m_master.draw(m_image, &m_clipShader);
-    if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
-}
-
 bool Button::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
@@ -122,7 +116,8 @@ void Button::setText(const std::string& text)
     else resetFlag(m_flags, FLAGS::TEXT);
     
     m_text.setString(text);
-    updateText();
+    updateTextSize();
+    updateTextPosition();
     updateImagePosition(); //!< Fix image position in case TEXT flag state has changed
 }
 
@@ -132,27 +127,30 @@ void Button::setTextSide(Button::Side text_side)
     if(m_imagePosition == text_side)
         m_imagePosition = m_textPosition;
     m_textPosition = text_side;
-    updateText();
+    updateTextPosition();
     updateImagePosition();
 }
 
 void Button::setTextSize(unsigned int char_size)
 {
     m_charSize = char_size;
-    updateText();
+    updateTextSize();
+    updateTextPosition();
 }
 
 void Button::setTextSize(float ratio)
 {
     if(ratio < 0.f || ratio >= 1.f) return;
     m_charSizeRatio = ratio;
-    updateText();
+    updateTextSize();
+    updateTextPosition();
 }
 
 void Button::setTextFont(sf::Font font)
 {
     m_text.setFont(font);
-    updateText(); //!< auto update size
+    updateTextSize(); //!< auto update size
+    updateTextPosition();
 }
 
 bool Button::setImage(const std::string& image_path)
@@ -187,7 +185,7 @@ bool Button::setImage(const std::string& image_path)
 
     setFlag(m_flags, FLAGS::IMAGE);
     updateClipShader();
-    updateText();
+    updateTextPosition();
     updateImagePosition();
     return true;
 }
@@ -198,7 +196,7 @@ void Button::setImageSide(Button::Side image_side)
     if(m_textPosition == image_side)
         m_textPosition = m_imagePosition;
     m_imagePosition = image_side;
-    updateText();
+    updateTextPosition();
     updateImagePosition();
 }
 
@@ -209,12 +207,17 @@ void Button::clearImage()
     m_texture = sf::Texture();
     ImageCache::getInstance().decrementRefCounter(m_imagePath);
     m_imagePath.clear();
-    updateText();
 }
 
 ///////////////////////////////////////////////////////////////////
 /// Protected
 ///////////////////////////////////////////////////////////////////
+
+void Button::drawWidget()
+{
+    if(checkFlag(m_flags, FLAGS::IMAGE)) m_master.draw(m_image, &m_clipShader);
+    if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
+}
 
 void Button::config(FLAGS mask)
 {
@@ -224,7 +227,7 @@ void Button::config(FLAGS mask)
 void Button::updatePosition()
 {
     // updates text and image
-    updateText();
+    updateTextPosition();
     updateImagePosition();
 }
 
@@ -232,10 +235,17 @@ void Button::updateSize()
 {
     // all methods that scale with size
     updateClipShader();
+    updateTextSize();
+    updateTextPosition(); //!< keep text aligned
     updateImageSize();
-    updateText();
     updateImagePosition();  //!< image position scales with button size
     update();
+}
+
+void Button::updateRotation(sf::Angle new_angle)
+{
+    m_text.setRotation(new_angle);
+    m_image.setRotation(new_angle);
 }
 
 void Button::updateState()
@@ -326,7 +336,7 @@ void Button::updateColorShader()
     m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
-void Button::updateText()
+void Button::updateTextPosition()
 {
     if(!checkFlag(m_flags, FLAGS::TEXT)) return;
 
@@ -336,19 +346,6 @@ void Button::updateText()
         if(m_textPosition == Side::Left) m_imagePosition = Side::Right;
         else m_imagePosition = Side::Left;
     }
-
-    // update character size
-    if(m_charSizeRatio != 0.f)
-    {
-        float final_height = m_size.y * m_charSizeRatio;
-        float current_height = m_text.getLocalBounds().size.y;
-        if(current_height > 0.f)
-        {
-            float ratio   = final_height / current_height;
-            m_charSize = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
-        }
-    }
-    m_text.setCharacterSize(m_charSize);
 
     // update text position
     sf::FloatRect bounds = m_text.getLocalBounds();
@@ -372,6 +369,24 @@ void Button::updateText()
     }
 
     m_text.setPosition(text_pos);
+}
+
+void Button::updateTextSize()
+{
+    if(!checkFlag(m_flags, FLAGS::TEXT)) return;
+
+    // update character size
+    if(m_charSizeRatio != 0.f)
+    {
+        float final_height = m_size.y * m_charSizeRatio;
+        float current_height = m_text.getLocalBounds().size.y;
+        if(current_height > 0.f)
+        {
+            float ratio   = final_height / current_height;
+            m_charSize = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
+        }
+    }
+    m_text.setCharacterSize(m_charSize);
 }
 
 void Button::updateImagePosition()

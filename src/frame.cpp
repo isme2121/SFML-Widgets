@@ -265,6 +265,12 @@ void Frame::updateSize()
     update();
 }
 
+void Frame::updateRotation(sf::Angle new_angle)
+{
+    m_sprite.setRotation(new_angle);
+    for(Widget* w : m_childWidgets) w->setRotation(new_angle);
+}
+
 void Frame::updateState()
 {
     m_texture.clear(sf::Color::Transparent);

@@ -178,6 +178,12 @@ private:
     void updateSize() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief matches the current angle value with the rest of the checkbox
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateRotation(sf::Angle new_angle) override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates checkbox colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
