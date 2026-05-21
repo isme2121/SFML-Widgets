@@ -216,7 +216,7 @@ private:
     /// @brief matches the current angle value with the rest of the button
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateRotation(sf::Angle new_angle) override;
+    void updateRotation() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates button colors to match current state alongside

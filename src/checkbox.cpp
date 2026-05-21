@@ -146,9 +146,9 @@ void CheckBox::updateSize()
     updateText();
 }
 
-void CheckBox::updateRotation(sf::Angle new_angle)
+void CheckBox::updateRotation()
 {
-    m_text.setRotation(new_angle);
+    m_text.setRotation(this->getRotation());
 }
 
 void CheckBox::updateState()

@@ -208,7 +208,7 @@ private:
     /// @brief matches the current angle value with the rest of the frame
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateRotation(sf::Angle new_angle) override;
+    void updateRotation() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates frame's colors to match current state alongside

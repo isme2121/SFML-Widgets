@@ -537,7 +537,7 @@ protected:
     /// @brief matches the current angle value with the rest of the widget
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual void updateRotation(sf::Angle new_angle) = 0;
+    virtual void updateRotation() = 0;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates widget colors and shaders depending on the current

@@ -153,9 +153,9 @@ void ImageFrame::updateSize()
     update();
 }
 
-void ImageFrame::updateRotation(sf::Angle new_angle)
+void ImageFrame::updateRotation()
 {
-    m_imageSprite.setRotation(new_angle);
+    m_imageSprite.setRotation(this->getRotation());
 }
 
 void ImageFrame::updateState()

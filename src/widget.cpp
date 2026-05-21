@@ -155,7 +155,8 @@ void Widget::configure(FLAGS flags)
 void Widget::setWidgetPosition(sf::Vector2f new_position)
 {
     m_position = new_position;
-    this->setPosition(m_position);
+    this->setOrigin(sf::Vector2f(m_size) / 2.f);
+    this->setPosition(m_position + sf::Vector2f(m_size) / 2.f);
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
@@ -168,6 +169,7 @@ void Widget::setWidgetPosition(sf::Vector2f new_position)
 void Widget::setWidgetSize(sf::Vector2u new_size)
 {
     m_size = new_size;
+    this->setOrigin(sf::Vector2f(m_size) / 2.f);
     m_radius = std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f);
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
@@ -405,15 +407,14 @@ void Widget::setCornerRadius(float radius)
 
 void Widget::rotateWidget(sf::Angle angle)
 {
-    // this->setOrigin(sf::Vector2f(m_size) / 2.f);
     this->rotate(angle);
-    updateRotation(this->getRotation());
+    updateRotation();
 }
 
 void Widget::setWidgetRotation(sf::Angle new_angle)
 {
     this->setRotation(new_angle);
-    updateRotation(new_angle);
+    updateRotation();
 }
 
 void Widget::addToQueue(sf::Time after_ms, std::function<void()> callback, bool is_priority)

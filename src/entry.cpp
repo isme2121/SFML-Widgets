@@ -352,11 +352,11 @@ void Entry::updateSize()
     update();
 }
 
-void Entry::updateRotation(sf::Angle new_angle)
+void Entry::updateRotation()
 {
-    m_sprite.setRotation(new_angle);
-    m_text.setRotation(new_angle);
-    m_bgText.setRotation(new_angle);
+    m_sprite.setRotation(this->getRotation());
+    m_text.setRotation(this->getRotation());
+    m_bgText.setRotation(this->getRotation());
 }
 
 void Entry::updateState()

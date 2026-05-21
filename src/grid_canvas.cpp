@@ -399,10 +399,10 @@ void GridCanvas::updateSize()
     update();
 }
 
-void GridCanvas::updateRotation(sf::Angle new_angle)
+void GridCanvas::updateRotation()
 {
-    m_drawSprite.setRotation(new_angle);
-    for(Cell& c : m_cellMap) c.setRotation(new_angle);
+    m_drawSprite.setRotation(this->getRotation());
+    for(Cell& c : m_cellMap) c.setRotation(this->getRotation());
 }
 
 void GridCanvas::updateState()

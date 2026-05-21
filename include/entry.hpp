@@ -209,7 +209,7 @@ private:
     /// @brief matches the current angle value with the rest of the entry
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateRotation(sf::Angle new_angle) override;
+    void updateRotation() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates widget colors to match current state alongside shaders

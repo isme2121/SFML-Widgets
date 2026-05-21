@@ -1,4 +1,5 @@
 #include "../include/button.hpp"
+#include <iostream>
 
 namespace sfml_widgets // Button
 {
@@ -242,10 +243,12 @@ void Button::updateSize()
     update();
 }
 
-void Button::updateRotation(sf::Angle new_angle)
+void Button::updateRotation()
 {
-    m_text.setRotation(new_angle);
-    m_image.setRotation(new_angle);
+    m_text.setRotation(this->getRotation());
+    m_image.setRotation(this->getRotation());
+    updateTextPosition();
+    updateImagePosition();
 }
 
 void Button::updateState()
@@ -340,35 +343,33 @@ void Button::updateTextPosition()
 {
     if(!checkFlag(m_flags, FLAGS::TEXT)) return;
 
-    // move image position if centered
     if(checkFlag(m_flags, FLAGS::IMAGE) && m_imagePosition == Side::Center)
     {
         if(m_textPosition == Side::Left) m_imagePosition = Side::Right;
         else m_imagePosition = Side::Left;
     }
 
-    // update text position
     sf::FloatRect bounds = m_text.getLocalBounds();
     m_text.setOrigin(bounds.position + bounds.size / 2.f);
-    sf::Vector2f text_pos;
-    text_pos.y = m_position.y + static_cast<float>(m_size.y) / 2.f;
+
+    sf::Vector2f local_offset;
+    local_offset.y = static_cast<float>(m_size.y) / 2.f;
 
     switch (m_textPosition)
     {
     case Side::Left:
-        text_pos.x = m_position.x + m_size.x * 0.33f;
+        local_offset.x = m_size.x * 0.33f;
         break;
     
     case Side::Center:
-        text_pos.x = m_position.x + m_size.x * 0.5f;
+        local_offset.x = m_size.x * 0.5f;
         break;
 
     case Side::Right:
-        text_pos.x = m_position.x + m_size.x * 0.67f;
+        local_offset.x = m_size.x * 0.67f;
         break;
     }
-
-    m_text.setPosition(text_pos);
+    m_text.setPosition(this->getTransform().transformPoint(local_offset));
 }
 
 void Button::updateTextSize()
@@ -392,26 +393,29 @@ void Button::updateTextSize()
 void Button::updateImagePosition()
 {
     if(!checkFlag(m_flags, FLAGS::IMAGE)) return;
-    
+
     sf::FloatRect bounds = m_image.getLocalBounds();
+    m_image.setOrigin(bounds.position + bounds.size / 2.f);
+
+    sf::Vector2f local_offset;
+    local_offset.y = static_cast<float>(m_size.y) / 2.f;
+
     switch (m_imagePosition)
     {
     case Side::Left:
-        m_image.setOrigin({0.f, 0.f});
-        m_image.setPosition(m_position);
+        local_offset.x = m_size.x * 0.165f;
         break;
 
     case Side::Center:
-        m_image.setOrigin(bounds.position + bounds.size / 2.f);
-        m_image.setPosition(m_position + sf::Vector2f(m_size) / 2.f);
+        local_offset.x = m_size.x * 0.5f;
         break;
     
     case Side::Right:
-        m_image.setOrigin({0.f, 0.f});
-        m_image.setPosition({m_position.x + m_size.x * 0.67f, m_position.y});
+        local_offset.x = m_size.x * 0.835f;
         break;
     
     }
+    m_image.setPosition(this->getTransform().transformPoint(local_offset));
 }
 
 bool Button::updateImageSize()
