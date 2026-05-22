@@ -134,6 +134,7 @@ void Button::setTextSide(Button::Side text_side)
 
 void Button::setTextSize(unsigned int char_size)
 {
+    m_charSizeRatio = 0.f;
     m_charSize = char_size;
     updateTextSize();
     updateTextPosition();
@@ -383,7 +384,7 @@ void Button::updateTextSize()
         float current_height = m_text.getLocalBounds().size.y;
         if(current_height > 0.f)
         {
-            float ratio   = final_height / current_height;
+            float ratio = final_height / current_height;
             m_charSize = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
         }
     }

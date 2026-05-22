@@ -113,8 +113,6 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the size of the characters for the button's text
     ///
-    /// @note This assignment does not take effect until the ratio is set
-    /// to `0.f` which by default is `0.2f`.
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextSize(unsigned int char_size);
@@ -301,8 +299,8 @@ private:
     sf::Texture m_texture;                                              //!< Image texture
     sf::Sprite m_image;                                                 //!< Image sprite
     std::string m_imagePath;                                            //!< Path for used image
-    float m_charSizeRatio = 0.2f;                                       //!< Button's height occupied by text, prio until it's set to 0.f
-    unsigned int m_charSize = 16;                                       //!< Manual text size assigned by user, not used until ratio is 0.f
+    float m_charSizeRatio = 0.4f;                                       //!< Button's height occupied by text, prio until it's set to 0.f
+    unsigned int m_charSize = 24;                                       //!< Manual text size assigned by user, not used until ratio is 0.f
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
 

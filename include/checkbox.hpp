@@ -95,24 +95,60 @@ public:
     void setText(const std::string& text);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the size of the characters for the checkbox's text
+    ///
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextSize(unsigned int char_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Auto updates the size of the characters for the checkbox's text
+    ///
+    /// Ratio is relative to the checkbox's height and matches characters
+    /// with caps' size, can be set from `0.f` to `2.f`, with `0.f`
+    /// disabling ratio updating, default is `0.5f`.
+    ///
+    /// @note if ratio is set to `0.f`, manual assignment to character size
+    /// would become the priority.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextSize(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Sets a font for the checkbox's text
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextFont(sf::Font font);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a function call to state update event
     ///
     /// Callback is triggered whenever the checkbox updates in state,
-    /// the state can be checked using `Widget::isFlag(FLAGS::SET)` which
-    /// returns true if the checkbox is set.
+    /// the state can be checked using `CheckBox::getState` or 
+    /// `Widget::isFlag(FLAGS::SET)` which returns true if the checkbox is set.
     ///
-    /// @see `unbindCheckCallback`, `Widget::isFlag`
+    /// @see `unbindToggleEvent`, `Widget::isFlag`
     ///
     ///////////////////////////////////////////////////////////////////
-    void bindCheckCallback(MouseCallback callback);
+    void bindToggleEvent(MouseCallback callback);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes assigned callback for checkbox's state update
     ///
-    /// @see `bindCheckCallback`
+    /// @see `bindToggleEvent`
     ///
     ///////////////////////////////////////////////////////////////////
-    void unbindCheckCallback();
+    void unbindToggleEvent();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates empty space between text and the checkbox based
+    /// on the corresponding direction's checkbox diameter
+    ///
+    /// Scales with the size of the checkbox itself, can be set from `0.f`
+    /// to `1.f` as a maximum distance, default is `0.3f`.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setSpace(float ratio);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current state of the checkbox widget
@@ -137,7 +173,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTextSide(DIRECTION side);
 
-    CheckboxStyle m_style = themes::CHECKBOX_CARBON_CYAN;
+    CheckboxStyle m_style = themes::CHECKBOX_STALE_VIOLET;
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -234,6 +270,9 @@ private:
     MouseCallback m_clickCallback = nullptr;    //!< State update callback
     sf::Color* m_currentTextColorPtr = nullptr; //!< Pointer to the current text color
     DIRECTION m_textSide = DIRECTION::LEFT;     //!< Text's position based on the checkbox
+    float m_textSizeRatio = 0.5f;               //!< Text size scale based on check box size and direction
+    unsigned int m_charSize = 24;               //!< Actual text size, can be set manually or updated with ratio
+    float m_deadSpace = 0.3f;                   //!< Space between text and the checkbox
 };
 }
 #endif

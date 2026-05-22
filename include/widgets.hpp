@@ -78,18 +78,18 @@ enum class FLAGS : std::int32_t
     CLIPSHADER = 1 << 19,           //!< Flag: `shader for sprites is loaded`
     COLORSHADER = 1 << 20,          //!< Flag: `shader for fill texture is loaded`
 
-    RESIZE = 1 << 21,
+    RESIZE = 1 << 21,               //!< Configured Flag: `blocks widget from resizing with window`
     TEXT = 1 << 22,                 //!< Flag: `widget is currently displaying text`
     IMAGE = 1 << 23,                //!< Flag: `widget is currently displaying an image`
     BGIMAGE = 1 << 24,              //!< Flag: `widget has fill texture loaded`
     DEFAULTIMAGE = 1 << 25,         //!< Flag: `default image currently used`
     
-    GRID = 1 << 26,                 //!< Flag: `grid is enabled for container`
-    SCROLL = 1 << 27,               //!< Flag: `scrolling is enabled for scrollable widgets like frame`
+    GRID = 1 << 26,                 //!< Configured Flag: `grid is enabled for container`
+    SCROLL = 1 << 27,               //!< Configured Flag: `scrolling is enabled for scrollable widgets like frame`
     SEPARATORS = 1 << 28,           //!< Flag: `line separators in frame is enabled`
-    ZOOM = 1 << 29,                 //!< Flag: `zooming is enabled for canvas`
-    PAN = 1 << 30,                  //!< Flag: `panning is enabled for canvas`
-    BLOCKBGIMAGE = 1 << 31          //!< Flag: `blocks loading fill texture, clears it with shader if enabled`
+    ZOOM = 1 << 29,                 //!< Configured Flag: `zooming is enabled for canvas`
+    PAN = 1 << 30,                  //!< Configured Flag: `panning is enabled for canvas`
+    BLOCKBGIMAGE = 1 << 31          //!< Configured Flag: `blocks loading fill texture, clears it with shader if enabled`
 
 };
 

@@ -83,7 +83,7 @@ bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2
     W_MouseEventDetails details = mouseCallBackEvent(event, *mouse_position);
 
     // clicked on entry
-    if(details.event_type == W_MouseEventType::Press && details.button == parameters::ACTIVE_MOUSE_BUTTON)
+    if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == parameters::ACTIVE_MOUSE_BUTTON)
     {
         sf::Vector2f local = m_master.mapMousePosition(*mouse_position); //!< relative to the master
         setCursorIndex(m_renderTexture.mapPixelToCoords(sf::Vector2i(local)).x);    //!< considering the entry's surface

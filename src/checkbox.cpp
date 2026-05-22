@@ -102,17 +102,44 @@ void CheckBox::setText(const std::string& text)
     else resetFlag(m_flags, FLAGS::TEXT);
 
     m_text.setString(text);
-    updateText();
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
-void CheckBox::bindCheckCallback(MouseCallback callback)
+void CheckBox::setTextSize(unsigned int char_size)
+{
+    m_textSizeRatio = 0.f;
+    m_charSize = char_size;
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
+}
+
+void CheckBox::setTextSize(float ratio)
+{
+    if(ratio < 0.f || ratio > 2.f) return;
+    m_textSizeRatio = ratio;
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
+}
+
+void CheckBox::setTextFont(sf::Font font)
+{
+    m_text.setFont(font);
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
+}
+
+void CheckBox::bindToggleEvent(MouseCallback callback)
 {
     m_clickCallback = callback;
 }
 
-void CheckBox::unbindCheckCallback()
+void CheckBox::unbindToggleEvent()
 {
     m_clickCallback = nullptr;
+}
+
+void CheckBox::setSpace(float ratio)
+{
+    if(ratio < 0.f || ratio > 1.f) return;
+    m_deadSpace = ratio;
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
 bool CheckBox::getState()
@@ -123,12 +150,16 @@ bool CheckBox::getState()
 void CheckBox::setTextSide(DIRECTION side)
 {
     m_textSide = side;
-    updateText();
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
 void CheckBox::drawWidget()
 {
-    if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
+    if(checkFlag(m_flags, FLAGS::TEXT))
+    {
+        updateText();
+        m_master.draw(m_text);
+    }
 }
 
 void CheckBox::config(FLAGS mask)
@@ -138,17 +169,18 @@ void CheckBox::config(FLAGS mask)
 
 void CheckBox::updatePosition()
 {
-    updateText();
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
 void CheckBox::updateSize()
 {
-    updateText();
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
 void CheckBox::updateRotation()
 {
     m_text.setRotation(this->getRotation());
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
 void CheckBox::updateState()
@@ -159,6 +191,8 @@ void CheckBox::updateState()
     if(checkFlag(m_flags, FLAGS::SET))
     {
         if(checkFlag(m_flags, FLAGS::BGIMAGE)) this->setTexture(m_bgTexturePtr.get());
+
+        m_currentBgColorPtr = &m_style.fill_on_color;
 
         if(checkFlag(m_flags, FLAGS::BLOCKED))
         {
@@ -184,7 +218,6 @@ void CheckBox::updateState()
         else
         {
             m_opacity = 1.f;
-            m_currentBgColorPtr = &m_style.fill_on_color;
             m_currentOutlineColorPtr = &m_style.outline_color;
             m_currentTextColorPtr = & m_style.text_color;
         }
@@ -259,77 +292,78 @@ void CheckBox::updateColorShader()
 
 void CheckBox::updateText()
 {
-    if(!checkFlag(m_flags, FLAGS::TEXT)) return;
-
-    sf::Vector2f shape_center = m_position + sf::Vector2f(m_size) / 2.f;
-    const float  HORIZONTAL_SPACE = m_size.x * 0.2f;
-    const float  VERTICAL_SPACE = m_size.y * 0.2f;
+    if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return;
+    setFlag(m_flags, FLAGS::SHORTSKIP); //!< skipping until another update is queued
 
     // update text size first for accurate local bounds
-    switch(m_textSide)
+    if(m_textSizeRatio != 0.f)
     {
-        case DIRECTION::RIGHT:
-        case DIRECTION::LEFT:
-            m_text.setCharacterSize(m_size.x / 3);
-            break;
-        case DIRECTION::TOP:
-        case DIRECTION::BOTTOM:
-            m_text.setCharacterSize(m_size.y / 3);
-            break;
+        float final_height, current_height;
+        final_height = m_size.y * m_textSizeRatio;
+        current_height = m_text.getLocalBounds().size.y;
+
+        if(current_height > 0.f)
+        {
+            float ratio = final_height / current_height;
+            m_charSize = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
+        }
     }
+    m_text.setCharacterSize(m_charSize);
+
+
+    const float HORIZONTAL_SPACE = m_size.x * m_deadSpace;
+    const float VERTICAL_SPACE   = m_size.y * m_deadSpace;
 
     sf::FloatRect bounds = m_text.getLocalBounds();
 
+
+    sf::Vector2f offset; //!< offset from 0, 0 coords of checkbox
+    sf::Vector2f text_origin; //!< origin point of the text space
+
     switch(m_textSide)
     {
-        case DIRECTION::RIGHT:
+    case DIRECTION::RIGHT:
         {
-            m_text.setOrigin({
-                bounds.position.x,
-                bounds.position.y + bounds.size.y / 2.f
-            });
-            m_text.setPosition({
-                m_position.x + m_size.x + HORIZONTAL_SPACE,
-                shape_center.y
-            });
+            text_origin = {bounds.position.x,
+                           bounds.position.y + bounds.size.y / 2.f}; //!< mid-left point
+
+            offset = {m_size.x + HORIZONTAL_SPACE,
+                      static_cast<float>(m_size.y) / 2.f};
             break;
         }
-        case DIRECTION::LEFT:
+
+    case DIRECTION::LEFT:
         {
-            m_text.setOrigin({
-                bounds.position.x + bounds.size.x,
-                bounds.position.y + bounds.size.y / 2.f
-            });
-            m_text.setPosition({
-                m_position.x - HORIZONTAL_SPACE,
-                shape_center.y
-            });
+            text_origin = {bounds.position.x + bounds.size.x,
+                           bounds.position.y + bounds.size.y / 2.f}; //!< mid-right point
+
+            offset = {-HORIZONTAL_SPACE,
+                      static_cast<float>(m_size.y) / 2.f};
             break;
         }
-        case DIRECTION::TOP:
+
+    case DIRECTION::TOP:
         {
-            m_text.setOrigin({
-                bounds.position.x + bounds.size.x / 2.f,
-                bounds.position.y + bounds.size.y
-            });
-            m_text.setPosition({
-                shape_center.x,
-                m_position.y - VERTICAL_SPACE
-            });
+            text_origin = {bounds.position.x + bounds.size.x / 2.f,
+                           bounds.position.y + bounds.size.y}; //!< bottom-mid point
+
+            offset = {static_cast<float>(m_size.x) / 2.f,
+                      -VERTICAL_SPACE};
             break;
         }
-        case DIRECTION::BOTTOM:
+
+    case DIRECTION::BOTTOM:
         {
-            m_text.setOrigin({
-                bounds.position.x + bounds.size.x / 2.f,
-                bounds.position.y
-            });
-            m_text.setPosition({
-                shape_center.x,
-                m_position.y + m_size.y + VERTICAL_SPACE
-            });
+            text_origin = {bounds.position.x + bounds.size.x / 2.f,
+                           bounds.position.y}; //!< top-mid point
+
+            offset = {static_cast<float>(m_size.x) / 2.f,
+                      m_size.y + VERTICAL_SPACE};
             break;
         }
     }
+
+    m_text.setOrigin(text_origin);
+    m_text.setPosition(this->getTransform().transformPoint(offset));
 }
 }
