@@ -16,7 +16,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     setWidgetSize(size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
-    config(FLAGS::INDICATOR);
+    configure(FLAGS::INDICATOR);
 }
 
 Entry::Entry(Frame& root, sf::Vector2f position, sf::Vector2u size) : Widget(root, position, size),
@@ -32,7 +32,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     setWidgetSize(size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
-    config(FLAGS::INDICATOR);
+    configure(FLAGS::INDICATOR);
 }
 
 Entry::Entry(Entry&& other) noexcept : Widget(std::move(other)), m_renderTexture(std::move(other.m_renderTexture)), m_sprite(std::move(other.m_sprite)),
@@ -231,6 +231,12 @@ void Entry::setInput(std::string text)
     focusWidget(*this, std::nullopt); //!< enables cursor
 }
 
+void Entry::setCursorIndex(unsigned int idx)
+{
+    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.size());
+    shiftToCursor();
+}
+
 void Entry::setBackGroundText(std::string bg_text)
 {
     if(bg_text.size() > m_inputLimit) bg_text = bg_text.substr(0, m_inputLimit);
@@ -258,11 +264,26 @@ const std::string& Entry::get() const
     return m_textBuffer;
 }
 
-void Entry::setTextSizeRatio(float ratio)
+void Entry::setTextSize(float ratio)
 {
     if(ratio <= 0.f || ratio > 1.f) return;
     m_textSizeRatio = ratio;
     updateText();
+}
+
+void Entry::setTextSize(unsigned int char_size)
+{
+    m_charSize = char_size;
+    m_textSizeRatio = 0.f;
+    updateText();
+}
+
+void Entry::setOffsetRatio(float ratio)
+{
+    if(ratio < 0.f || ratio >= 1.f) return;
+    m_textOffsetRatio = ratio;
+    updateContentWidth();
+    shiftToCursor();
 }
 
 void Entry::setCursorWidth(unsigned int width)
@@ -333,10 +354,10 @@ void Entry::config(FLAGS mask)
 {
     if(checkFlag(mask, FLAGS::INDICATOR))
     {
-        if(checkFlag(m_flags, FLAGS::INDICATOR)) //!< cursor is now enabled
-            m_blinkTimer.restart();
-        else    //!< cursor is now disabled
+        if(checkFlag(m_flags, FLAGS::INDICATOR)) //!< disabling cursor
             m_blinkTimer.reset();
+        else    //!< enabling cursor
+            m_blinkTimer.restart();
     }
 }
 
@@ -503,13 +524,13 @@ void Entry::drawCursorLine()
 
 void Entry::setCursorIndex(float x__pos)
 {
-    float x = x__pos + m_currentPanOffset;
-    float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - x); //!< begin with the first char
+    float accurate_x = x__pos + m_currentPanOffset + m_textOffsetRatio * m_size.y; //!< clicked local pos + pan + text offset
+    float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - accurate_x); //!< begin with the first char
     
     std::size_t text_length = m_textBuffer.size();
     for(std::size_t idx{1}; idx <= text_length; idx++)
     {
-        float dist = std::abs(m_text.findCharacterPos(idx).x - x);
+        float dist = std::abs(m_text.findCharacterPos(idx).x - accurate_x);
         if(dist < smallest_distance)
         {
             smallest_distance  = dist;
@@ -522,33 +543,33 @@ void Entry::updateText()
 {
     float final_height = m_size.y * m_textSizeRatio;
 
-    if(!m_text.getString().isEmpty())
+    if(m_textSizeRatio != 0.f)
     {
         float current_height = m_text.getLocalBounds().size.y;
         if(current_height > 0.f)
         {
             float ratio = final_height / current_height;
-            unsigned int final_char_size = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
-            m_text.setCharacterSize(final_char_size);
-            float line_spacing = m_text.getFont().getLineSpacing(final_char_size);
+            m_charSize = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
+            float line_spacing = m_text.getFont().getLineSpacing(m_charSize);
             float y_offset = (m_size.y - line_spacing) / 2.f;
-            m_text.setPosition({0.f, y_offset});
+            m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
         }
     }
-
-    if(!m_bgText.getString().isEmpty())
+    
+    if(m_textSizeRatio != 0.f)
     {
         float current_height = m_bgText.getLocalBounds().size.y;
         if(current_height > 0.f)
         {
             float ratio = final_height / current_height;
-            unsigned int final_char_size = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
-            m_bgText.setCharacterSize(final_char_size);
-            float line_spacing = m_bgText.getFont().getLineSpacing(final_char_size);
+            m_charSize = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
+            float line_spacing = m_bgText.getFont().getLineSpacing(m_charSize);
             float y_offset = (m_size.y - line_spacing) / 2.f;
-            m_bgText.setPosition({0.f, y_offset});
+            m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
         }
     }
+    m_text.setCharacterSize(m_charSize);
+    m_bgText.setCharacterSize(m_charSize);
 }
 
 float Entry::getCursorCoordinate() const
@@ -558,7 +579,7 @@ float Entry::getCursorCoordinate() const
 
 void Entry::updateContentWidth()
 {
-    m_textBoxWidth = m_text.findCharacterPos(m_textBuffer.size()).x;
+    m_textBoxWidth = m_text.findCharacterPos(m_textBuffer.size()).x + m_textOffsetRatio * m_size.y;
     m_maxPanOffset    = std::max(0.f, (m_textBoxWidth + m_cursorWidth) - m_size.x);
     m_currentPanOffset = std::clamp(m_currentPanOffset, 0.f, m_maxPanOffset);
 

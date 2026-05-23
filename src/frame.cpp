@@ -268,7 +268,6 @@ void Frame::updateSize()
 void Frame::updateRotation()
 {
     m_sprite.setRotation(this->getRotation());
-    for(Widget* w : m_childWidgets) w->setRotation(this->getRotation());
 }
 
 void Frame::updateState()

@@ -89,6 +89,15 @@ public:
     void setInput(std::string text);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Moves the cursor to the input index
+    ///
+    /// If the index is larger than the current text length then the cursor
+    /// is moved to the last index.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setCursorIndex(unsigned int idx);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current input string
     ///
     /// @see `setInput`, `clear`
@@ -110,7 +119,22 @@ public:
     /// @param ratio value from 0.f to 1.f
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTextSizeRatio(float ratio);
+    void setTextSize(float ratio);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates character size with the new value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextSize(unsigned int char_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the left offset for text scaling with the entry's
+    /// width
+    ///
+    /// @param ratio set from `0.f` to 0.99..f`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setOffsetRatio(float ratio);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the background string content
@@ -309,6 +333,8 @@ private:
     // parameters
     std::size_t m_inputLimit = parameters::CHAR_LIMIT;      //!< Max possible number of characters
     float m_textSizeRatio = 0.5f;                           //!< How much space does the text take based on entry's height
+    float m_textOffsetRatio = 0.1f;
+    unsigned int m_charSize = 24;
     unsigned int m_cursorWidth = 3;
     char m_placeholderCharacter = 0;                        //!< Visible character replacing the actual content
     std::chrono::milliseconds m_cursorOnDur;
