@@ -85,8 +85,11 @@ bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2
     // clicked on entry
     if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == parameters::ACTIVE_MOUSE_BUTTON)
     {
-        sf::Vector2f local = m_master.mapMousePosition(*mouse_position); //!< relative to the master
-        setCursorIndex(m_renderTexture.mapPixelToCoords(sf::Vector2i(local)).x);    //!< considering the entry's surface
+        sf::Vector2f root_view = m_master.mapMousePosition(*mouse_position);                        //!< relative to the master
+        sf::Vector2f transform_view = this->getInverseTransform().transformPoint(root_view);        //!< considering rotation
+        sf::Vector2f local_view = m_renderTexture.mapPixelToCoords(sf::Vector2i(transform_view));   //!< considering texture view (padding)
+
+        setCursorIndex(local_view.x);
         shiftToCursor();
         details.is_used = true;
     }
@@ -339,7 +342,10 @@ void Entry::config(FLAGS mask)
 
 void Entry::updatePosition()
 {
-    m_sprite.setPosition(m_position);
+    // m_position is relative to the top left corner of the shape
+    // getPosition returns origin position, equivalent to the center
+    // we need it because sprite's origin is centered as well
+    m_sprite.setPosition(this->getPosition());
 }
 
 void Entry::updateSize()
@@ -347,6 +353,7 @@ void Entry::updateSize()
     if(!m_renderTexture.resize(m_size)) return;
 
     m_sprite.setTexture(m_renderTexture.getTexture(), true);
+    m_sprite.setOrigin(sf::Vector2f(m_size) / 2.f);
     updateText();
     updateClipShader();
     update();
@@ -354,9 +361,9 @@ void Entry::updateSize()
 
 void Entry::updateRotation()
 {
+    // render texture handles the rotation of it's drawables (text and cursor)
+    // and we already know it's origin is the center of the shape
     m_sprite.setRotation(this->getRotation());
-    m_text.setRotation(this->getRotation());
-    m_bgText.setRotation(this->getRotation());
 }
 
 void Entry::updateState()
@@ -453,7 +460,7 @@ void Entry::updateColorShader()
 
 void Entry::drawCursorLine()
 {
-    if(!(checkFlag(m_flags, FLAGS::INDICATOR) && checkFlag(m_flags, FLAGS::FOCUSED) && !checkFlag(m_flags, FLAGS::BLOCKED))) return;
+    if(!checkFlag(m_flags, FLAGS::INDICATOR) || !checkFlag(m_flags, FLAGS::FOCUSED) || checkFlag(m_flags, FLAGS::BLOCKED) || m_cursorWidth == 0) return;
 
     if(checkFlag(m_flags, FLAGS::RESET)) return; //!< 0.f ratio
     else if(checkFlag(m_flags, FLAGS::SET)) resetFlag(m_flags, FLAGS::SHORTSKIP); //!< 1.0 ratio
@@ -468,11 +475,21 @@ void Entry::drawCursorLine()
         }
     }
     if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return;
-
+    
     float x0 = getCursorCoordinate();
-    float x1 = x0 + m_cursorWidth;
     float y0 = m_size.y * ((1.f - m_textSizeRatio) / 2.f);
     float y1 = m_size.y * (m_textSizeRatio + (1.f - m_textSizeRatio) / 2.f);
+
+    if(m_cursorWidth == 1)
+    {
+        sf::Vertex cursor_line[2];
+        cursor_line[0] = {{x0, y0}, *m_currentOutlineColorPtr};
+        cursor_line[1] = {{x0, y1}, *m_currentOutlineColorPtr};
+        m_renderTexture.draw(cursor_line, 2, sf::PrimitiveType::Lines);
+        return;
+    }
+
+    float x1 = x0 + m_cursorWidth;
     sf::Vertex cursor_line[6];
     cursor_line[0] = {{x0, y0}, *m_currentOutlineColorPtr};
     cursor_line[1] = {{x0, y1}, *m_currentOutlineColorPtr};
@@ -486,7 +503,7 @@ void Entry::drawCursorLine()
 
 void Entry::setCursorIndex(float x__pos)
 {
-    float x = (x__pos - m_position.x) + m_currentPanOffset;
+    float x = x__pos + m_currentPanOffset;
     float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - x); //!< begin with the first char
     
     std::size_t text_length = m_textBuffer.size();
@@ -510,12 +527,12 @@ void Entry::updateText()
         float current_height = m_text.getLocalBounds().size.y;
         if(current_height > 0.f)
         {
-            float ratio   = final_height / current_height;
+            float ratio = final_height / current_height;
             unsigned int final_char_size = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
             m_text.setCharacterSize(final_char_size);
-            float lineSpacing = m_text.getFont().getLineSpacing(final_char_size);
-            float y_offset     = (m_size.y - lineSpacing) / 2.f;
-            m_text.setPosition( {0.f,   y_offset});
+            float line_spacing = m_text.getFont().getLineSpacing(final_char_size);
+            float y_offset = (m_size.y - line_spacing) / 2.f;
+            m_text.setPosition({0.f, y_offset});
         }
     }
 
@@ -524,12 +541,12 @@ void Entry::updateText()
         float current_height = m_bgText.getLocalBounds().size.y;
         if(current_height > 0.f)
         {
-            float ratio   = final_height / current_height;
+            float ratio = final_height / current_height;
             unsigned int final_char_size = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
             m_bgText.setCharacterSize(final_char_size);
-            float lineSpacing = m_bgText.getFont().getLineSpacing(final_char_size);
-            float y_offset     = (m_size.y - lineSpacing) / 2.f;
-            m_bgText.setPosition( {0.f,   y_offset});
+            float line_spacing = m_bgText.getFont().getLineSpacing(final_char_size);
+            float y_offset = (m_size.y - line_spacing) / 2.f;
+            m_bgText.setPosition({0.f, y_offset});
         }
     }
 }

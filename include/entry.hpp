@@ -309,7 +309,7 @@ private:
     // parameters
     std::size_t m_inputLimit = parameters::CHAR_LIMIT;      //!< Max possible number of characters
     float m_textSizeRatio = 0.5f;                           //!< How much space does the text take based on entry's height
-    unsigned int m_cursorWidth = 4;
+    unsigned int m_cursorWidth = 3;
     char m_placeholderCharacter = 0;                        //!< Visible character replacing the actual content
     std::chrono::milliseconds m_cursorOnDur;
     std::chrono::milliseconds m_cursorOffDur;
