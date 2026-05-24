@@ -732,7 +732,7 @@ public:
         ///////////////////////////////////////////////////////////////////
         void pause();
 
-private:
+    private:
         W_CounterType m_type;
         sf::Clock m_timer;
         std::function<void()> m_callback;
@@ -770,6 +770,14 @@ private:
         sf::Clock m_timer;
     };
 
+    class W_CharHeight
+    {
+    public:
+        static float getHeight(sf::Font text_font, unsigned int char_size);
+    private:
+        static const sf::Font DEFAULT_FONT;
+        static sf::Text Ag;
+    };
 };
 }
 #endif

@@ -724,7 +724,7 @@ void Cell::setCellOutlineThickness(DIRECTION direction, float thickness)
 bool Cell::setImage(const std::string& image_path)
 {
     if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) return false;
-    ImageCache global_image_buffer = ImageCache::getInstance();
+    ImageCache& global_image_buffer = ImageCache::getInstance();
     std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
     if(!disk_image) return false;
 

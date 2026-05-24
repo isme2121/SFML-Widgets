@@ -300,7 +300,7 @@ void CheckBox::updateText()
     {
         float final_height, current_height;
         final_height = m_size.y * m_textSizeRatio;
-        current_height = m_text.getLocalBounds().size.y;
+        current_height = W_CharHeight::getHeight(m_text.getFont(), m_text.getCharacterSize());
 
         if(current_height > 0.f)
         {

@@ -877,3 +877,17 @@ bool Widget::W_RepeatEvent::advance()
     return false;
 }
 }
+
+namespace sfml_widgets // W_CharHeight
+{
+const sf::Font Widget::W_CharHeight::DEFAULT_FONT("assets/fonts/default.otf");
+
+sf::Text Widget::W_CharHeight::Ag(DEFAULT_FONT, "Ag");
+
+float Widget::W_CharHeight::getHeight(sf::Font text_font, unsigned int char_size)
+{
+    Ag.setFont(text_font);
+    Ag.setCharacterSize(char_size);
+    return Ag.getLocalBounds().size.y;
+}
+}

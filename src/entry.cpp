@@ -545,7 +545,8 @@ void Entry::updateText()
 
     if(m_textSizeRatio != 0.f)
     {
-        float current_height = m_text.getLocalBounds().size.y;
+        // estimated maximum possible height
+        float current_height = W_CharHeight::getHeight(m_text.getFont(), m_text.getCharacterSize());
         if(current_height > 0.f)
         {
             float ratio = final_height / current_height;
@@ -553,21 +554,10 @@ void Entry::updateText()
             float line_spacing = m_text.getFont().getLineSpacing(m_charSize);
             float y_offset = (m_size.y - line_spacing) / 2.f;
             m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
-        }
-    }
-    
-    if(m_textSizeRatio != 0.f)
-    {
-        float current_height = m_bgText.getLocalBounds().size.y;
-        if(current_height > 0.f)
-        {
-            float ratio = final_height / current_height;
-            m_charSize = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
-            float line_spacing = m_bgText.getFont().getLineSpacing(m_charSize);
-            float y_offset = (m_size.y - line_spacing) / 2.f;
             m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
         }
     }
+    
     m_text.setCharacterSize(m_charSize);
     m_bgText.setCharacterSize(m_charSize);
 }

@@ -164,19 +164,17 @@ void Frame::display()
     m_master.draw(m_sprite, &m_clipShader);
 }
 
-sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mousePos) const
+sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
 {
-    sf::Vector2f local = sf::Vector2f(
-        mousePos.x - m_position.x,
-        mousePos.y - m_position.y + m_scrollOffset);
+    sf::Vector2f local = sf::Vector2f(mouse_position);
 
     const Frame* root = this;
-    // move up within layers til we reach the main window
-    while(root = root->m_master.getFramePtr())
+    while(root != nullptr)
     {
-        local.x -= root->m_position.x;
-        local.y -= root->m_position.y;
+        // handles world offset + transform ratio
+        local = root->getInverseTransform().transformPoint(local);
         local.y += root->m_scrollOffset;
+        root = root->m_master.getFramePtr();
     }
 
     return local;
@@ -232,7 +230,7 @@ void Frame::config(FLAGS mask)
 
 void Frame::updatePosition()
 {
-    m_sprite.setPosition(m_position);
+    m_sprite.setPosition(this->getPosition());
 
     bool grid_is_active = false; //!< memory for GRID flag
     if(checkFlag(m_flags, FLAGS::GRID))
@@ -255,6 +253,7 @@ void Frame::updateSize()
 
     // update texture in sprite
     m_sprite.setTexture(m_texture.getTexture(), true);
+    m_sprite.setOrigin(sf::Vector2f(m_size) / 2.f);
 
     // update widgets positions if we have grid enabled
     if(checkFlag(m_flags, FLAGS::GRID)) updateGrid();
@@ -378,7 +377,7 @@ void Frame::updateGrid()
     });
 
     resetFlag(m_flags, FLAGS::GRID);            //!< Prevent infinite recursion
-    setFlag(m_flags, FLAGS::SHORTSKIP);        //!< Prevent extra height operations
+    setFlag(m_flags, FLAGS::SHORTSKIP);         //!< Prevent extra height operations
 
     const float width_difference = static_cast<float>(m_size.x) / static_cast<float>(m_gridMapping.x);
     const float height_difference = static_cast<float>(m_size.y) / static_cast<float>(m_gridMapping.y);

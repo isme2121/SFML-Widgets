@@ -108,6 +108,12 @@ sf::Vector2u get_prime_combination(unsigned int n)
 
 namespace sfml_widgets // ImageCache
 {
+ImageCache& ImageCache::getInstance()
+{
+    static ImageCache image_buffer_instance;
+    return image_buffer_instance;
+}
+
 std::optional<const sf::Image*> ImageCache::getImage(const std::string& image_path, bool increment_ref)
 {
     std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
@@ -192,9 +198,9 @@ namespace sfml_widgets // Key
             if(scancode != other.scancode) return false;
 
         // modifiers always compared
-        return control   == other.control   &&
-               shift  == other.shift  &&
-               alt    == other.alt    &&
+        return control == other.control &&
+               shift == other.shift &&
+               alt == other.alt &&
                system == other.system;
     };
 
@@ -370,6 +376,11 @@ Frame* RenderContext::getFramePtr() const
 
 namespace sfml_widgets // WidgetGroup
 {
+std::shared_ptr<WidgetGroup> WidgetGroup::make_group()
+{
+    return std::shared_ptr<WidgetGroup>(new WidgetGroup());
+}
+
 void WidgetGroup::add(Widget* w)
 {
     m_cult.push_back(w);

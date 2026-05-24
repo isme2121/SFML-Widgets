@@ -381,7 +381,7 @@ void Button::updateTextSize()
     if(m_charSizeRatio != 0.f)
     {
         float final_height = m_size.y * m_charSizeRatio;
-        float current_height = m_text.getLocalBounds().size.y;
+        float current_height = W_CharHeight::getHeight(m_text.getFont(), m_text.getCharacterSize());
         if(current_height > 0.f)
         {
             float ratio = final_height / current_height;

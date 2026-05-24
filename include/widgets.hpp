@@ -189,11 +189,7 @@ private:
 class ImageCache
 {
 public:
-    static ImageCache& getInstance()
-    {
-        static ImageCache image_buffer_instance;
-        return image_buffer_instance;
-    }
+    static ImageCache& getInstance();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Fetch image pointer from memory or loads from disk if not
@@ -219,6 +215,11 @@ public:
     void decrementRefCounter(const std::string& image_path);
 
 private:
+    ImageCache() = default;
+    ImageCache(const ImageCache&) = delete;
+    ImageCache& operator=(const ImageCache&) = delete;
+    ImageCache(ImageCache&&) = delete;
+    ImageCache& operator=(ImageCache&&) = delete;
 
     struct ImageReferenceCounter
     {
@@ -228,8 +229,6 @@ private:
 
     std::unordered_map<std::string, ImageReferenceCounter> m_cachedImages;
 };
-
-
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Master object for `Widget` objects
@@ -329,9 +328,9 @@ private:
 ///         button198320.linkWidget(w_group1);
 ///         entry67.linkWidget(w_group1);
 ///         # both widgets would fire their focus callback together if focused
-///         w_group1.groupFocusCallback = true;
+///         w_group1->groupFocusCallback = true;
 ///         # only the widget that lost focus would fire their proper callback
-///         w_group1.groupFocuslossCallback = false;
+///         w_group1->groupFocuslossCallback = false;
 ///     }
 ///     ...
 /// ```
@@ -344,10 +343,7 @@ class WidgetGroup
 {
     WidgetGroup() = default;
 public:
-    static std::shared_ptr<WidgetGroup> make_group()
-    {
-        return std::shared_ptr<WidgetGroup>(new WidgetGroup());
-    }
+    static std::shared_ptr<WidgetGroup> make_group();
 
     WidgetGroup(const WidgetGroup&) = delete;
     WidgetGroup& operator=(const WidgetGroup&) = delete;
@@ -378,7 +374,6 @@ private:
     ///////////////////////////////////////////////////////////////////
     void remove(Widget* w);
 
-private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Calls the focus callback for all widgets in the group
     ///
