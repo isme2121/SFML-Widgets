@@ -775,7 +775,6 @@ public:
     public:
         static float getHeight(sf::Font text_font, unsigned int char_size);
     private:
-        static const sf::Font DEFAULT_FONT;
         static sf::Text Ag;
     };
 };

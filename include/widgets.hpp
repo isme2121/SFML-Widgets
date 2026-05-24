@@ -8,15 +8,12 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <chrono>
 #include <deque>
 #include <array>
 #include <cmath>
 
 namespace sfml_widgets
 {
-using namespace std::chrono_literals;
-
 class Widget;
 class Button;
 class Frame;
@@ -40,7 +37,6 @@ class Cell;
 using Sequence = std::vector<Key>;                                          //!< Represents a sequence of key presses
 using SequenceFunction = std::function<void()>;                             //!< Required function structure for key press events
 using MouseCallback = std::function<void(std::optional<const sf::Event>)>;  //!< Required function structure for mouse press events
-using float_to_milli = std::chrono::duration<float, std::milli>;            //!< casting float to ms
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////         Enums               ///////////////////
@@ -1074,8 +1070,8 @@ constexpr bool STACK_MOUSE_CALLBACKS = false;                               //!<
 constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!< Allows the frame callback to trigger after a child callback
 
 constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for event triggering
-constexpr std::chrono::milliseconds QUEUE_DELAY = 150ms;                    //!< Delay between keyboard events
-constexpr std::chrono::milliseconds BLINK_PERIOD = 1000ms;
+constexpr sf::Time QUEUE_DELAY = sf::milliseconds(150);                     //!< Delay between keyboard events
+constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period
 
 constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
 constexpr unsigned int CORNER_POINTS = 16;                                  //!< Number of vertices in a rounded widget corner 

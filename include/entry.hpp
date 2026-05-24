@@ -335,10 +335,10 @@ private:
     float m_textSizeRatio = 0.5f;                           //!< How much space does the text take based on entry's height
     float m_textOffsetRatio = 0.1f;
     unsigned int m_charSize = 24;
-    unsigned int m_cursorWidth = 3;
+    unsigned int m_cursorWidth = 1;
     char m_placeholderCharacter = 0;                        //!< Visible character replacing the actual content
-    std::chrono::milliseconds m_cursorOnDur;
-    std::chrono::milliseconds m_cursorOffDur;
+    sf::Time m_cursorOnDuration;
+    sf::Time m_cursorOffDuration;
 
     // funcionality
     sf::Clock m_blinkTimer;

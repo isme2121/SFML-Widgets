@@ -145,12 +145,12 @@ void ImageCache::decrementRefCounter(const std::string& image_path)
 
 namespace sfml_widgets // Key
 {
-    Key::Key(sf::Keyboard::Key key) : code(key) {};
-    Key::Key(sf::Keyboard::Key key, bool control) : code(key), control(control) {};
-    Key::Key(sf::Keyboard::Key key, bool control, bool alt, bool shift, bool system) : code(key), control(control), alt(alt), shift(shift), system(system) {};
-    Key::Key(sf::Keyboard::Scancode scan_key) : scancode(scan_key) {};
-    Key::Key(sf::Keyboard::Scancode scan_key, bool control) : scancode(scan_key), control(control) {};
-    Key::Key(sf::Keyboard::Scancode scan_key, bool control, bool alt, bool shift, bool system) : scancode(scan_key), control(control), alt(alt), shift(shift), system(system) {};
+    Key::Key(sf::Keyboard::Key key) : code(key) , scancode(sf::Keyboard::delocalize(key)) {};
+    Key::Key(sf::Keyboard::Key key, bool control) : code(key), scancode(sf::Keyboard::delocalize(key)), control(control) {};
+    Key::Key(sf::Keyboard::Key key, bool control, bool alt, bool shift, bool system) : code(key), scancode(sf::Keyboard::delocalize(key)), control(control), alt(alt), shift(shift), system(system) {};
+    Key::Key(sf::Keyboard::Scancode scan_key) : code(sf::Keyboard::localize(scan_key)), scancode(scan_key) {};
+    Key::Key(sf::Keyboard::Scancode scan_key, bool control) : code(sf::Keyboard::localize(scan_key)), scancode(scan_key), control(control) {};
+    Key::Key(sf::Keyboard::Scancode scan_key, bool control, bool alt, bool shift, bool system) : code(sf::Keyboard::localize(scan_key)), scancode(scan_key), control(control), alt(alt), shift(shift), system(system) {};
     Key::Key(sf::Keyboard::Key key, sf::Keyboard::Scancode scan_key) : code(key), scancode(scan_key) {};
     Key::Key(sf::Keyboard::Key key, sf::Keyboard::Scancode scan_key, bool control) : code(key), scancode(scan_key), control(control) {};
     Key::Key(sf::Keyboard::Key key, sf::Keyboard::Scancode scan_key, bool control, bool alt, bool shift, bool system) : code(key), scancode(scan_key), control(control), alt(alt), shift(shift), system(system) {};
@@ -187,18 +187,23 @@ namespace sfml_widgets // Key
 
     bool Key::operator==(const Key& other)
     {
+        bool checked = false;
         // only compare code if both sides specified it
-        if(code != sf::Keyboard::Key::Unknown &&
-           other.code != sf::Keyboard::Key::Unknown)
+        if(code != sf::Keyboard::Key::Unknown && other.code != sf::Keyboard::Key::Unknown)
+        {
             if(code != other.code) return false;
+            checked = true;
+        }
 
         // only compare scancode if both sides specified it
-        if(scancode != sf::Keyboard::Scancode::Unknown &&
-           other.scancode != sf::Keyboard::Scancode::Unknown)
+        if(scancode != sf::Keyboard::Scancode::Unknown && other.scancode != sf::Keyboard::Scancode::Unknown)
+        {
             if(scancode != other.scancode) return false;
+            checked = true;
+        }
 
-        // modifiers always compared
-        return control == other.control &&
+        return checked && //!< true = they are equal so far
+               control == other.control &&
                shift == other.shift &&
                alt == other.alt &&
                system == other.system;
@@ -206,18 +211,23 @@ namespace sfml_widgets // Key
 
     bool Key::operator!=(const Key& other)
     {
+        bool checked = false;
         // only compare code if both sides specified it
-        if(code != sf::Keyboard::Key::Unknown &&
-           other.code != sf::Keyboard::Key::Unknown)
+        if(code != sf::Keyboard::Key::Unknown && other.code != sf::Keyboard::Key::Unknown)
+        {
             if(code != other.code) return true;
+            checked = true;
+        }
 
         // only compare scancode if both sides specified it
-        if(scancode != sf::Keyboard::Scancode::Unknown &&
-           other.scancode != sf::Keyboard::Scancode::Unknown)
+        if(scancode != sf::Keyboard::Scancode::Unknown && other.scancode != sf::Keyboard::Scancode::Unknown)
+        {
             if(scancode != other.scancode) return true;
-        
-        // modifiers always compared
-        return control != other.control ||
+            checked = true;
+        }
+                
+        return !checked || //!< false = they are equal so far
+               control != other.control ||
                shift != other.shift ||
                alt != other.alt ||
                system != other.system;

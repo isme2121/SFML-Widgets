@@ -880,9 +880,7 @@ bool Widget::W_RepeatEvent::advance()
 
 namespace sfml_widgets // W_CharHeight
 {
-const sf::Font Widget::W_CharHeight::DEFAULT_FONT("assets/fonts/default.otf");
-
-sf::Text Widget::W_CharHeight::Ag(DEFAULT_FONT, "Ag");
+sf::Text Widget::W_CharHeight::Ag(parameters::font, "Ag");
 
 float Widget::W_CharHeight::getHeight(sf::Font text_font, unsigned int char_size)
 {

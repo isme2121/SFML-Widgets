@@ -94,7 +94,7 @@ bool Button::captureKeyEvents(const sf::Event& event)
 
     if(m_binds.checkEvents(event)) //!< triggers callback
     {
-        if(parameters::QUEUE_DELAY != 0ms)
+        if(parameters::QUEUE_DELAY != sf::Time::Zero)
         {
             // rate limit
             setFlag(m_flags, FLAGS::RESTRICTED);

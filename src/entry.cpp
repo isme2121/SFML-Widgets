@@ -38,7 +38,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
 Entry::Entry(Entry&& other) noexcept : Widget(std::move(other)), m_renderTexture(std::move(other.m_renderTexture)), m_sprite(std::move(other.m_sprite)),
 m_text(std::move(other.m_text)), m_bgText(std::move(other.m_bgText)), m_textBuffer(std::move(other.m_textBuffer)), m_cursorIndex(other.m_cursorIndex),
 m_inputFilter(std::move(other.m_inputFilter)), m_inputLimit(other.m_inputLimit), m_textSizeRatio(other.m_textSizeRatio), m_cursorWidth(other.m_cursorWidth),
-m_placeholderCharacter(other.m_placeholderCharacter), m_cursorOnDur(std::move(other.m_cursorOnDur)), m_cursorOffDur(std::move(other.m_cursorOffDur)),
+m_placeholderCharacter(other.m_placeholderCharacter), m_cursorOnDuration(std::move(other.m_cursorOnDuration)), m_cursorOffDuration(std::move(other.m_cursorOffDuration)),
 m_blinkTimer(std::move(other.m_blinkTimer)), m_textBoxWidth(other.m_textBoxWidth), m_currentPanOffset(other.m_currentPanOffset), m_maxPanOffset(other.m_maxPanOffset)
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -62,8 +62,8 @@ Entry& Entry::operator=(Entry&& other) noexcept
         m_textSizeRatio = other.m_textSizeRatio;
         m_cursorWidth = other.m_cursorWidth;
         m_placeholderCharacter = other.m_placeholderCharacter;
-        m_cursorOnDur = std::move(other.m_cursorOnDur);
-        m_cursorOffDur = std::move(other.m_cursorOffDur);
+        m_cursorOnDuration = std::move(other.m_cursorOnDuration);
+        m_cursorOffDuration = std::move(other.m_cursorOffDuration);
         m_blinkTimer = std::move(other.m_blinkTimer);
         m_textBoxWidth = other.m_textBoxWidth;
         m_currentPanOffset = other.m_currentPanOffset;
@@ -110,7 +110,7 @@ bool Entry::captureKeyEvents(const sf::Event& event)
     if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
     if(m_binds.checkEvents(event)) //!< triggers callback
     {
-        if(parameters::QUEUE_DELAY != 0ms)
+        if(parameters::QUEUE_DELAY != sf::Time::Zero)
         {
             // rate limit
             setFlag(m_flags, FLAGS::RESTRICTED);
@@ -316,8 +316,8 @@ void Entry::setInputFilter(std::function<bool(char32_t)> func)
 void Entry::setBLinkUpRatio(float ratio)
 {
     if(ratio < 0.f || ratio > 1.f) return;
-    m_cursorOnDur = std::chrono::duration_cast<std::chrono::milliseconds>(float_to_milli(parameters::BLINK_PERIOD) * ratio);
-    m_cursorOffDur = std::chrono::duration_cast<std::chrono::milliseconds>(float_to_milli(parameters::BLINK_PERIOD) * (1.f - ratio));
+    m_cursorOnDuration = parameters::BLINK_PERIOD * ratio;
+    m_cursorOffDuration = parameters::BLINK_PERIOD * (1.f - ratio);
     if(ratio == 1.f)
     {
         setFlag(m_flags, FLAGS::SET);
@@ -352,13 +352,12 @@ void Entry::drawWidget()
 
 void Entry::config(FLAGS mask)
 {
-    if(checkFlag(mask, FLAGS::INDICATOR))
-    {
-        if(checkFlag(m_flags, FLAGS::INDICATOR)) //!< disabling cursor
-            m_blinkTimer.reset();
-        else    //!< enabling cursor
-            m_blinkTimer.restart();
-    }
+    if(!checkFlag(mask, FLAGS::INDICATOR)) return;
+
+    // if indicator is set that means it was recently enabled
+    // otherwise it was disabled
+    if(checkFlag(m_flags, FLAGS::INDICATOR)) m_blinkTimer.restart();
+    else m_blinkTimer.reset();
 }
 
 void Entry::updatePosition()
@@ -488,8 +487,8 @@ void Entry::drawCursorLine()
     else //!< balanced ratio
     {
         bool is_active = !checkFlag(m_flags, FLAGS::SHORTSKIP);
-        sf::Time t_dur_ms = m_blinkTimer.getElapsedTime();
-        if(is_active && t_dur_ms >= m_cursorOnDur || !is_active && t_dur_ms >= m_cursorOffDur)
+        sf::Time current_dur_ms = m_blinkTimer.getElapsedTime();
+        if(is_active && current_dur_ms >= m_cursorOnDuration || !is_active && current_dur_ms >= m_cursorOffDuration)
         {
             m_blinkTimer.restart();
             toggle(m_flags, FLAGS::SHORTSKIP);
