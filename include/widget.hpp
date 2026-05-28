@@ -75,7 +75,7 @@ public:
     /// @see `getWidgetSize`, 
     ///
     ///////////////////////////////////////////////////////////////////
-    void setWidgetSize(const sf::Vector2u size);
+    void setWidgetSize(const sf::Vector2f size);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget mouse events
@@ -379,7 +379,7 @@ public:
     /// @see `setWidgetSize`
     ///
     ///////////////////////////////////////////////////////////////////
-    const sf::Vector2u getWidgetSize() const;
+    const sf::Vector2f getWidgetSize() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns widget screen position
@@ -500,6 +500,16 @@ protected:
     void updateFocus();
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates original dimensions of the widget and the root window
+    /// size
+    ///
+    /// Original dimensions are used for better accuracy in widget
+    /// position and size when a resize event occurs.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateDimensions();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Draws the shape and updates the necessary functions, called
     /// within `draw`
     ///
@@ -571,19 +581,28 @@ protected:
     virtual void updateColorShader() = 0;
 
     ///////////////////////////////////////////////////////////////////
+    // SFML's drawing methods
+    ///////////////////////////////////////////////////////////////////
+
+    std::size_t getPointCount() const override;
+    sf::Vector2f getPoint(std::size_t index) const override;
+
+    ///////////////////////////////////////////////////////////////////
     // Protected Member Variables
     ///////////////////////////////////////////////////////////////////
 
     std::weak_ptr<WidgetGroup> m_group;                                             //!< Group that shares `FOCUSED` state
     RenderContext m_master;                                                         //!< Root object that draws the widget
     sf::Shader m_clipShader;                                                        //!< for sprite edge clipping
+    sf::Vector2f m_originalPosition;                                                //!< User-set dimension for widget, used for more precise resize ratio
+    sf::Vector2f m_originalSize;                                                    //!< User-set dimension for widget, used for more precise resize ratio
+    sf::Vector2f m_windowSize;                                                      //!< Window construction-time size, used for more precise resize ratio
 
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
     std::string m_bgTexturePath;                                                    //!< Path to bg resource on disk
 
-    sf::Vector2u m_size;
-    sf::Vector2f m_position;
+    sf::Vector2f m_position, m_size;
     FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget
     CaptureSequence m_binds;                                                        //!< Stores keyboard sequences
     float m_radius = 0.f;                                                           //!< Corner radius
@@ -594,26 +613,13 @@ protected:
     float* m_currentOutlineThicknessPtr = nullptr;                                  //!< Pointer to current outline color
 
 private:
-    ///////////////////////////////////////////////////////////////////
-    /// Static Variables
-    ///////////////////////////////////////////////////////////////////
-
-    inline static std::vector<Widget*> s_widgets;                                   //!< Reference to every live widget
-
-    inline static Widget* s_focusedWidgetPtr = nullptr;                             //!< Currently focused widget
-    inline static Widget* s_widgetToFocusPtr = nullptr;                             //!< Alive for one frame as widget is focused at the end of the loop
-    inline static std::optional<const sf::Event> s_memFocusEvent = std::nullopt;    //!< Cached event for widget focus event
-    inline static std::optional<const sf::Event> s_memUnfocusEvent = std::nullopt;  //!< Cached event for widget unfocus event
-    inline static bool s_FrequestUnfocus = false;                                   //!< Calling for currently focused widget to lose focus
-    inline static bool s_FfoundFocusedWidget = false;                               //!< Informs the class that a focused widget is already found for this loop
-    inline static bool s_FrequestFocusUpdate = false;                               //!< Calls for an update on focus status for widgets
-
+    
     ///////////////////////////////////////////////////////////////////
     /// Private Member Variables
     ///////////////////////////////////////////////////////////////////
 
     std::deque<W_QueueEvent> m_events;                                              //!< Queued events
-    std::vector<W_RepeatEvent> m_repeatEvents;
+    std::vector<W_RepeatEvent> m_repeatEvents;                                      //!< Routine events, multi-processed
     std::optional<sf::Mouse::Button> m_memButton = std::nullopt;                    //!< Memorizes recently clicked mouse button
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_pressEvents;             //!< For mouse press events
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_releaseEvents;           //!< For mouse release events
@@ -624,15 +630,36 @@ private:
     MouseCallback m_gainFocusCallBack = nullptr;                                    //!< Called automatically when widget gains focus
     MouseCallback m_loseFocusCallBack = nullptr;                                    //!< Called automatically when widget loses focus
 
+    ///////////////////////////////////////////////////////////////////
+    /// Static Variables
+    ///////////////////////////////////////////////////////////////////
+
+    inline static std::vector<Widget*> s_widgets;                                   //!< Reference to every live widget
+    inline static Widget* s_focusedWidgetPtr = nullptr;                             //!< Currently focused widget
+    inline static Widget* s_widgetToFocusPtr = nullptr;                             //!< Alive for one frame as widget is focused at the end of the loop
+    inline static std::optional<const sf::Event> s_memFocusEvent = std::nullopt;    //!< Cached event for widget focus event
+    inline static std::optional<const sf::Event> s_memUnfocusEvent = std::nullopt;  //!< Cached event for widget unfocus event
+    inline static bool s_FrequestUnfocus = false;                                   //!< Calling for currently focused widget to lose focus
+    inline static bool s_FfoundFocusedWidget = false;                               //!< Informs the class that a focused widget is already found for this loop
+    inline static bool s_FrequestFocusUpdate = false;                               //!< Calls for an update on focus status for widgets
+    inline static bool s_setOriginals = true;                                       //!< Setters update member variables for the original dimensions if set
+
     friend class Frame;
     friend class WidgetGroup;
 
     ///////////////////////////////////////////////////////////////////
-    // SFML's drawing methods
+    // Private Static Methods
     ///////////////////////////////////////////////////////////////////
 
-    std::size_t getPointCount() const override;
-    sf::Vector2f getPoint(std::size_t index) const override;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Handles resizing of widgets during a resize event, called
+    /// by an existing widget
+    ///
+    /// @param pw pointer to the resized window
+    /// @param _e resize event
+    ///
+    ///////////////////////////////////////////////////////////////////
+    static void resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized& _e);
 
 public:
     ///////////////////////////////////////////////////////////////////

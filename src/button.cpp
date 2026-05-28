@@ -16,9 +16,9 @@ m_text(parameters::font), m_texture(), m_image(m_texture)
 
     // update by order
     // skips certain parts that would be filled later anyways
-    setWidgetPosition(position);
+    setWidgetPosition(m_position);
     // critical for text and shader afterwards
-    setWidgetSize(size);
+    setWidgetSize(m_size);
     // requires text and size to be updated
     setText(text);
     // depends on widget size
@@ -35,9 +35,9 @@ m_text(parameters::font), m_texture(), m_image(m_texture)
 
     // update by order
     // skips certain parts that would be filled later anyways
-    setWidgetPosition(position);
+    setWidgetPosition(m_position);
     // critical for text and shader afterwards
-    setWidgetSize(size);
+    setWidgetSize(m_size);
     // requires text and size to be updated
     setText(text);
     // depends on widget size
@@ -163,7 +163,7 @@ bool Button::setImage(const std::string& image_path)
     if(!disk_image) return false;
 
     // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, {m_size.x / 3, m_size.y}); //!< image takes a third of the button's width
+    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size.x / 3, m_size.y)); //!< image takes a third of the button's width
     if(!resized_image)
     {
         global_image_buffer.decrementRefCounter(image_path);
@@ -354,7 +354,7 @@ void Button::updateTextPosition()
     m_text.setOrigin(bounds.position + bounds.size / 2.f);
 
     sf::Vector2f local_offset;
-    local_offset.y = static_cast<float>(m_size.y) / 2.f;
+    local_offset.y = m_size.y / 2.f;
 
     switch (m_textPosition)
     {
@@ -399,7 +399,7 @@ void Button::updateImagePosition()
     m_image.setOrigin(bounds.position + bounds.size / 2.f);
 
     sf::Vector2f local_offset;
-    local_offset.y = static_cast<float>(m_size.y) / 2.f;
+    local_offset.y = m_size.y / 2.f;
 
     switch (m_imagePosition)
     {
@@ -422,7 +422,7 @@ void Button::updateImagePosition()
 bool Button::updateImageSize()
 {
     if(!checkFlag(m_flags, FLAGS::IMAGE)) return false;
-    sf::Vector2u new_image_size{m_size.x / 3, m_size.y}; //!< image takes a third of the button's width
+    sf::Vector2u new_image_size{static_cast<unsigned int>(m_size.x) / 3, static_cast<unsigned int>(m_size.y)}; //!< image takes a third of the button's width
     std::optional<sf::Image> resized_image;
     // Since IMAGE flag is up, it's safe to assume that image is already loaded in memory
     // unless if another widget double cleared the same path, then the following loads from disk

@@ -10,5 +10,5 @@ cache/
 external-include/profile.h
 *.sh
 *.cmake
-TestExe
+testexe
 main

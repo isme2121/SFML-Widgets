@@ -4,8 +4,8 @@ namespace sfml_widgets
 {
 ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imageTexture(), m_imageSprite(m_imageTexture), m_imagePath(image_path)
 {
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
     if(!m_imagePath.empty()) setImage(m_imagePath);
     setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
@@ -13,8 +13,8 @@ ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector
 
 ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imageTexture(), m_imageSprite(m_imageTexture), m_imagePath(image_path)
 {
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
     if(!m_imagePath.empty()) setImage(m_imagePath);
     setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
@@ -85,7 +85,7 @@ bool ImageFrame::setImage(const std::string& image_path)
     if(!disk_image) return false;
 
     // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, m_size);
+    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size));
     if(!resized_image)
     {
         global_image_buffer.decrementRefCounter(image_path);
@@ -144,7 +144,7 @@ void ImageFrame::updatePosition()
 void ImageFrame::updateSize()
 {
     // all methods that scale with size
-    if(!m_imageTexture.resize(m_size)) return;
+    if(!m_imageTexture.resize(sf::Vector2u(m_size))) return;
 
     // update texture in sprite
     m_imageSprite.setTexture(m_imageTexture, true);
@@ -224,7 +224,7 @@ bool ImageFrame::loadDefaultImage()
     if(!disk_image) return false;
 
     // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, m_size);
+    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size));
     if(!resized_image)
     {
         global_image_buffer.decrementRefCounter(parameters::DEFAULT_IMAGE_PATH);

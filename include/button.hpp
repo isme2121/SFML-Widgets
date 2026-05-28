@@ -313,5 +313,19 @@ public:
     };
 };
 
+// template <>
+// struct WidgetStyle<Button>
+// {
+//     static ButtonStyle& get(SharedTheme& t)
+//     {
+//         return t.m_buttonTheme;
+//     }
+
+//     static void set(SharedTheme& t, ButtonStyle _b)
+//     {
+//         t.m_buttonTheme = _b;
+//     }
+// };
+
 }
 #endif

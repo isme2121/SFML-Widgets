@@ -1,4 +1,5 @@
 #include "../include/frame.hpp"
+
 namespace sfml_widgets // Widget
 {
 ///////////////////////////////////////////////////////////////////
@@ -6,22 +7,25 @@ namespace sfml_widgets // Widget
 ///////////////////////////////////////////////////////////////////
 
 Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
-m_clipShader()
+m_clipShader(), m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     setFlag(m_flags, FLAGS::INIT);
     s_widgets.emplace_back(this);
+    m_windowSize = sf::Vector2f(root.getSize());
 }
 
 Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
-m_clipShader()
+m_clipShader(), m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     root.addWidget(*this);
     setFlag(m_flags, FLAGS::INIT);
     s_widgets.emplace_back(this);
+    m_windowSize = sf::Vector2f(root.getWindowPtr()->getSize());
 }
 
 Widget::Widget(Widget&& other) noexcept : sf::Shape(std::move(other)), m_group(std::move(other.m_group)), m_master(std::move(other.m_master)), m_clipShader(std::move(other.m_clipShader)),
 m_bgShaderPtr(std::move(other.m_bgShaderPtr)), m_bgTexturePtr(std::move(other.m_bgTexturePtr)), m_bgTexturePath(std::move(other.m_bgTexturePath)),
+m_originalPosition(other.m_originalPosition), m_originalSize(other.m_originalSize), m_windowSize(other.m_windowSize), 
 m_size(std::move(other.m_size)), m_position(std::move(other.m_position)), m_flags(std::move(other.m_flags)), m_binds(std::move(other.m_binds)),
 m_events(std::move(other.m_events)), m_memButton(std::move(other.m_memButton)), m_pressEvents(std::move(other.m_pressEvents)),
 m_releaseEvents(std::move(other.m_releaseEvents)), m_holdCallBack(std::move(other.m_holdCallBack)), m_scrollCallBack(std::move(other.m_scrollCallBack)),
@@ -54,6 +58,10 @@ Widget& Widget::operator=(Widget&& other) noexcept
         m_group = std::move(other.m_group);
         m_master = std::move(other.m_master);
         m_clipShader = std::move(other.m_clipShader);
+
+        m_originalPosition = other.m_originalPosition;
+        m_originalSize = other.m_originalSize;
+        m_windowSize = other.m_windowSize;
 
         m_bgShaderPtr = std::move(other.m_bgShaderPtr);
         m_bgTexturePtr = std::move(other.m_bgTexturePtr);
@@ -101,7 +109,7 @@ Widget& Widget::operator=(Widget&& other) noexcept
 
 Widget::~Widget()
 {
-    resetBackGroundTexture();
+    resetBackGroundTexture(true);
     if(s_focusedWidgetPtr == this) s_focusedWidgetPtr = nullptr;
     if(s_widgetToFocusPtr == this) s_widgetToFocusPtr = nullptr;
     if(auto w_group = m_group.lock()) w_group->remove(this);
@@ -155,8 +163,9 @@ void Widget::configure(FLAGS flags)
 void Widget::setWidgetPosition(sf::Vector2f new_position)
 {
     m_position = new_position;
-    this->setOrigin(sf::Vector2f(m_size) / 2.f);
-    this->setPosition(m_position + sf::Vector2f(m_size) / 2.f);
+    if(s_setOriginals) updateDimensions();
+    this->setOrigin(m_size / 2.f);
+    this->setPosition(m_position + m_size / 2.f);
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
@@ -166,10 +175,14 @@ void Widget::setWidgetPosition(sf::Vector2f new_position)
     updatePosition();
 }
 
-void Widget::setWidgetSize(sf::Vector2u new_size)
+void Widget::setWidgetSize(sf::Vector2f new_size)
 {
+    if(new_size.x < 0.f || new_size.x * new_size.y < 0.f) return;
     m_size = new_size;
-    this->setOrigin(sf::Vector2f(m_size) / 2.f);
+    if(s_setOriginals) updateDimensions();
+
+    this->setOrigin(m_size / 2.f);
+    setWidgetPosition(m_position);
     m_radius = std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f);
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
@@ -316,7 +329,7 @@ bool Widget::setBackGroundTexture(const std::string& file_path, const std::strin
     if(!disk_image) return false;
 
     // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, m_size);
+    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size));
     if(!resized_image)
     {
         global_image_buffer.decrementRefCounter(file_path);
@@ -373,8 +386,8 @@ void Widget::updateBackGroundSize()
     std::optional<sf::Image> resized_image;
     std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_bgTexturePath, false);
 
-    if(disk_image) resized_image = resize_image(**disk_image, m_size);
-    else resized_image = resize_image(m_bgTexturePtr->copyToImage(), m_size);
+    if(disk_image) resized_image = resize_image(**disk_image, sf::Vector2u(m_size));
+    else resized_image = resize_image(m_bgTexturePtr->copyToImage(), sf::Vector2u(m_size));
 
     if(resized_image)
     {
@@ -480,7 +493,7 @@ const sf::Vector2f Widget::getWidgetPosition() const
     return m_position;
 }
 
-const sf::Vector2u Widget::getWidgetSize() const
+const sf::Vector2f Widget::getWidgetSize() const
 {
     return m_size;
 }
@@ -511,7 +524,7 @@ const sf::FloatRect Widget::getBounds() const
 
 const sf::FloatRect Widget::getAbsoluteBounds() const
 {
-    return sf::FloatRect(getAbsolutePosition(), sf::Vector2f(m_size));
+    return sf::FloatRect(getAbsolutePosition(), m_size);
 }
 
 sf::Vector2i Widget::getMousePosition() const
@@ -540,6 +553,7 @@ Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, c
     W_MouseEventDetails event_details;
     updateMouseState(event, mouse_position); //!< HOVERED & TRANSPARENT flags are updated here
 
+    // pressed mouse button
     if(const sf::Event::MouseButtonPressed* clicked = event.getIf<sf::Event::MouseButtonPressed>())
     {
         event_details.event_type = W_MouseEventType::Press;
@@ -568,6 +582,7 @@ Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, c
         }
     }
 
+    // released mouse button (after pressing it)
     else if(const sf::Event::MouseButtonReleased* released = event.getIf<sf::Event::MouseButtonReleased>())
     {
         sf::Mouse::Button released_button = released->button;
@@ -593,6 +608,7 @@ Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, c
         m_memButton.reset();
     }
 
+    // scrolled while hovering
     else if(const sf::Event::MouseWheelScrolled* scrolled = event.getIf<sf::Event::MouseWheelScrolled>())
     {
         event_details.event_type = W_MouseEventType::Scroll;
@@ -605,6 +621,13 @@ Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, c
         }
     }
 
+    else if(const sf::Event::Resized* resized = event.getIf<sf::Event::Resized>())
+    {
+        event_details.is_used = true;
+        Widget::resizeWidgets(m_master.getRootWindowPtr(), *resized);
+    }
+    
+    // holding mouse button
     else if(checkFlag(m_flags, FLAGS::ACTIVE))
     {
         event_details.event_type = W_MouseEventType::Hold;
@@ -672,10 +695,6 @@ void Widget::checkQueue()
                             m_repeatEvents.end()
     );
 }
-
-///////////////////////////////////////////////////////////////////
-/// Private static
-///////////////////////////////////////////////////////////////////
 
 void Widget::updateFocus()
 {
@@ -746,28 +765,11 @@ void Widget::updateFocus()
     s_FrequestFocusUpdate = false;
 }
 
-///////////////////////////////////////////////////////////////////
-/// Public static
-///////////////////////////////////////////////////////////////////
-
-void Widget::focusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
+void Widget::updateDimensions()
 {
-    if(s_FfoundFocusedWidget && !parameters::STACK_MOUSE_CALLBACKS) return;
-
-    s_widgetToFocusPtr = &w;
-    s_memFocusEvent.emplace(*_e);
-    s_FfoundFocusedWidget = true; //!< no more checking unless macro is set
-    s_FrequestFocusUpdate = true;
-}
-
-void Widget::unfocusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
-{
-    if(s_focusedWidgetPtr && s_focusedWidgetPtr == &w)
-    {
-        s_FrequestUnfocus = true;
-        s_memUnfocusEvent.emplace(*_e);
-        s_FrequestFocusUpdate = true;
-    }
+    m_originalPosition = m_position;
+    m_originalSize = m_size;
+    if(const sf::RenderWindow* pw = m_master.getRootWindowPtr()) m_windowSize = sf::Vector2f(pw->getSize());
 }
 
 std::size_t Widget::getPointCount() const
@@ -794,6 +796,86 @@ sf::Vector2f Widget::getPoint(std::size_t index) const {
         centers[corner].x + std::cos(a) * m_radius,
         centers[corner].y + std::sin(a) * m_radius
     };
+}
+///////////////////////////////////////////////////////////////////
+/// Public static
+///////////////////////////////////////////////////////////////////
+
+void Widget::focusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
+{
+    if(s_FfoundFocusedWidget && !parameters::STACK_MOUSE_CALLBACKS) return;
+
+    s_widgetToFocusPtr = &w;
+    s_memFocusEvent.emplace(*_e);
+    s_FfoundFocusedWidget = true; //!< no more checking unless macro is set
+    s_FrequestFocusUpdate = true;
+}
+
+void Widget::unfocusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
+{
+    if(s_focusedWidgetPtr && s_focusedWidgetPtr == &w)
+    {
+        s_FrequestUnfocus = true;
+        s_memUnfocusEvent.emplace(*_e);
+        s_FrequestFocusUpdate = true;
+    }
+}
+
+///////////////////////////////////////////////////////////////////
+/// Private static
+///////////////////////////////////////////////////////////////////
+
+void Widget::resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized& _e)
+{
+    sf::Vector2f win_size = sf::Vector2f(_e.size);
+    if(win_size.x * win_size.y == 0.f)
+        return;
+
+    bool updated_view = false; //!< updating the resized window's view once
+
+    for(Widget* w : s_widgets)
+    {
+        const sf::RenderWindow* root = w->m_master.getRootWindowPtr();
+
+        // root is the resized window?
+        if(root && pw == root)
+        {
+            // same win size? just return
+            if(sf::Vector2f(root->getSize()) == win_size) return;
+        
+            // manually update view of the window to the new size
+            if(!updated_view)
+            {
+                sf::FloatRect view_size({0.f, 0.f}, win_size);
+                w->m_master.setWindowView(sf::View(view_size));
+                updated_view = true;
+            }
+        }
+
+        if(!checkFlag(w->m_flags, FLAGS::RESIZE)) continue;
+        
+        // ratio based on the win size we had before any resize event
+        // to try to match the original window as much as possible
+        sf::Vector2f ratio = 
+        {
+            win_size.x / w->m_windowSize.x,
+            win_size.y / w->m_windowSize.y
+        };
+
+        s_setOriginals = false; //!< preventing original dimensions update from a resize
+        w->setWidgetPosition(
+        {
+            w->m_originalPosition.x * ratio.x,
+            w->m_originalPosition.y * ratio.y
+        });
+
+        w->setWidgetSize(
+        {
+            w->m_originalSize.x * ratio.x,
+            w->m_originalSize.y * ratio.y
+        });
+        s_setOriginals = true;
+    }
 }
 }
 

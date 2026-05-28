@@ -11,8 +11,8 @@ CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u s
 
     setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     if(initial_state) setFlag(m_flags, FLAGS::SET);
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     setText(text);
 }
 
@@ -25,8 +25,8 @@ CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const 
     
     setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     if(initial_state) setFlag(m_flags, FLAGS::SET);
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     setText(text);
 }
 
@@ -328,7 +328,7 @@ void CheckBox::updateText()
                            bounds.position.y + bounds.size.y / 2.f}; //!< mid-left point
 
             offset = {m_size.x + HORIZONTAL_SPACE,
-                      static_cast<float>(m_size.y) / 2.f};
+                      m_size.y / 2.f};
             break;
         }
 
@@ -338,7 +338,7 @@ void CheckBox::updateText()
                            bounds.position.y + bounds.size.y / 2.f}; //!< mid-right point
 
             offset = {-HORIZONTAL_SPACE,
-                      static_cast<float>(m_size.y) / 2.f};
+                      m_size.y / 2.f};
             break;
         }
 
@@ -347,7 +347,7 @@ void CheckBox::updateText()
             text_origin = {bounds.position.x + bounds.size.x / 2.f,
                            bounds.position.y + bounds.size.y}; //!< bottom-mid point
 
-            offset = {static_cast<float>(m_size.x) / 2.f,
+            offset = {m_size.x / 2.f,
                       -VERTICAL_SPACE};
             break;
         }
@@ -357,7 +357,7 @@ void CheckBox::updateText()
             text_origin = {bounds.position.x + bounds.size.x / 2.f,
                            bounds.position.y}; //!< top-mid point
 
-            offset = {static_cast<float>(m_size.x) / 2.f,
+            offset = {m_size.x / 2.f,
                       m_size.y + VERTICAL_SPACE};
             break;
         }

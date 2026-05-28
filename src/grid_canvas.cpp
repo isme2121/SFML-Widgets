@@ -3,7 +3,7 @@
 namespace sfml_widgets // GridCanvas
 {
 GridCanvas::GridCanvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, size_t cell_count, float dead_zone, bool fill_initially) : Widget(window, position, size), 
-m_drawTexture(m_size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
+m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
 m_gridMapping(get_prime_combination(cell_count))
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -18,7 +18,7 @@ m_gridMapping(get_prime_combination(cell_count))
 }
 
 GridCanvas::GridCanvas(Frame& root, sf::Vector2f position, sf::Vector2u size, size_t cell_count, float dead_zone, bool fill_initially) : Widget(root, position, size), 
-m_drawTexture(m_size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
+m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
 m_gridMapping(get_prime_combination(cell_count))
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -391,7 +391,7 @@ void GridCanvas::updatePosition()
 
 void GridCanvas::updateSize()
 {
-    if(!m_drawTexture.resize(m_size)) return;
+    if(!m_drawTexture.resize(sf::Vector2u(m_size))) return;
 
     m_drawSprite.setTexture(m_drawTexture.getTexture(), true);
     updateClipShader();
@@ -514,7 +514,7 @@ void GridCanvas::drawGrid()
         sf::Vertex line[2] = 
         {
             {{m_cellSize.x * row + m_deadZone, 0.f}, m_style.outline_color},
-            {{m_cellSize.x * row + m_deadZone, static_cast<float>(m_size.y)}, m_style.outline_color}
+            {{m_cellSize.x * row + m_deadZone, m_size.y}, m_style.outline_color}
         };
         m_drawTexture.draw(line, 2, sf::PrimitiveType::Lines);
     }
@@ -525,7 +525,7 @@ void GridCanvas::drawGrid()
         sf::Vertex line[2] = 
         {
             {{0.f,    m_cellSize.y * col + m_deadZone}, m_style.outline_color},
-            {{static_cast<float>(m_size.x), m_cellSize.y * col + m_deadZone}, m_style.outline_color}
+            {{m_size.x, m_cellSize.y * col + m_deadZone}, m_style.outline_color}
         };
         m_drawTexture.draw(line, 2, sf::PrimitiveType::Lines);
     }

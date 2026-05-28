@@ -363,6 +363,12 @@ sf::Vector2f RenderContext::mapMousePosition(sf::Vector2i mouse_position) const
     return m_frame->mapPixelToCoords(mouse_position);
 }
 
+void RenderContext::setWindowView(const sf::View& __v)
+{
+    if(!m_window) m_frame->getWindowPtr()->setView(__v);
+    else m_window->setView(__v);
+}
+
 void RenderContext::setWindowPtr(sf::RenderWindow* __winScreenPtr)
 {
     m_window = __winScreenPtr;
@@ -377,6 +383,12 @@ const sf::RenderWindow* RenderContext::getWindowPtr() const
 {
     return m_window;
 } 
+
+const sf::RenderWindow* RenderContext::getRootWindowPtr() const
+{
+    if(m_frame) return m_frame->getWindowPtr();
+    return m_window;
+}
 
 Frame* RenderContext::getFramePtr() const
 {
@@ -417,5 +429,12 @@ void WidgetGroup::focusOff(std::optional<const sf::Event> event)
     for(Widget* w : m_cult)
         if(w->m_loseFocusCallBack) w->m_loseFocusCallBack(event);
 }
+}
 
+namespace sfml_widgets
+{
+std::shared_ptr<SharedTheme> SharedTheme::make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e)
+{
+    return std::shared_ptr<SharedTheme>(new SharedTheme(_b, _f, _c, _e));
+}
 }

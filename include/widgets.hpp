@@ -27,6 +27,7 @@ class WidgetGroup;
 class CaptureSequence;
 class ImageCache;
 class RenderContext;
+template <typename T> struct WidgetStyle;
 class CellOutline;
 class Cell;
 
@@ -74,7 +75,7 @@ enum class FLAGS : std::int32_t
     CLIPSHADER = 1 << 19,           //!< Flag: `shader for sprites is loaded`
     COLORSHADER = 1 << 20,          //!< Flag: `shader for fill texture is loaded`
 
-    RESIZE = 1 << 21,               //!< Configured Flag: `blocks widget from resizing with window`
+    RESIZE = 1 << 21,               //!< Configured Flag: `allows widget to scale with window size`
     TEXT = 1 << 22,                 //!< Flag: `widget is currently displaying text`
     IMAGE = 1 << 23,                //!< Flag: `widget is currently displaying an image`
     BGIMAGE = 1 << 24,              //!< Flag: `widget has fill texture loaded`
@@ -279,6 +280,15 @@ public:
     sf::Vector2f mapMousePosition(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates root window's view dimensions after a resize event
+    ///
+    /// If a window pointer is not available then it updates the frame's
+    /// root window view.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setWindowView(const sf::View& __v);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the pointer to the main window
     ///
     ///////////////////////////////////////////////////////////////////
@@ -295,6 +305,15 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     const sf::RenderWindow* getWindowPtr() const; 
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a read only pointer to the root window
+    ///
+    /// The widget calling this method gets the `sf::RenderWindow` address
+    /// of the window drawing it.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const sf::RenderWindow* getRootWindowPtr() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns a pointer to frame if available
@@ -601,6 +620,43 @@ struct CellColor
     float bottom_outline_thickness;
     float left_outline_thickness;
     float right_outline_thickness;
+};
+
+class SharedTheme
+{
+    template <typename> friend struct WidgetStyle;
+
+    SharedTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
+    ButtonStyle m_buttonTheme;
+    TextureStyle m_textureTheme;
+    CheckboxStyle m_checkboxTheme;
+    EntryStyle m_entryTheme;
+
+    enum class Token : std::int8_t
+    {
+        
+    };
+
+public:
+    static std::shared_ptr<SharedTheme> make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
+
+    template <typename WidgetType>
+    auto& getStyle()
+    {
+        return WidgetStyle<WidgetType>::get(this);
+    }
+
+    template <typename WidgetType>
+    void setStyle(WidgetType _t)
+    {
+        WidgetStyle<WidgetType>::set(this, _t);
+    }
+
+    SharedTheme(const SharedTheme&) = delete;
+    SharedTheme& operator=(const SharedTheme&) = delete;
+    SharedTheme(SharedTheme&&) = delete;
+    SharedTheme& operator=(SharedTheme&&) = delete;
+
 };
 
 namespace constants
@@ -1062,7 +1118,7 @@ namespace parameters
 // indicator | hidden | blocked | autohide | autoselect | grid | scroll | pan | block bg image | resize
 inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::AUTOHIDE |
                                 FLAGS::AUTOSELECT | FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM |
-                                FLAGS::PAN | FLAGS::BLOCKBGIMAGE;
+                                FLAGS::PAN | FLAGS::BLOCKBGIMAGE | FLAGS::RESIZE;
 
 
 constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default

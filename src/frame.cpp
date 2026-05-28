@@ -7,25 +7,25 @@ namespace sfml_widgets // Frame
 ///////////////////////////////////////////////////////////////////
 
 Frame::Frame(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size) : Widget(window, position, size),
-m_window(&window), m_texture(sf::Vector2u(size)), m_sprite(m_texture.getTexture()), m_contentHeight(size.y)
+m_window(&window), m_texture(size), m_sprite(m_texture.getTexture()), m_contentHeight(size.y)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
     toggle(m_flags, FLAGS::SCROLL);
 }
 
 Frame::Frame(Frame& root, sf::Vector2f position, sf::Vector2u size) : Widget(root, position, size),
-m_window(root.getWindowPtr()), m_texture(sf::Vector2u(size)), m_sprite(m_texture.getTexture()), m_contentHeight(size.y)
+m_window(root.getWindowPtr()), m_texture(size), m_sprite(m_texture.getTexture()), m_contentHeight(size.y)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
     toggle(m_flags, FLAGS::SCROLL);
 }
@@ -39,7 +39,7 @@ m_contentHeight(other.m_contentHeight), m_gridMapping(other.m_gridMapping), m_st
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
     other.m_window = nullptr;
     m_sprite.setTexture(m_texture.getTexture(), true);
-
+    for(Widget* w : m_childWidgets) w->m_master.setFramePtr(this);
 }
 
 Frame& Frame::operator=(Frame&& other) noexcept
@@ -63,6 +63,7 @@ Frame& Frame::operator=(Frame&& other) noexcept
 
         other.m_window = nullptr;
         m_sprite.setTexture(m_texture.getTexture(), true);
+        for(Widget* w : m_childWidgets) w->m_master.setFramePtr(this);
     }
     return *this;
 }
@@ -249,11 +250,12 @@ void Frame::updatePosition()
 
 void Frame::updateSize()
 {
-    if(!m_texture.resize(m_size)) return;
+    sf::Vector2u temp = sf::Vector2u(m_size);
+    if(!m_texture.resize(temp)) return;
 
     // update texture in sprite
     m_sprite.setTexture(m_texture.getTexture(), true);
-    m_sprite.setOrigin(sf::Vector2f(m_size) / 2.f);
+    m_sprite.setOrigin(m_size / 2.f);
 
     // update widgets positions if we have grid enabled
     if(checkFlag(m_flags, FLAGS::GRID)) updateGrid();
@@ -379,8 +381,8 @@ void Frame::updateGrid()
     resetFlag(m_flags, FLAGS::GRID);            //!< Prevent infinite recursion
     setFlag(m_flags, FLAGS::SHORTSKIP);         //!< Prevent extra height operations
 
-    const float width_difference = static_cast<float>(m_size.x) / static_cast<float>(m_gridMapping.x);
-    const float height_difference = static_cast<float>(m_size.y) / static_cast<float>(m_gridMapping.y);
+    const float width_difference = m_size.x / static_cast<float>(m_gridMapping.x);
+    const float height_difference = m_size.y / static_cast<float>(m_gridMapping.y);
     size_t size = sorted_by_position.size();
 
     for(std::size_t i{0}; i < size; i++)
@@ -508,8 +510,8 @@ void Frame::updateScrollView()
 void Frame::refreshView()
 {
     sf::View v = m_texture.getView();
-    v.setCenter({static_cast<float>(m_size.x) / 2.f,
-                 static_cast<float>(m_size.y) / 2.f + m_scrollOffset});
+    v.setCenter({m_size.x / 2.f,
+                 m_size.y / 2.f + m_scrollOffset});
     m_texture.setView(v);
 }
 

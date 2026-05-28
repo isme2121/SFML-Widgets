@@ -12,8 +12,8 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     m_bgText.setPosition({0.f, 0.f});
     setBLinkUpRatio(0.5f);
 
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
     configure(FLAGS::INDICATOR);
@@ -28,8 +28,8 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     m_bgText.setPosition({0.f, 0.f});
     setBLinkUpRatio(0.5f);
 
-    setWidgetPosition(position);
-    setWidgetSize(size);
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
     configure(FLAGS::INDICATOR);
@@ -370,10 +370,10 @@ void Entry::updatePosition()
 
 void Entry::updateSize()
 {
-    if(!m_renderTexture.resize(m_size)) return;
+    if(!m_renderTexture.resize(sf::Vector2u(m_size))) return;
 
     m_sprite.setTexture(m_renderTexture.getTexture(), true);
-    m_sprite.setOrigin(sf::Vector2f(m_size) / 2.f);
+    m_sprite.setOrigin(m_size / 2.f);
     updateText();
     updateClipShader();
     update();
@@ -593,8 +593,8 @@ void Entry::shiftToCursor()
 void Entry::updateView()
 {
     sf::View v = m_renderTexture.getView();
-    v.setCenter({static_cast<float>(m_size.x) / 2.f + m_currentPanOffset,
-                 static_cast<float>(m_size.y) / 2.f});
+    v.setCenter({m_size.x / 2.f + m_currentPanOffset,
+                 m_size.y / 2.f});
 
     m_renderTexture.setView(v);
 }

@@ -346,7 +346,7 @@ private:
     sf::RenderWindow* m_window;                                         //!< Root window
     sf::RenderTexture m_texture;                                        //!< Drawing ground for widgets
     sf::Sprite m_sprite;                                                //!< Drawn to window
-    std::vector<Widget*> m_childWidgets;                                     //!< Active pointers to widgets
+    std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
     sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
 
     friend class Widget;
