@@ -433,6 +433,11 @@ void WidgetGroup::focusOff(std::optional<const sf::Event> event)
 
 namespace sfml_widgets
 {
+SharedTheme::SharedTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e) : m_buttonTheme(_b), m_textureTheme(_f), m_checkboxTheme(_c), m_entryTheme(_e)
+{
+
+}
+
 std::shared_ptr<SharedTheme> SharedTheme::make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e)
 {
     return std::shared_ptr<SharedTheme>(new SharedTheme(_b, _f, _c, _e));

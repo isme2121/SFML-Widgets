@@ -838,18 +838,12 @@ void Widget::resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized&
         const sf::RenderWindow* root = w->m_master.getRootWindowPtr();
 
         // root is the resized window?
-        if(root && pw == root)
-        {
-            // same win size? just return
-            if(sf::Vector2f(root->getSize()) == win_size) return;
-        
+        if(!updated_view && root && pw == root)
+        {        
             // manually update view of the window to the new size
-            if(!updated_view)
-            {
-                sf::FloatRect view_size({0.f, 0.f}, win_size);
-                w->m_master.setWindowView(sf::View(view_size));
-                updated_view = true;
-            }
+            sf::FloatRect view_size({0.f, 0.f}, win_size);
+            w->m_master.setWindowView(sf::View(view_size));
+            updated_view = true;
         }
 
         if(!checkFlag(w->m_flags, FLAGS::RESIZE)) continue;
