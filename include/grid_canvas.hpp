@@ -160,17 +160,19 @@ public:
     void setDeadZone(float surface);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates' canvas color style
+    /// @brief Updates the widget color theme
     ///
-    /// @see `setCellStyle`
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setStyle(TextureStyle new_style);
+    void setTheme(TextureStyle __gridcanvas_style);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets each existing cell's theme to parameter color
     ///
-    /// @see `setStyle`
+    /// @see `setTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void setCellStyle(CellColor new_color);
@@ -308,6 +310,17 @@ private:
     void updateState() override; 
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
     ///
     /// Best called after an update in a shader parameter, clip shader handles
@@ -376,9 +389,9 @@ private:
     sf::Vector2i m_memMousePos = {0, 0};                //!< Memory state for last clicked pixel inside canvas for panning
     const sf::Vector2u m_gridMapping;                   //!< rows, columns map for cells
     sf::Vector2f m_cellSize;                            //!< Shared size within all cells
-    TextureStyle m_style = themes::STYLE_STALE_VIOLET;  //!< Canvas theme
     float m_zoomLevel = parameters::MAX_ZOOM_LEVEL;     //!< Current zoom value, limited between `MAX_ZOOM_LEVEL` and `MIN_ZOOM_LEVEL`
     float m_deadZone = 0.f;                             //!< Passive surface between boundaries and cells
+    TextureStyle m_style = themes::STYLE_STALE_VIOLET;  //!< Canvas's default style
 
     friend class Cell;
 };
@@ -667,6 +680,25 @@ public:
 
     friend class GridCanvas;
 
+};
+
+template <>
+struct __WidgetStyle<GridCanvas>
+{
+    static const TextureStyle& get(const WidgetTheme& t)
+    {
+        return t.m_gridCanvasTheme;
+    }
+
+    static void set(WidgetTheme& t, TextureStyle _b)
+    {
+        t.m_gridCanvasTheme = _b;
+    }
+
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_gridCanvasToken;
+    }
 };
 }
 #endif

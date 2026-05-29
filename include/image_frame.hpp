@@ -105,8 +105,19 @@ public:
     ///////////////////////////////////////////////////////////////////
     void clearImage(bool load_default = true);
 
-    TextureStyle m_style = themes::STYLE_CARBON_CYAN;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(TextureStyle __imageframe_style);
+
 private:
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget on master object
     ///
@@ -164,6 +175,17 @@ private:
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
     ///
     /// Best called after an update in a shader parameter, clip shader handles
@@ -194,9 +216,29 @@ private:
     ///////////////////////////////////////////////////////////////////
     bool loadDefaultImage();
 
-    sf::Texture m_imageTexture; //!< Image texture
-    sf::Sprite m_imageSprite;   //!< Sprite to display the texture
-    std::string m_imagePath;    //!< Path to currently loaded image
+    sf::Texture m_imageTexture;                         //!< Image texture
+    sf::Sprite m_imageSprite;                           //!< Sprite to display the texture
+    std::string m_imagePath;                            //!< Path to currently loaded image
+    TextureStyle m_style = themes::STYLE_STALE_VIOLET;  //!< Image frame's default style
+};
+
+template <>
+struct __WidgetStyle<ImageFrame>
+{
+    static const TextureStyle& get(const WidgetTheme& t)
+    {
+        return t.m_imageFrameTheme;
+    }
+
+    static void set(WidgetTheme& t, TextureStyle _b)
+    {
+        t.m_imageFrameTheme = _b;
+    }
+
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_imageFrameToken;
+    }
 };
 }
 #endif

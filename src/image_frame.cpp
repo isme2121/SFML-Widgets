@@ -125,6 +125,16 @@ void ImageFrame::clearImage(bool load_default)
     if(load_default) loadDefaultImage();
 }
 
+void ImageFrame::setTheme(TextureStyle __imageframe_style)
+{
+    m_style = __imageframe_style;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
+///////////////////////////////////////////////////////////////////
+/// Private
+///////////////////////////////////////////////////////////////////
+
 void ImageFrame::drawWidget()
 {
     m_master.draw(m_imageSprite, &m_clipShader);
@@ -199,6 +209,18 @@ void ImageFrame::updateState()
         this->setOutlineThickness(m_style.outline_thickness);
     }
     updateClipShader();
+}
+
+void ImageFrame::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<ImageFrame>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<ImageFrame>());
+    }
 }
 
 void ImageFrame::updateClipShader()

@@ -169,7 +169,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void clearImage();
 
-    ButtonStyle m_style = themes::BUTTON_CARBON_CYAN;  //!< Button's color theme
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(ButtonStyle __button_style);
 
 private:
 
@@ -228,6 +236,17 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
@@ -303,9 +322,11 @@ private:
     unsigned int m_charSize = 24;                                       //!< Manual text size assigned by user, not used until ratio is 0.f
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
+    ButtonStyle m_style = themes::BUTTON_STALE_VIOLET;                  //!< Button's default style
 
 public:
-    enum class Side
+
+enum class Side : int
     {
         Center,
         Left,
@@ -313,19 +334,23 @@ public:
     };
 };
 
-// template <>
-// struct WidgetStyle<Button>
-// {
-//     static ButtonStyle& get(SharedTheme& t)
-//     {
-//         return t.m_buttonTheme;
-//     }
+template <>
+struct __WidgetStyle<Button>
+{
+    static const ButtonStyle& get(const WidgetTheme& t)
+    {
+        return t.m_buttonTheme;
+    }
 
-//     static void set(SharedTheme& t, ButtonStyle _b)
-//     {
-//         t.m_buttonTheme = _b;
-//     }
-// };
+    static void set(WidgetTheme& t, ButtonStyle _b)
+    {
+        t.m_buttonTheme = _b;
+    }
 
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_buttonToken;
+    }
+};
 }
 #endif

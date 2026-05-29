@@ -64,6 +64,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets widget's position based on it's master's view
     ///
+    /// Position is relative to the widget's {0, 0} local coordinates.
+    ///
     /// @see `getWidgetPosition`
     ///
     ///////////////////////////////////////////////////////////////////
@@ -265,12 +267,16 @@ public:
     /// @brief similar to `sf::Transformable::rotate` where it adds to the
     /// current rotation angle of the widget
     ///
+    /// @see `Widget::setWidgetRotation`
+    ///
     ///////////////////////////////////////////////////////////////////
     void rotateWidget(sf::Angle angle);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief similar to `sf::Transformable::setRotation` where it overwrites
     /// the widget's rotation angle
+    ///
+    /// @see `Widget::rotateWidget`
     ///
     ///////////////////////////////////////////////////////////////////
     void setWidgetRotation(sf::Angle new_angle);
@@ -350,9 +356,9 @@ public:
     /// still gets called for the newly focused widget (depends on `WidgetGroup`
     /// object's public flags).
     ///
+    /// @param new_group shared ptr of type `WidgetGroup` created using `WidgetGroup::make_group`
+    ///    
     /// @see `WidgetGroup`, `unlinkGroup`, `focusWidget`, `unfocusWidget`
-    ///
-    /// @param new_group pointer to `WidgetGroup` object
     ///
     ///////////////////////////////////////////////////////////////////
     void linkWidget(std::shared_ptr<WidgetGroup>& new_group);
@@ -364,6 +370,32 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     void unlinkWidget();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns widget to a shared theme object
+    ///
+    /// This widget syncs it's style with the assigned theme of `t` storage
+    /// object, style can still be manually assigned if derived widget
+    /// type has provided a `setTheme` method but any update from the shared
+    /// resource would override the changes.
+    ///
+    /// @param t shared ptr of type `WidgetTheme` created using `WidgetTheme::make_theme`
+    ///
+    /// @see `WidgetTheme`, `setTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void linkTheme(std::shared_ptr<WidgetTheme>& t);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Removes syncing of theme with assigned `WidgetTheme` object
+    ///
+    /// Current style remains until another theme is assigned to the widget
+    /// or a style is assigned manually.
+    ///
+    /// @see `WidgetTheme`, `setTheme`, `Widget::linkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void unlinkTheme();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns widget position
@@ -560,6 +592,17 @@ protected:
     virtual void updateState() = 0; 
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    virtual void updateTheme() = 0;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
     ///
     /// Best called after an update in a shader parameter, clip shader handles
@@ -591,23 +634,27 @@ protected:
     // Protected Member Variables
     ///////////////////////////////////////////////////////////////////
 
-    std::weak_ptr<WidgetGroup> m_group;                                             //!< Group that shares `FOCUSED` state
     RenderContext m_master;                                                         //!< Root object that draws the widget
-    sf::Shader m_clipShader;                                                        //!< for sprite edge clipping
-    sf::Vector2f m_originalPosition;                                                //!< User-set dimension for widget, used for more precise resize ratio
-    sf::Vector2f m_originalSize;                                                    //!< User-set dimension for widget, used for more precise resize ratio
+    sf::Vector2f m_position, m_size;                                                //!< Current local dimensions of the widget
+    sf::Vector2f m_originalPosition, m_originalSize;                                //!< User-set dimensions for the widget, used for more precise resize ratio
     sf::Vector2f m_windowSize;                                                      //!< Window construction-time size, used for more precise resize ratio
-
+    
+    std::weak_ptr<WidgetGroup> m_group;                                             //!< Group that shares `FOCUSED` state
+    std::weak_ptr<WidgetTheme> m_theme;
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
+    
+    sf::Shader m_clipShader;                                                        //!< for sprite edge clipping
     std::string m_bgTexturePath;                                                    //!< Path to bg resource on disk
-
-    sf::Vector2f m_position, m_size;
-    FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget
+    
     CaptureSequence m_binds;                                                        //!< Stores keyboard sequences
+    FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget
+
     float m_radius = 0.f;                                                           //!< Corner radius
     unsigned int m_cornerPoints = 1;                                                //!< Number of points in each corner
     float m_opacity = 1.f;                                                          //!< Transparency ratio of the widget
+    std::size_t m_generationToken = constants::KSTALE;
+
     sf::Color* m_currentBgColorPtr = nullptr;                                       //!< Pointer to current fill color
     sf::Color* m_currentOutlineColorPtr = nullptr;                                  //!< Pointer to current outline color
     float* m_currentOutlineThicknessPtr = nullptr;                                  //!< Pointer to current outline color

@@ -7,7 +7,7 @@ namespace sfml_widgets // Widget
 ///////////////////////////////////////////////////////////////////
 
 Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
-m_clipShader(), m_originalPosition(position), m_originalSize(sf::Vector2f(size))
+m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     setFlag(m_flags, FLAGS::INIT);
     s_widgets.emplace_back(this);
@@ -15,7 +15,7 @@ m_clipShader(), m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 }
 
 Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
-m_clipShader(), m_originalPosition(position), m_originalSize(sf::Vector2f(size))
+m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     root.addWidget(*this);
     setFlag(m_flags, FLAGS::INIT);
@@ -123,7 +123,8 @@ void Widget::draw()
     if(!checkFlag(m_flags, FLAGS::LONGSKIP)) //!< check if widget calls for a skip
     {
         checkQueue();   //!< updates queue clock and triggers callback
-        updateState();  //!< updates shaders and theme
+        updateTheme();  //!< syncs shared theme with widget
+        updateState();  //!< updates shaders and coloring
     }
     
     updateFocus();      //!< updates focused widget and triggers focus and unfocus callback
@@ -488,6 +489,17 @@ void Widget::unlinkWidget()
     }
 }
 
+void Widget::linkTheme(std::shared_ptr<WidgetTheme>& t)
+{
+    m_theme = t;
+    m_generationToken = constants::KSTALE;
+}
+
+void Widget::unlinkTheme()
+{
+    m_theme.reset();
+}
+
 const sf::Vector2f Widget::getWidgetPosition() const
 {
     return m_position;
@@ -838,7 +850,7 @@ void Widget::resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized&
         const sf::RenderWindow* root = w->m_master.getRootWindowPtr();
 
         // root is the resized window?
-        if(!updated_view && root && pw == root)
+        if((!updated_view) && root && pw == root)
         {        
             // manually update view of the window to the new size
             sf::FloatRect view_size({0.f, 0.f}, win_size);

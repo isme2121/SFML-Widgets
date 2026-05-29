@@ -211,8 +211,14 @@ void Button::clearImage()
     m_imagePath.clear();
 }
 
+void Button::setTheme(ButtonStyle __button_style)
+{
+    m_style = __button_style;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
 ///////////////////////////////////////////////////////////////////
-/// Protected
+/// Private
 ///////////////////////////////////////////////////////////////////
 
 void Button::drawWidget()
@@ -302,6 +308,18 @@ void Button::updateState()
     this->setOutlineThickness(*m_currentOutlineThicknessPtr);
     updateClipShader();
     updateColorShader();
+}
+
+void Button::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<Button>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<Button>());
+    }
 }
 
 void Button::updateClipShader()

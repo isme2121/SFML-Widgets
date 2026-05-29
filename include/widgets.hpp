@@ -21,13 +21,12 @@ class GridCanvas;
 class ImageFrame;
 class CheckBox;
 class Entry;
-
-struct Key;
 class WidgetGroup;
+template <typename DERIVED_TYPE> struct __WidgetStyle;
 class CaptureSequence;
-class ImageCache;
+struct Key;
 class RenderContext;
-template <typename T> struct WidgetStyle;
+class ImageCache;
 class CellOutline;
 class Cell;
 
@@ -622,45 +621,67 @@ struct CellColor
     float right_outline_thickness;
 };
 
-class SharedTheme
+///////////////////////////////////////////////////////////////////
+/// @brief Shared theme between widget types
+///
+/// Constructed using `WidgetTheme::make_theme` static method, any
+/// widget assigned to the `shared_ptr<WidgetTheme>` automatically
+/// updates it's style to the assigned style with the proper type.
+///
+/// @see `__WidgetStyle`, `Widget::linkTheme`, `Widget::unlinkTheme`
+///
+///////////////////////////////////////////////////////////////////
+class WidgetTheme
 {
-    template <typename> friend struct WidgetStyle;
+    template <typename> friend struct __WidgetStyle;
 
-    SharedTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
+    WidgetTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
     ButtonStyle m_buttonTheme;
-    TextureStyle m_textureTheme;
+    TextureStyle m_frameTheme;
+    TextureStyle m_gridCanvasTheme;
+    TextureStyle m_imageFrameTheme;
     CheckboxStyle m_checkboxTheme;
     EntryStyle m_entryTheme;
 
-    enum class Token : std::int8_t
-    {
-        
-    };
+    std::size_t m_buttonToken{0};
+    std::size_t m_frameToken{0};
+    std::size_t m_gridCanvasToken{0};
+    std::size_t m_imageFrameToken{0};
+    std::size_t m_checkboxToken{0};
+    std::size_t m_entryToken{0};
 
 public:
-    static std::shared_ptr<SharedTheme> make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
+    static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
 
-    template <typename WidgetType>
-    auto& getStyle()
+    template <typename WIDGET_DERIVED_TYPE>
+    auto getStyle()
     {
-        return WidgetStyle<WidgetType>::get(this);
+        return __WidgetStyle<WIDGET_DERIVED_TYPE>::get(*this);
     }
 
-    template <typename WidgetType>
-    void setStyle(WidgetType _t)
+    template <typename WIDGET_DERIVED_TYPE>
+    void setStyle(WIDGET_DERIVED_TYPE _t)
     {
-        WidgetStyle<WidgetType>::set(this, _t);
+        __WidgetStyle<WIDGET_DERIVED_TYPE>::set(*this, _t);
+        ++__WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
     }
 
-    SharedTheme(const SharedTheme&) = delete;
-    SharedTheme& operator=(const SharedTheme&) = delete;
-    SharedTheme(SharedTheme&&) = delete;
-    SharedTheme& operator=(SharedTheme&&) = delete;
+    template <typename WIDGET_DERIVED_TYPE>
+    std::size_t getToken() noexcept
+    {
+        return __WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
+    }
+
+    WidgetTheme(const WidgetTheme&) = delete;
+    WidgetTheme& operator=(const WidgetTheme&) = delete;
+    WidgetTheme(WidgetTheme&&) = delete;
+    WidgetTheme& operator=(WidgetTheme&&) = delete;
 
 };
 
 namespace constants
 {
+constexpr std::size_t KSTALE = std::numeric_limits<std::size_t>::max();
 constexpr float PI = 3.14159265f;
 constexpr float DEGREE90 = 90.f;
 constexpr float DEGREE180 = 180.f;
@@ -952,7 +973,7 @@ constexpr CheckboxStyle CHECKBOX_MIDNIGHT_ROSE =
     2.0f,                   // outline_thickness
 };
 
-constexpr EntryStyle ENTRY_SLATE_VIOLET =
+constexpr EntryStyle ENTRY_STALE_VIOLET =
 {
     {30,  27,  46},         // fill_color
     {45,  40,  72},         // fill_hover_color
@@ -1111,6 +1132,11 @@ constexpr sfml_widgets::CellColor DARK_CELL = {
     sf::Color(58,  58,  68),
     1.f, 1.f, 0.f, 0.f
 };
+
+inline static std::shared_ptr<WidgetTheme> stale_violet_theme = WidgetTheme::make_theme(BUTTON_STALE_VIOLET, STYLE_STALE_VIOLET, CHECKBOX_STALE_VIOLET, ENTRY_STALE_VIOLET);
+inline static std::shared_ptr<WidgetTheme> carbon_cyan_theme = WidgetTheme::make_theme(BUTTON_CARBON_CYAN, STYLE_CARBON_CYAN, CHECKBOX_CARBON_CYAN, ENTRY_CARBON_CYAN);
+inline static std::shared_ptr<WidgetTheme> midnight_rose_theme = WidgetTheme::make_theme(BUTTON_MIDNIGHT_ROSE, STYLE_MIDNIGHT_ROSE, CHECKBOX_MIDNIGHT_ROSE, ENTRY_MIDNIGHT_ROSE);
+inline static std::shared_ptr<WidgetTheme> obsidian_ember_theme = WidgetTheme::make_theme(BUTTON_OBSIDIAN_EMBER, STYLE_OBSIDIAN_EMBER, CHECKBOX_OBSIDIAN_EMBER, ENTRY_OBSIDIAN_EMBER);
 }
 
 namespace parameters

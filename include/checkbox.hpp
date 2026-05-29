@@ -173,7 +173,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTextSide(DIRECTION side);
 
-    CheckboxStyle m_style = themes::CHECKBOX_STALE_VIOLET;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(CheckboxStyle __checkbox_style);
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -235,6 +243,17 @@ private:
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader, Not needed for checkbox class
     ///
     /// @see `Widget::loadClipShader`
@@ -266,13 +285,33 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateText();
 
-    sf::Text m_text;                            //!< Checkbox's text
-    MouseCallback m_clickCallback = nullptr;    //!< State update callback
-    sf::Color* m_currentTextColorPtr = nullptr; //!< Pointer to the current text color
-    DIRECTION m_textSide = DIRECTION::LEFT;     //!< Text's position based on the checkbox
-    float m_textSizeRatio = 0.5f;               //!< Text size scale based on check box size and direction
-    unsigned int m_charSize = 24;               //!< Actual text size, can be set manually or updated with ratio
-    float m_deadSpace = 0.3f;                   //!< Space between text and the checkbox
+    sf::Text m_text;                                        //!< Checkbox's text
+    MouseCallback m_clickCallback = nullptr;                //!< State update callback
+    sf::Color* m_currentTextColorPtr = nullptr;             //!< Pointer to the current text color
+    DIRECTION m_textSide = DIRECTION::LEFT;                 //!< Text's position based on the checkbox
+    float m_textSizeRatio = 0.5f;                           //!< Text size scale based on check box size and direction
+    unsigned int m_charSize = 24;                           //!< Actual text size, can be set manually or updated with ratio
+    float m_deadSpace = 0.3f;                               //!< Space between text and the checkbox
+    CheckboxStyle m_style = themes::CHECKBOX_STALE_VIOLET;  //!< Checkbox's default style
+};
+
+template <>
+struct __WidgetStyle<CheckBox>
+{
+    static const CheckboxStyle& get(const WidgetTheme& t)
+    {
+        return t.m_checkboxTheme;
+    }
+
+    static void set(WidgetTheme& t, CheckboxStyle _b)
+    {
+        t.m_checkboxTheme = _b;
+    }
+
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_checkboxToken;
+    }
 };
 }
 #endif

@@ -163,7 +163,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     sf::RenderWindow* getWindowPtr() const;
 
-    TextureStyle m_style = themes::STYLE_CARBON_CYAN;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(TextureStyle __frame_style);
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -222,6 +230,17 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
@@ -348,9 +367,29 @@ private:
     sf::Sprite m_sprite;                                                //!< Drawn to window
     std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
     sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
+    TextureStyle m_style = themes::STYLE_STALE_VIOLET;                  //!< Frame's default style
 
     friend class Widget;
     friend class RenderContext;
+};
+
+template <>
+struct __WidgetStyle<Frame>
+{
+    static const TextureStyle& get(const WidgetTheme& t)
+    {
+        return t.m_frameTheme;
+    }
+
+    static void set(WidgetTheme& t, TextureStyle _b)
+    {
+        t.m_frameTheme = _b;
+    }
+
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_frameToken;
+    }
 };
 }
 #endif

@@ -266,9 +266,9 @@ void GridCanvas::setDeadZone(float surface)
     updateCellSize(); //!< scales with dead zone
 }
 
-void GridCanvas::setStyle(TextureStyle new_style)
+void GridCanvas::setTheme(TextureStyle __gridcanvas_style)
 {
-    m_style = new_style;
+    m_style = __gridcanvas_style;
     setFlag(m_flags, FLAGS::MODIFIED);
     for(Cell& cell : m_cellMap) setFlag(cell.m_flags, FLAGS::MODIFIED);
 }
@@ -452,6 +452,18 @@ void GridCanvas::updateState()
     this->setOutlineThickness(*m_currentOutlineThicknessPtr);
     updateClipShader();
     updateColorShader();
+}
+
+void GridCanvas::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<GridCanvas>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<GridCanvas>());
+    }
 }
 
 void GridCanvas::updateClipShader()

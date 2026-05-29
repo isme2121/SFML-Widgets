@@ -195,7 +195,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setFont(const sf::Font& font);
 
-    EntryStyle m_style = themes::ENTRY_SLATE_VIOLET;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(EntryStyle __entry_style);
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -246,6 +254,17 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs shared theme with widget
+    ///
+    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
+    /// internally
+    ///
+    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
@@ -345,6 +364,26 @@ private:
     float m_textBoxWidth;                                   //!< Entry's text width
     float m_currentPanOffset = 0.f;                         //!< Current panned value
     float m_maxPanOffset = 0.f;                             //!< Max possible space for panning
+    EntryStyle m_style = themes::ENTRY_STALE_VIOLET;        //!< Entry's default style
+};
+
+template <>
+struct __WidgetStyle<Entry>
+{
+    static const EntryStyle& get(const WidgetTheme& t)
+    {
+        return t.m_entryTheme;
+    }
+
+    static void set(WidgetTheme& t, EntryStyle _b)
+    {
+        t.m_entryTheme = _b;
+    }
+
+    static std::size_t& token(WidgetTheme& t)
+    {
+        return t.m_entryToken;
+    }
 };
 }
 #endif

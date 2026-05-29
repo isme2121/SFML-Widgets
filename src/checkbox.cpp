@@ -153,6 +153,16 @@ void CheckBox::setTextSide(DIRECTION side)
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
+void CheckBox::setTheme(CheckboxStyle __checkbox_style)
+{
+    m_style = __checkbox_style;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
+///////////////////////////////////////////////////////////////////
+/// Private
+///////////////////////////////////////////////////////////////////
+
 void CheckBox::drawWidget()
 {
     if(checkFlag(m_flags, FLAGS::TEXT))
@@ -260,6 +270,18 @@ void CheckBox::updateState()
     this->setOutlineThickness(*m_currentOutlineThicknessPtr);
     if(checkFlag(m_flags, FLAGS::TEXT)) m_text.setFillColor(*m_currentTextColorPtr);
     updateColorShader();
+}
+
+void CheckBox::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<CheckBox>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<CheckBox>());
+    }
 }
 
 void CheckBox::updateClipShader()

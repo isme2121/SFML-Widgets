@@ -331,6 +331,12 @@ void Entry::setBLinkUpRatio(float ratio)
     else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
 }
 
+void Entry::setTheme(EntryStyle __entry_style)
+{
+    m_style = __entry_style;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
@@ -443,6 +449,18 @@ void Entry::updateState()
     this->setOutlineThickness(*m_currentOutlineThicknessPtr);
     updateClipShader();
     updateColorShader();
+}
+
+void Entry::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<Entry>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<Entry>());
+    }
 }
 
 void Entry::updateClipShader()

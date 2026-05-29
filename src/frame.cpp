@@ -211,6 +211,12 @@ sf::RenderWindow* Frame::getWindowPtr() const
     return m_window;
 }
 
+void Frame::setTheme(TextureStyle __frame_style)
+{
+    m_style = __frame_style;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
@@ -318,6 +324,18 @@ void Frame::updateState()
     this->setOutlineThickness(*m_currentOutlineThicknessPtr);
     updateClipShader();
     updateColorShader();
+}
+
+void Frame::updateTheme()
+{
+    if(auto t = m_theme.lock())
+    {
+        const std::size_t synced_token = t->getToken<Frame>();
+        if(synced_token == m_generationToken) return;
+
+        m_generationToken = synced_token;
+        setTheme(t->getStyle<Frame>());
+    }
 }
 
 void Frame::updateClipShader()
