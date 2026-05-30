@@ -367,7 +367,7 @@ private:
     sf::Sprite m_sprite;                                                //!< Drawn to window
     std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
     sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
-    TextureStyle m_style = themes::STYLE_STALE_VIOLET;                  //!< Frame's default style
+    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Frame's default style
 
     friend class Widget;
     friend class RenderContext;
@@ -376,12 +376,14 @@ private:
 template <>
 struct __WidgetStyle<Frame>
 {
-    static const TextureStyle& get(const WidgetTheme& t)
+    using StyleType = TextureStyle;
+
+    static const StyleType& get(const WidgetTheme& t)
     {
         return t.m_frameTheme;
     }
 
-    static void set(WidgetTheme& t, TextureStyle _b)
+    static void set(WidgetTheme& t, StyleType _b)
     {
         t.m_frameTheme = _b;
     }

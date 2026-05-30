@@ -322,7 +322,7 @@ private:
     unsigned int m_charSize = 24;                                       //!< Manual text size assigned by user, not used until ratio is 0.f
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
-    ButtonStyle m_style = themes::BUTTON_STALE_VIOLET;                  //!< Button's default style
+    ButtonStyle m_style = Theme::button_style::BUTTON_STALE_VIOLET;     //!< Button's default style
 
 public:
 
@@ -337,12 +337,14 @@ enum class Side : int
 template <>
 struct __WidgetStyle<Button>
 {
-    static const ButtonStyle& get(const WidgetTheme& t)
+    using StyleType = ButtonStyle;
+
+    static const StyleType& get(const WidgetTheme& t)
     {
         return t.m_buttonTheme;
     }
 
-    static void set(WidgetTheme& t, ButtonStyle _b)
+    static void set(WidgetTheme& t, StyleType _b)
     {
         t.m_buttonTheme = _b;
     }

@@ -449,4 +449,24 @@ std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle _b, TextureStyl
 {
     return std::shared_ptr<WidgetTheme>(new WidgetTheme(_b, _f, _c, _e));
 }
+
+void WidgetTheme::copy_theme(const WidgetTheme& t)
+{
+    if(&t != this)
+    {
+        m_buttonTheme = t.m_buttonTheme;
+        m_frameTheme = t.m_frameTheme;
+        m_gridCanvasTheme = t.m_gridCanvasTheme;
+        m_imageFrameTheme = t.m_imageFrameTheme;
+        m_checkboxTheme = t.m_checkboxTheme;
+        m_entryTheme = t.m_entryTheme;
+
+        m_buttonToken = t.m_buttonToken;
+        m_frameToken = t.m_frameToken;
+        m_gridCanvasToken = t.m_gridCanvasToken;
+        m_imageFrameToken = t.m_imageFrameToken;
+        m_checkboxToken = t.m_checkboxToken;
+        m_entryToken = t.m_entryToken;
+    }
+}
 }

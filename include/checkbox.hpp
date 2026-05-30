@@ -285,25 +285,27 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateText();
 
-    sf::Text m_text;                                        //!< Checkbox's text
-    MouseCallback m_clickCallback = nullptr;                //!< State update callback
-    sf::Color* m_currentTextColorPtr = nullptr;             //!< Pointer to the current text color
-    DIRECTION m_textSide = DIRECTION::LEFT;                 //!< Text's position based on the checkbox
-    float m_textSizeRatio = 0.5f;                           //!< Text size scale based on check box size and direction
-    unsigned int m_charSize = 24;                           //!< Actual text size, can be set manually or updated with ratio
-    float m_deadSpace = 0.3f;                               //!< Space between text and the checkbox
-    CheckboxStyle m_style = themes::CHECKBOX_STALE_VIOLET;  //!< Checkbox's default style
+    sf::Text m_text;                                                        //!< Checkbox's text
+    MouseCallback m_clickCallback = nullptr;                                //!< State update callback
+    sf::Color* m_currentTextColorPtr = nullptr;                             //!< Pointer to the current text color
+    DIRECTION m_textSide = DIRECTION::LEFT;                                 //!< Text's position based on the checkbox
+    float m_textSizeRatio = 0.5f;                                           //!< Text size scale based on check box size and direction
+    unsigned int m_charSize = 24;                                           //!< Actual text size, can be set manually or updated with ratio
+    float m_deadSpace = 0.3f;                                               //!< Space between text and the checkbox
+    CheckboxStyle m_style = Theme::checkbox_style::CHECKBOX_STALE_VIOLET;   //!< Checkbox's default style
 };
 
 template <>
 struct __WidgetStyle<CheckBox>
 {
-    static const CheckboxStyle& get(const WidgetTheme& t)
+    using StyleType = CheckboxStyle;
+
+    static const StyleType& get(const WidgetTheme& t)
     {
         return t.m_checkboxTheme;
     }
 
-    static void set(WidgetTheme& t, CheckboxStyle _b)
+    static void set(WidgetTheme& t, StyleType _b)
     {
         t.m_checkboxTheme = _b;
     }

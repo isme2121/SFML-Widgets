@@ -1,5 +1,5 @@
 #pragma once
-#include "widgets.hpp"
+#include "widget_themes.hpp"
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {

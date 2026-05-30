@@ -345,37 +345,39 @@ private:
     sf::Text m_bgText;
     
     // data
-    std::string m_textBuffer;                               //!< Input content
-    std::size_t m_cursorIndex = 0;                          //!< Points to char in string index + 1, so m_textBuffer[0] == m_cursorIndex{0}
+    std::string m_textBuffer;                                       //!< Input content
+    std::size_t m_cursorIndex = 0;                                  //!< Points to char in string index + 1, so m_textBuffer[0] == m_cursorIndex{0}
     std::function<bool(char32_t)> m_inputFilter = nullptr;
 
     // parameters
-    std::size_t m_inputLimit = parameters::CHAR_LIMIT;      //!< Max possible number of characters
-    float m_textSizeRatio = 0.5f;                           //!< How much space does the text take based on entry's height
+    std::size_t m_inputLimit = parameters::CHAR_LIMIT;              //!< Max possible number of characters
+    float m_textSizeRatio = 0.5f;                                   //!< How much space does the text take based on entry's height
     float m_textOffsetRatio = 0.1f;
     unsigned int m_charSize = 24;
     unsigned int m_cursorWidth = 1;
-    char m_placeholderCharacter = 0;                        //!< Visible character replacing the actual content
+    char m_placeholderCharacter = 0;                                //!< Visible character replacing the actual content
     sf::Time m_cursorOnDuration;
     sf::Time m_cursorOffDuration;
 
     // funcionality
     sf::Clock m_blinkTimer;
-    float m_textBoxWidth;                                   //!< Entry's text width
-    float m_currentPanOffset = 0.f;                         //!< Current panned value
-    float m_maxPanOffset = 0.f;                             //!< Max possible space for panning
-    EntryStyle m_style = themes::ENTRY_STALE_VIOLET;        //!< Entry's default style
+    float m_textBoxWidth;                                           //!< Entry's text width
+    float m_currentPanOffset = 0.f;                                 //!< Current panned value
+    float m_maxPanOffset = 0.f;                                     //!< Max possible space for panning
+    EntryStyle m_style = Theme::entry_style::ENTRY_STALE_VIOLET;    //!< Entry's default style
 };
 
 template <>
 struct __WidgetStyle<Entry>
 {
-    static const EntryStyle& get(const WidgetTheme& t)
+    using StyleType = EntryStyle;
+
+    static const StyleType& get(const WidgetTheme& t)
     {
         return t.m_entryTheme;
     }
 
-    static void set(WidgetTheme& t, EntryStyle _b)
+    static void set(WidgetTheme& t, StyleType _b)
     {
         t.m_entryTheme = _b;
     }

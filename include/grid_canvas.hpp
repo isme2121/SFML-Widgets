@@ -381,17 +381,17 @@ private:
     /// Member variables
     ///////////////////////////////////////////////////////////////////
 
-    sf::RenderTexture m_drawTexture;                    //!< Texture for drawing
-    sf::Sprite m_drawSprite;                            //!< Texture's sprite   
-    Cell* m_selectedCell = nullptr;                     //!< Points to currently selected cell
-    Cell* m_clickedCell = nullptr;                      //!< Points to currently clicked cell
-    std::vector<Cell> m_cellMap;                        //!< Cells memory space
-    sf::Vector2i m_memMousePos = {0, 0};                //!< Memory state for last clicked pixel inside canvas for panning
-    const sf::Vector2u m_gridMapping;                   //!< rows, columns map for cells
-    sf::Vector2f m_cellSize;                            //!< Shared size within all cells
-    float m_zoomLevel = parameters::MAX_ZOOM_LEVEL;     //!< Current zoom value, limited between `MAX_ZOOM_LEVEL` and `MIN_ZOOM_LEVEL`
-    float m_deadZone = 0.f;                             //!< Passive surface between boundaries and cells
-    TextureStyle m_style = themes::STYLE_STALE_VIOLET;  //!< Canvas's default style
+    sf::RenderTexture m_drawTexture;                                    //!< Texture for drawing
+    sf::Sprite m_drawSprite;                                            //!< Texture's sprite   
+    Cell* m_selectedCell = nullptr;                                     //!< Points to currently selected cell
+    Cell* m_clickedCell = nullptr;                                      //!< Points to currently clicked cell
+    std::vector<Cell> m_cellMap;                                        //!< Cells memory space
+    sf::Vector2i m_memMousePos = {0, 0};                                //!< Memory state for last clicked pixel inside canvas for panning
+    const sf::Vector2u m_gridMapping;                                   //!< rows, columns map for cells
+    sf::Vector2f m_cellSize;                                            //!< Shared size within all cells
+    float m_zoomLevel = parameters::MAX_ZOOM_LEVEL;                     //!< Current zoom value, limited between `MAX_ZOOM_LEVEL` and `MIN_ZOOM_LEVEL`
+    float m_deadZone = 0.f;                                             //!< Passive surface between boundaries and cells
+    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Canvas's default style
 
     friend class Cell;
 };
@@ -673,7 +673,7 @@ public:
     std::unique_ptr<sf::Texture> m_bgTexturePtr;        //!< Bg image holder for cell
     std::string m_bgImagePath;                          //!< Member path for reloading image
     sf::Vector2u m_coordinates;                         //!< Row, column coordinates
-    CellColor m_style = themes::LIGHT_CELL;             //!< Unique cell colors in default state
+    CellColor m_style = Theme::LIGHT_CELL;              //!< Unique cell colors in default state
     float m_deadZone;                                   //!< Root canvas' dead zone distance value
     CellOutline m_top, m_bottom, m_left, m_right;       //!< Separated outlines
     mutable FLAGS m_flags = FLAGS::MODIFIED;            //!< State flags
@@ -685,12 +685,14 @@ public:
 template <>
 struct __WidgetStyle<GridCanvas>
 {
-    static const TextureStyle& get(const WidgetTheme& t)
+    using StyleType = TextureStyle;
+
+    static const StyleType& get(const WidgetTheme& t)
     {
         return t.m_gridCanvasTheme;
     }
 
-    static void set(WidgetTheme& t, TextureStyle _b)
+    static void set(WidgetTheme& t, StyleType _b)
     {
         t.m_gridCanvasTheme = _b;
     }
