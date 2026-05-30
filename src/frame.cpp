@@ -30,44 +30,6 @@ m_window(root.getWindowPtr()), m_texture(size), m_sprite(m_texture.getTexture())
     toggle(m_flags, FLAGS::SCROLL);
 }
 
-// Frame::Frame(Frame&& other) noexcept : Widget(std::move(other)), m_window(other.m_window), m_texture(std::move(other.m_texture)), 
-// m_sprite(std::move(other.m_sprite)), m_childWidgets(std::move(other.m_childWidgets)), m_maxScroll(other.m_maxScroll), m_scrollOffset(other.m_scrollOffset),
-// m_contentHeight(other.m_contentHeight), m_gridMapping(other.m_gridMapping), m_style(other.m_style)
-// {
-//     m_currentBgColorPtr = &m_style.fill_color;
-//     m_currentOutlineColorPtr = &m_style.outline_color;
-//     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-//     other.m_window = nullptr;
-//     m_sprite.setTexture(m_texture.getTexture(), true);
-//     for(Widget* w : m_childWidgets) w->m_master.setFramePtr(this);
-// }
-
-// Frame& Frame::operator=(Frame&& other) noexcept
-// {
-//     if(this != &other)
-//     {
-//         static_cast<Widget&>(*this) = std::move(other);
-//         m_currentBgColorPtr = &m_style.fill_color;
-//         m_currentOutlineColorPtr = &m_style.outline_color;
-//         m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-
-//         m_style = other.m_style;
-//         m_window = other.m_window;
-//         m_texture = std::move(other.m_texture);
-//         m_sprite = std::move(other.m_sprite);
-//         m_childWidgets = std::move(other.m_childWidgets);
-//         m_maxScroll = other.m_maxScroll;
-//         m_scrollOffset = other.m_scrollOffset;
-//         m_contentHeight = other.m_contentHeight;
-//         m_gridMapping = other.m_gridMapping;
-
-//         other.m_window = nullptr;
-//         m_sprite.setTexture(m_texture.getTexture(), true);
-//         for(Widget* w : m_childWidgets) w->m_master.setFramePtr(this);
-//     }
-//     return *this;
-// }
-
 Frame::~Frame()
 {
     // assign to lower level container

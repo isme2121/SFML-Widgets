@@ -30,32 +30,6 @@ CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const 
     setText(text);
 }
 
-// CheckBox::CheckBox(CheckBox&& other) noexcept : Widget(std::move(other)), m_text(std::move(other.m_text)), m_style(other.m_style), m_textSide(other.m_textSide)
-// {
-//     m_currentBgColorPtr = &m_style.fill_off_color;
-//     m_currentOutlineColorPtr = &m_style.outline_color;
-//     m_currentTextColorPtr = &m_style.text_color;
-//     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-
-// }
-
-// CheckBox& CheckBox::operator=(CheckBox&& other) noexcept
-// {
-//     if(this != &other)
-//     {
-//         static_cast<Widget&>(*this) = std::move(other);
-
-//         m_style = other.m_style;
-//         m_text = std::move(other.m_text);
-//         m_textSide = other.m_textSide;
-//         m_currentBgColorPtr = &m_style.fill_off_color;
-//         m_currentOutlineColorPtr = &m_style.outline_color;
-//         m_currentTextColorPtr = &m_style.text_color;
-//         m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-//     }
-//     return *this;
-// }
-
 bool CheckBox::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
