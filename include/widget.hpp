@@ -462,8 +462,6 @@ public:
     /// @return true if position exists within the widget's bounds,
     /// otherwise false.
     ///
-    /// @see `isFlag`
-    ///
     ///////////////////////////////////////////////////////////////////
     bool isHovered(sf::Vector2i mouse_position) const;
 
@@ -476,10 +474,24 @@ public:
     /// @return true if at least 1 bit from parameter is set internally,
     /// otherwise false.
     ///
-    /// @see `checkFlag`, `isHovered`
+    /// @see `checkFlag`, `isHovered`, `Widget::isFlags`
     ///
     ///////////////////////////////////////////////////////////////////
     bool isFlag(FLAGS bits) const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Verifies if input flag is set within the widget, can
+    /// be used to check for all available flags
+    ///
+    /// @param bits bit or multiple bits to check
+    ///
+    /// @return true if all bits from parameter are set internally,
+    /// otherwise false.
+    ///
+    /// @see `checkFlags`, `isHovered`, `Widget::isFlag`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool isFlags(FLAGS bits) const;
 
 protected:
     ///////////////////////////////////////////////////////////////////
@@ -634,6 +646,7 @@ protected:
     // Protected Member Variables
     ///////////////////////////////////////////////////////////////////
 
+    const std::string m_DBGname;
     RenderContext m_master;                                                         //!< Root object that draws the widget
     sf::Vector2f m_position, m_size;                                                //!< Current local dimensions of the widget
     sf::Vector2f m_originalPosition, m_originalSize;                                //!< User-set dimensions for the widget, used for more precise resize ratio

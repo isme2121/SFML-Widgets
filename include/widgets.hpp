@@ -109,17 +109,17 @@ enum class DIRECTION
 ///////////////////       Functions             ///////////////////
 ///////////////////////////////////////////////////////////////////
 
-FLAGS operator &(FLAGS, FLAGS);     //!< Does not set MODIFIED
-FLAGS& operator &=(FLAGS&, FLAGS);  //!< Sets MODIFIED
-FLAGS operator |(FLAGS, FLAGS);     //!< Does not set MODIFIED
-FLAGS& operator |=(FLAGS&, FLAGS);  //!< Sets MODIFIED
-FLAGS operator ^(FLAGS, FLAGS);     //!< Does not set MODIFIED
-FLAGS& operator ^=(FLAGS&, FLAGS);  //!< Sets MODIFIED
-FLAGS& setFlag(FLAGS&, FLAGS);      //!< Sets MODIFIED
-FLAGS& resetFlag(FLAGS&, FLAGS);    //!< Sets MODIFIED IF not included in bits
-FLAGS& toggle(FLAGS&, FLAGS);       //!< Does not set MODIFIED
-bool checkFlag(const FLAGS&, FLAGS);//!< Quick boolean check
-
+FLAGS operator &(FLAGS, FLAGS);         //!< Does not set MODIFIED
+FLAGS& operator &=(FLAGS&, FLAGS);      //!< Sets MODIFIED
+FLAGS operator |(FLAGS, FLAGS);         //!< Does not set MODIFIED
+FLAGS& operator |=(FLAGS&, FLAGS);      //!< Sets MODIFIED
+FLAGS operator ^(FLAGS, FLAGS);         //!< Does not set MODIFIED
+FLAGS& operator ^=(FLAGS&, FLAGS);      //!< Sets MODIFIED
+FLAGS& setFlag(FLAGS&, FLAGS);          //!< Sets MODIFIED
+FLAGS& resetFlag(FLAGS&, FLAGS);        //!< Sets MODIFIED IF not included in bits
+FLAGS& toggle(FLAGS&, FLAGS);           //!< Does not set MODIFIED
+bool checkFlag(const FLAGS&, FLAGS);    //!< Quick boolean check, returns true if any bit is set in both sides
+bool checkFlags(const FLAGS&, FLAGS);   //!< Quick boolean check, returns true if all bits on right are set in left, otherwise false
 ///////////////////////////////////////////////////////////////////
 /// @brief Updates image size (does not preserve quality)
 ///

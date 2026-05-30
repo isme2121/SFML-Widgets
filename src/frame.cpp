@@ -550,6 +550,7 @@ void Frame::drawChildWidget(const sf::Drawable& __widget, const sf::RenderStates
     {
         setFlag(m_flags, FLAGS::DRAWING);
         checkQueue();
+        updateTheme();
         updateState();
     }
 

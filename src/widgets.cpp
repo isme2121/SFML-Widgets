@@ -55,6 +55,11 @@ bool checkFlag(const FLAGS& self, FLAGS bits)
 {
     return static_cast<bool>(self & bits);
 }
+
+bool checkFlags(const FLAGS& self, FLAGS bits)
+{
+    return (self & bits) == bits;
+}
 }
 
 namespace sfml_widgets // resize_image
