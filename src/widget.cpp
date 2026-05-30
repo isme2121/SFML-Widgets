@@ -6,7 +6,7 @@ namespace sfml_widgets // Widget
 /// Public
 ///////////////////////////////////////////////////////////////////
 
-Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_DBGname("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
+Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_name("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
 m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     setFlag(m_flags, FLAGS::INIT);
@@ -14,7 +14,7 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     m_windowSize = sf::Vector2f(root.getSize());
 }
 
-Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_DBGname("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
+Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_name("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
 m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     root.addWidget(*this);
@@ -23,7 +23,7 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     m_windowSize = sf::Vector2f(root.getWindowPtr()->getSize());
 }
 
-Widget::Widget(Widget&& other) noexcept : sf::Shape(std::move(other)), m_group(std::move(other.m_group)), m_DBGname(std::move(other.m_DBGname)), m_master(std::move(other.m_master)), m_clipShader(std::move(other.m_clipShader)),
+Widget::Widget(Widget&& other) noexcept : sf::Shape(std::move(other)), m_group(std::move(other.m_group)), m_name(std::move(other.m_name)), m_master(std::move(other.m_master)), m_clipShader(std::move(other.m_clipShader)),
 m_bgShaderPtr(std::move(other.m_bgShaderPtr)), m_bgTexturePtr(std::move(other.m_bgTexturePtr)), m_bgTexturePath(std::move(other.m_bgTexturePath)),
 m_originalPosition(other.m_originalPosition), m_originalSize(other.m_originalSize), m_windowSize(other.m_windowSize), 
 m_size(std::move(other.m_size)), m_position(std::move(other.m_position)), m_flags(std::move(other.m_flags)), m_binds(std::move(other.m_binds)),

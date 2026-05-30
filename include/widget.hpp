@@ -646,7 +646,7 @@ protected:
     // Protected Member Variables
     ///////////////////////////////////////////////////////////////////
 
-    const std::string m_DBGname;
+    const std::string m_name;
     RenderContext m_master;                                                         //!< Root object that draws the widget
     sf::Vector2f m_position, m_size;                                                //!< Current local dimensions of the widget
     sf::Vector2f m_originalPosition, m_originalSize;                                //!< User-set dimensions for the widget, used for more precise resize ratio
