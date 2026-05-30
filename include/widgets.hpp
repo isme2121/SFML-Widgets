@@ -1166,16 +1166,16 @@ constexpr float MAX_DEADZONE_RATIO = 0.1f;                                  //!<
 ///////////////////          Paths              ///////////////////
 ///////////////////////////////////////////////////////////////////
 
-inline const sf::Font font("assets/fonts/default.otf"); //!< temporary font
+inline const sf::Font font("../assets/fonts/default.otf"); //!< temporary font
 
 // Place holder image
-inline const std::string DEFAULT_IMAGE_PATH{"assets/images/paper.png"};
+inline const std::string DEFAULT_IMAGE_PATH{"../assets/images/paper.png"};
 // Clip button's image + opacity effect, uniform => texture, size, radius, image_opacity
-inline const std::string SPRITE_CLIP_COLOR_SHADER_PATH{"assets/shaders/button_clip_opacity.frag"};
+inline const std::string SPRITE_CLIP_COLOR_SHADER_PATH{"../assets/shaders/button_clip_opacity.frag"};
 // Clip sprite + opacity effect, uniform => texture, size, radius, opacity
-inline const std::string SPRITE_FULLCLIP_OPACITY_SHADER_PATH{"assets/shaders/sprite_clip_opacity.frag"};
+inline const std::string SPRITE_FULLCLIP_OPACITY_SHADER_PATH{"../assets/shaders/sprite_clip_opacity.frag"};
 // Shader for updating a texture's color and opacity based on input if it has texture, uniform => texture, bg_color, opacity, outline_color, has_texture
-inline const std::string TEXTURE_COLOR_SHADER_PATH{"assets/shaders/texture_color.frag"};
+inline const std::string TEXTURE_COLOR_SHADER_PATH{"../assets/shaders/texture_color.frag"};
 }
 }
 #endif

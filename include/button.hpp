@@ -37,8 +37,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "");
 
-    Button(Button&&) noexcept;
-    Button& operator=(Button&&) noexcept;
+    Button(Button&&) = delete;
+    Button& operator=(Button&&) = delete;
     Button(const Button&) = delete;
     Button& operator=(const Button&) = delete;
     ~Button() override;

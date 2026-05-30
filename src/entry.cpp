@@ -35,47 +35,6 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     configure(FLAGS::INDICATOR);
 }
 
-Entry::Entry(Entry&& other) noexcept : Widget(std::move(other)), m_renderTexture(std::move(other.m_renderTexture)), m_sprite(std::move(other.m_sprite)),
-m_text(std::move(other.m_text)), m_bgText(std::move(other.m_bgText)), m_textBuffer(std::move(other.m_textBuffer)), m_cursorIndex(other.m_cursorIndex),
-m_inputFilter(std::move(other.m_inputFilter)), m_inputLimit(other.m_inputLimit), m_textSizeRatio(other.m_textSizeRatio), m_cursorWidth(other.m_cursorWidth),
-m_placeholderCharacter(other.m_placeholderCharacter), m_cursorOnDuration(std::move(other.m_cursorOnDuration)), m_cursorOffDuration(std::move(other.m_cursorOffDuration)),
-m_blinkTimer(std::move(other.m_blinkTimer)), m_textBoxWidth(other.m_textBoxWidth), m_currentPanOffset(other.m_currentPanOffset), m_maxPanOffset(other.m_maxPanOffset)
-{
-    m_currentBgColorPtr = &m_style.fill_color;
-    m_currentOutlineColorPtr = &m_style.outline_color;
-    other.m_blinkTimer.stop();
-}
-
-Entry& Entry::operator=(Entry&& other) noexcept
-{
-    if(this != &other)
-    {
-        static_cast<Widget&>(*this) = std::move(other);
-        m_renderTexture = std::move(other.m_renderTexture);
-        m_sprite = std::move(other.m_sprite);
-        m_text = std::move(other.m_text);
-        m_bgText = std::move(other.m_bgText);
-        m_textBuffer = std::move(other.m_textBuffer);
-        m_cursorIndex = other.m_cursorIndex;
-        m_inputFilter = std::move(other.m_inputFilter);
-        m_inputLimit = other.m_inputLimit;
-        m_textSizeRatio = other.m_textSizeRatio;
-        m_cursorWidth = other.m_cursorWidth;
-        m_placeholderCharacter = other.m_placeholderCharacter;
-        m_cursorOnDuration = std::move(other.m_cursorOnDuration);
-        m_cursorOffDuration = std::move(other.m_cursorOffDuration);
-        m_blinkTimer = std::move(other.m_blinkTimer);
-        m_textBoxWidth = other.m_textBoxWidth;
-        m_currentPanOffset = other.m_currentPanOffset;
-        m_maxPanOffset = other.m_maxPanOffset;
-
-        m_currentBgColorPtr = &m_style.fill_color;
-        m_currentOutlineColorPtr = &m_style.outline_color;
-        other.m_blinkTimer.stop();
-    }
-    return *this;
-}
-
 bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESTRICTED)) return false;

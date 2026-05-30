@@ -28,8 +28,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
 
-    ImageFrame(ImageFrame&& other) noexcept;
-    ImageFrame& operator=(ImageFrame&& other) noexcept;
+    ImageFrame(ImageFrame&& other) = delete;
+    ImageFrame& operator=(ImageFrame&& other) = delete;
 
     ImageFrame(const ImageFrame&) = delete;
     ImageFrame& operator=(const ImageFrame&) = delete;
