@@ -32,8 +32,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     Frame(Frame& root, sf::Vector2f position, sf::Vector2u size);
 
-    Frame(Frame&& other) noexcept;
-    Frame& operator=(Frame&& other) noexcept;
+    Frame(Frame&& other) = delete;
+    Frame& operator=(Frame&& other) = delete;
 
     Frame(const Frame& other) = delete;
     Frame& operator=(const Frame& other) = delete;

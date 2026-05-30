@@ -30,8 +30,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", bool initial_state = false);
 
-    CheckBox(CheckBox&& other) noexcept;
-    CheckBox& operator=(CheckBox&& other) noexcept;
+    CheckBox(CheckBox&& other) = delete;
+    CheckBox& operator=(CheckBox&& other) = delete;
     CheckBox(const CheckBox&) = delete;
     CheckBox& operator=(const CheckBox&) = delete;
 

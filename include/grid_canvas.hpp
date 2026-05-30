@@ -38,8 +38,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     GridCanvas(Frame& root, sf::Vector2f position, sf::Vector2u size, std::size_t max_cell_count, float dead_zone = 0.f, bool fill_initially = false);
 
-    GridCanvas(GridCanvas&& other) noexcept;
-    GridCanvas& operator=(GridCanvas&& other) noexcept;
+    GridCanvas(GridCanvas&& other) = delete;
+    GridCanvas& operator=(GridCanvas&& other) = delete;
 
     GridCanvas(const GridCanvas& other) = delete;
     GridCanvas& operator=(const GridCanvas& other) = delete;

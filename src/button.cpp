@@ -44,36 +44,36 @@ m_text(parameters::font), m_texture(), m_image(m_texture)
     loadClipShader(parameters::SPRITE_CLIP_COLOR_SHADER_PATH);
 }
 
-Button::Button(Button&& other) noexcept : Widget(std::move(other)), m_text(std::move(other.m_text)), 
-m_texture(std::move(other.m_texture)), m_image(std::move(other.m_image)), m_style(std::move(other.m_style)),
-m_imagePath(std::move(other.m_imagePath))
-{
-    m_currentBgColorPtr = &m_style.fill_color;
-    m_currentOutlineColorPtr = &m_style.outline_color;
-    m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+// Button::Button(Button&& other) noexcept : Widget(std::move(other)), m_text(std::move(other.m_text)), 
+// m_texture(std::move(other.m_texture)), m_image(std::move(other.m_image)), m_style(std::move(other.m_style)),
+// m_imagePath(std::move(other.m_imagePath))
+// {
+//     m_currentBgColorPtr = &m_style.fill_color;
+//     m_currentOutlineColorPtr = &m_style.outline_color;
+//     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
-    m_image.setTexture(m_texture, true);
-}
+//     m_image.setTexture(m_texture, true);
+// }
 
-Button& Button::operator=(Button&& other) noexcept
-{
-    if(this != &other)
-    {
-        static_cast<Widget&>(*this) = std::move(other);
-        m_currentBgColorPtr = &m_style.fill_color;
-        m_currentOutlineColorPtr = &m_style.outline_color;
-        m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+// Button& Button::operator=(Button&& other) noexcept
+// {
+//     if(this != &other)
+//     {
+//         static_cast<Widget&>(*this) = std::move(other);
+//         m_currentBgColorPtr = &m_style.fill_color;
+//         m_currentOutlineColorPtr = &m_style.outline_color;
+//         m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
-        m_text = std::move(other.m_text);
-        m_texture = std::move(other.m_texture);
-        m_image = std::move(other.m_image);
-        m_style = std::move(other.m_style);
-        m_imagePath = std::move(other.m_imagePath);
+//         m_text = std::move(other.m_text);
+//         m_texture = std::move(other.m_texture);
+//         m_image = std::move(other.m_image);
+//         m_style = std::move(other.m_style);
+//         m_imagePath = std::move(other.m_imagePath);
 
-        m_image.setTexture(m_texture, true);
-    }
-    return *this;
-}
+//         m_image.setTexture(m_texture, true);
+//     }
+//     return *this;
+// }
 
 Button::~Button()
 {

@@ -39,8 +39,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     Widget(Frame& root, sf::Vector2f position, sf::Vector2u size);
 
-    Widget(Widget&& other) noexcept;
-    Widget& operator=(Widget&& other) noexcept;
+    Widget(Widget&& other) = delete;
+    Widget& operator=(Widget&& other) = delete;
     Widget(const Widget&) = delete;
     Widget& operator=(const Widget&) = delete;
     virtual ~Widget();

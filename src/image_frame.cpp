@@ -20,27 +20,27 @@ ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, co
     setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
 }
 
-ImageFrame::ImageFrame(ImageFrame&& other) noexcept : Widget(std::move(other)), m_imageTexture(std::move(other.m_imageTexture)),
-m_imageSprite(std::move(other.m_imageSprite)), m_imagePath(std::move(other.m_imagePath)), m_style(other.m_style)
-{
-    m_imageSprite.setTexture(m_imageTexture, true);
-}
+// ImageFrame::ImageFrame(ImageFrame&& other) noexcept : Widget(std::move(other)), m_imageTexture(std::move(other.m_imageTexture)),
+// m_imageSprite(std::move(other.m_imageSprite)), m_imagePath(std::move(other.m_imagePath)), m_style(other.m_style)
+// {
+//     m_imageSprite.setTexture(m_imageTexture, true);
+// }
 
-ImageFrame& ImageFrame::operator=(ImageFrame&& other) noexcept
-{
-    if(this != &other)
-    {
-        static_cast<Widget&>(*this) = std::move(other);
+// ImageFrame& ImageFrame::operator=(ImageFrame&& other) noexcept
+// {
+//     if(this != &other)
+//     {
+//         static_cast<Widget&>(*this) = std::move(other);
 
-        m_style = other.m_style;
-        m_imageTexture= std::move(other.m_imageTexture);
-        m_imageSprite = std::move(other.m_imageSprite);
-        m_imagePath = std::move(other.m_imagePath);
+//         m_style = other.m_style;
+//         m_imageTexture= std::move(other.m_imageTexture);
+//         m_imageSprite = std::move(other.m_imageSprite);
+//         m_imagePath = std::move(other.m_imagePath);
 
-        m_imageSprite.setTexture(m_imageTexture, true);
-    }
-    return *this;
-}
+//         m_imageSprite.setTexture(m_imageTexture, true);
+//     }
+//     return *this;
+// }
 
 ImageFrame::~ImageFrame()
 {

@@ -32,56 +32,56 @@ m_gridMapping(get_prime_combination(cell_count))
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
-GridCanvas::GridCanvas(GridCanvas&& other) noexcept : Widget(std::move(other)), m_drawTexture(std::move(other.m_drawTexture)), m_drawSprite(std::move(other.m_drawSprite)), 
-MAX_CELL_COUNT(other.MAX_CELL_COUNT), m_deadZone(other.m_deadZone), m_zoomLevel(other.m_zoomLevel), m_gridMapping(other.m_gridMapping), m_cellSize(other.m_cellSize),
-m_memMousePos(other.m_memMousePos), m_cellMap(std::move(other.m_cellMap)), m_style(std::move(other.m_style))
-{
-    m_currentBgColorPtr = &m_style.fill_color;
-    m_currentOutlineColorPtr = &m_style.outline_color;
-    m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-    for(Cell& cell : m_cellMap)
-    {
-        cell.updateDrawer(m_drawTexture);
-        cell.updateCanvasStyle(&m_style);
-        if(other.m_selectedCell && other.m_selectedCell->m_coordinates == cell.m_coordinates) m_selectedCell = &cell;
-        if(other.m_clickedCell && other.m_clickedCell->m_coordinates == cell.m_coordinates) m_clickedCell = &cell;
-    }
-    other.m_selectedCell = nullptr;
-    other.m_clickedCell = nullptr;
-}
+// GridCanvas::GridCanvas(GridCanvas&& other) noexcept : Widget(std::move(other)), m_drawTexture(std::move(other.m_drawTexture)), m_drawSprite(std::move(other.m_drawSprite)), 
+// MAX_CELL_COUNT(other.MAX_CELL_COUNT), m_deadZone(other.m_deadZone), m_zoomLevel(other.m_zoomLevel), m_gridMapping(other.m_gridMapping), m_cellSize(other.m_cellSize),
+// m_memMousePos(other.m_memMousePos), m_cellMap(std::move(other.m_cellMap)), m_style(std::move(other.m_style))
+// {
+//     m_currentBgColorPtr = &m_style.fill_color;
+//     m_currentOutlineColorPtr = &m_style.outline_color;
+//     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+//     for(Cell& cell : m_cellMap)
+//     {
+//         cell.updateDrawer(m_drawTexture);
+//         cell.updateCanvasStyle(&m_style);
+//         if(other.m_selectedCell && other.m_selectedCell->m_coordinates == cell.m_coordinates) m_selectedCell = &cell;
+//         if(other.m_clickedCell && other.m_clickedCell->m_coordinates == cell.m_coordinates) m_clickedCell = &cell;
+//     }
+//     other.m_selectedCell = nullptr;
+//     other.m_clickedCell = nullptr;
+// }
 
-GridCanvas& GridCanvas::operator=(GridCanvas&& other) noexcept
-{
-    if(this != &other)
-    {
-        static_cast<Widget&>(*this) = std::move(other);
-        m_drawTexture = std::move(other.m_drawTexture);
-        m_drawSprite = std::move(other.m_drawSprite);
-        const_cast<size_t&>(MAX_CELL_COUNT) = other.MAX_CELL_COUNT;
-        m_deadZone = other.m_deadZone;
-        m_zoomLevel = other.m_zoomLevel;
-        const_cast<sf::Vector2u&>(m_gridMapping) = other.m_gridMapping;
-        m_cellSize = other.m_cellSize;
-        m_memMousePos = other.m_memMousePos;
-        m_cellMap = std::move(other.m_cellMap);
-        m_style = std::move(other.m_style);
+// GridCanvas& GridCanvas::operator=(GridCanvas&& other) noexcept
+// {
+//     if(this != &other)
+//     {
+//         static_cast<Widget&>(*this) = std::move(other);
+//         m_drawTexture = std::move(other.m_drawTexture);
+//         m_drawSprite = std::move(other.m_drawSprite);
+//         const_cast<size_t&>(MAX_CELL_COUNT) = other.MAX_CELL_COUNT;
+//         m_deadZone = other.m_deadZone;
+//         m_zoomLevel = other.m_zoomLevel;
+//         const_cast<sf::Vector2u&>(m_gridMapping) = other.m_gridMapping;
+//         m_cellSize = other.m_cellSize;
+//         m_memMousePos = other.m_memMousePos;
+//         m_cellMap = std::move(other.m_cellMap);
+//         m_style = std::move(other.m_style);
 
-        for(Cell& cell : m_cellMap)
-        {
-            cell.updateDrawer(m_drawTexture);
-            cell.updateCanvasStyle(&m_style);
-            if(other.m_selectedCell && other.m_selectedCell->m_coordinates == cell.m_coordinates) m_selectedCell = &cell;
-            if(other.m_clickedCell && other.m_clickedCell->m_coordinates == cell.m_coordinates) m_clickedCell = &cell;
-        }
+//         for(Cell& cell : m_cellMap)
+//         {
+//             cell.updateDrawer(m_drawTexture);
+//             cell.updateCanvasStyle(&m_style);
+//             if(other.m_selectedCell && other.m_selectedCell->m_coordinates == cell.m_coordinates) m_selectedCell = &cell;
+//             if(other.m_clickedCell && other.m_clickedCell->m_coordinates == cell.m_coordinates) m_clickedCell = &cell;
+//         }
         
-        m_currentBgColorPtr = &m_style.fill_color;
-        m_currentOutlineColorPtr = &m_style.outline_color;
-        m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-        other.m_selectedCell = nullptr;
-        other.m_clickedCell = nullptr;
-    }
-    return *this;
-}
+//         m_currentBgColorPtr = &m_style.fill_color;
+//         m_currentOutlineColorPtr = &m_style.outline_color;
+//         m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+//         other.m_selectedCell = nullptr;
+//         other.m_clickedCell = nullptr;
+//     }
+//     return *this;
+// }
 
 bool GridCanvas::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {

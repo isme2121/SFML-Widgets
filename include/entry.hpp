@@ -30,8 +30,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     Entry(Frame& root, sf::Vector2f position, sf::Vector2u size);
 
-    Entry(Entry&& other) noexcept;
-    Entry& operator=(Entry&& other) noexcept;
+    Entry(Entry&& other) = delete;
+    Entry& operator=(Entry&& other) = delete;
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
 
