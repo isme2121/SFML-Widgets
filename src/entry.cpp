@@ -54,7 +54,7 @@ bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2
     }
 
     // scrolling while hovered
-    else if(details.event_type == W_MouseEventType::Scroll && checkFlag(m_flags, FLAGS::HOVERED) && checkFlag(m_flags, FLAGS::SCROLL))
+    else if(details.event_type == W_MouseEventType::Scroll && checkFlags(m_flags, FLAGS::HOVERED | FLAGS::SCROLL))
     {
         m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (parameters::SCROLL_RATIO * m_size.y * 5.f), 0.f, m_maxPanOffset);
         updateView();

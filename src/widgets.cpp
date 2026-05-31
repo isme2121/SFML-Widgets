@@ -438,7 +438,9 @@ void WidgetGroup::focusOff(std::optional<const sf::Event> event)
 
 namespace sfml_widgets
 {
-WidgetTheme::WidgetTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e) :
+WidgetTheme::WidgetTheme(P) {}
+
+WidgetTheme::WidgetTheme(P, ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e) :
 m_buttonTheme(_b), m_frameTheme(_f), m_gridCanvasTheme(_f), m_imageFrameTheme(_f),
 m_checkboxTheme(_c), m_entryTheme(_e)
 {
@@ -447,7 +449,14 @@ m_checkboxTheme(_c), m_entryTheme(_e)
 
 std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e)
 {
-    return std::shared_ptr<WidgetTheme>(new WidgetTheme(_b, _f, _c, _e));
+    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, _b, _f, _c, _e));
+}
+
+std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(const WidgetTheme& t)
+{
+    std::shared_ptr<WidgetTheme> temp = std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}));
+    temp->copy_theme(t);
+    return temp;
 }
 
 void WidgetTheme::copy_theme(const WidgetTheme& t)
@@ -461,12 +470,12 @@ void WidgetTheme::copy_theme(const WidgetTheme& t)
         m_checkboxTheme = t.m_checkboxTheme;
         m_entryTheme = t.m_entryTheme;
 
-        m_buttonToken = t.m_buttonToken;
-        m_frameToken = t.m_frameToken;
-        m_gridCanvasToken = t.m_gridCanvasToken;
-        m_imageFrameToken = t.m_imageFrameToken;
-        m_checkboxToken = t.m_checkboxToken;
-        m_entryToken = t.m_entryToken;
+        ++m_buttonToken;
+        ++m_frameToken;
+        ++m_gridCanvasToken;
+        ++m_imageFrameToken;
+        ++m_checkboxToken;
+        ++m_entryToken;
     }
 }
 }

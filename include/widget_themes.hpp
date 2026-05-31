@@ -139,10 +139,18 @@ struct CellColor
 ///////////////////////////////////////////////////////////////////
 class WidgetTheme
 {
+private:
+    class P
+    {
+        P() {}
+        friend class WidgetTheme;
+    };
+
     template <typename> friend struct __WidgetStyle; //!< this gets the correct type based on template
 
-    WidgetTheme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
+    WidgetTheme(P);
 
+    WidgetTheme(P, ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
     ///////////////////////////////////////////////////////////////////
     /// @brief Various styles for each widget type
     ///////////////////////////////////////////////////////////////////
@@ -185,8 +193,23 @@ public:
     static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief creates a `WidgetTheme` resource with copy constructor
+    ///
+    /// The returned object can be assigned to any widget via method
+    /// `Widget::linkTheme`, each assigned widget remains synced in style
+    /// until the shared counter goes to zero.
+    ///
+    /// @param t reference to existing `WidgetTheme` object
+    ///
+    /// @return shared pointer with the new `WidgetTheme` resource
+    ///
+    ///////////////////////////////////////////////////////////////////
+    static std::shared_ptr<WidgetTheme> make_theme(const WidgetTheme& t);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief copies the content of parameter t to this object
     ///
+    /// @param t reference to existing `WidgetTheme` object
     ///
     ///////////////////////////////////////////////////////////////////
     void copy_theme(const WidgetTheme& t);
@@ -237,8 +260,8 @@ public:
         return __WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
     }
 
-    WidgetTheme(const WidgetTheme&) = delete;
-    WidgetTheme& operator=(const WidgetTheme&) = delete;
+    WidgetTheme(const WidgetTheme& other) = delete;
+    WidgetTheme& operator=(const WidgetTheme& other) = delete;
     WidgetTheme(WidgetTheme&&) = delete;
     WidgetTheme& operator=(WidgetTheme&&) = delete;
 

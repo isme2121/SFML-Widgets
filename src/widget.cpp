@@ -70,7 +70,7 @@ void Widget::configure(FLAGS flags)
     if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) resetBackGroundTexture(true);
     
     // flags that are handled in the events loop should be immediately updated
-    if(checkFlag(m_flags, FLAGS::AUTOHIDE) && checkFlag(m_flags, FLAGS::HOVERED)) resetFlag(m_flags, FLAGS::TRANSPARENT);
+    if(checkFlags(m_flags, FLAGS::AUTOHIDE | FLAGS::HOVERED)) resetFlag(m_flags, FLAGS::TRANSPARENT);
     else if(!checkFlag(m_flags, FLAGS::AUTOHIDE) && checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::TRANSPARENT);
     else if(checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) setFlag(m_flags, FLAGS::TRANSPARENT);
 
@@ -526,7 +526,7 @@ Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, c
         if(released_button == parameters::ACTIVE_MOUSE_BUTTON) resetFlag(m_flags, FLAGS::ACTIVE);
 
         // if widget is selected & hovered & memory mouse button was released
-        if(checkFlag(m_flags, FLAGS::SELECTED) && checkFlag(m_flags, FLAGS::HOVERED) && m_memButton && m_memButton.value() == released_button)
+        if(checkFlags(m_flags, FLAGS::SELECTED | FLAGS::HOVERED) && m_memButton && m_memButton.value() == released_button)
         {
             const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
             if(it != m_releaseEvents.end()) it->second(*released);

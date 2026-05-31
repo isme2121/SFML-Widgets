@@ -266,7 +266,7 @@ void CheckBox::updateClipShader()
 void CheckBox::updateColorShader()
 {
     if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE) && checkFlag(m_flags, FLAGS::SET); 
+    bool render_texture = checkFlags(m_flags, FLAGS::BGIMAGE | FLAGS::SET); 
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     if(render_texture)
     {
