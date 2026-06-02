@@ -16,7 +16,7 @@ public:
     /// @param initial_state initial state value for checkbox
     ///
     ///////////////////////////////////////////////////////////////////
-    CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", bool initial_state = false);
+    CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font, bool initial_state = false);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the checkbox on a `Frame` object
@@ -28,7 +28,7 @@ public:
     /// @param initial_state initial state value for checkbox
     ///
     ///////////////////////////////////////////////////////////////////
-    CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", bool initial_state = false);
+    CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font, bool initial_state = false);
 
     CheckBox(CheckBox&& other) = delete;
     CheckBox& operator=(CheckBox&& other) = delete;
@@ -117,8 +117,25 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a font for the checkbox's text
     ///
+    /// @param font reference to an existing font
+    ///
+    /// @warning if the passed font is an lvalue, it must outline the checkbox
+    /// itself or get replaced before it's deleted
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextFont(sf::Font font);
+    void setTextFont(const sf::Font& font);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Sets a font for the checkbox's text and stores it internally
+    ///
+    /// @param font font instance
+    ///
+    /// @warning the parameter font is stored within the checkbox after the
+    /// call to maintain it's reference for the widget's lifetime with the
+    /// cost of extra memory usage
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a function call to state update event
@@ -285,6 +302,7 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateText();
 
+    std::unique_ptr<const sf::Font> m_font;
     sf::Text m_text;                                                        //!< Checkbox's text
     MouseCallback m_clickCallback = nullptr;                                //!< State update callback
     sf::Color* m_currentTextColorPtr = nullptr;                             //!< Pointer to the current text color

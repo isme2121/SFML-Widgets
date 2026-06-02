@@ -2,9 +2,9 @@
 
 namespace sfml_widgets // entry
 {
-Entry::Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : Widget(root, position, size),
-m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_text(parameters::font), m_bgText(parameters::font)
-{
+Entry::Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font) : Widget(root, position, size),
+m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_text(font), m_bgText(font)
+{ 
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
@@ -19,8 +19,8 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     configure(FLAGS::INDICATOR);
 }
 
-Entry::Entry(Frame& root, sf::Vector2f position, sf::Vector2u size) : Widget(root, position, size),
-m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_text(parameters::font), m_bgText(parameters::font)
+Entry::Entry(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font) : Widget(root, position, size),
+m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_text(font), m_bgText(font)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -251,10 +251,22 @@ void Entry::setCursorWidth(unsigned int width)
     shiftToCursor();
 }
 
-void Entry::setFont(const sf::Font& font)
+void Entry::setTextFont(const sf::Font& font)
 {
     m_text.setFont(font);
     m_bgText.setFont(font);
+    if(m_font) m_font.reset();
+
+    updateText();
+}
+
+void Entry::setTextFont(const sf::Font&& font)
+{
+    m_font = std::make_unique<const sf::Font>(std::move(font));
+    m_text.setFont(*m_font);
+    m_bgText.setFont(*m_font);
+
+    updateText();
 }
 
 void Entry::setInputLimit(std::size_t max_chars)
@@ -531,6 +543,19 @@ void Entry::updateText()
             float y_offset = (m_size.y - line_spacing) / 2.f;
             m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
             m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+        }
+        else
+        {
+            current_height = W_CharHeight::getHeight(m_bgText.getFont(), m_bgText.getCharacterSize());
+            if(current_height > 0.f)
+            {
+                float ratio = final_height / current_height;
+                m_charSize = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
+                float line_spacing = m_bgText.getFont().getLineSpacing(m_charSize);
+                float y_offset = (m_size.y - line_spacing) / 2.f;
+                m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+                m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+            }
         }
     }
     

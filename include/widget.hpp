@@ -857,12 +857,23 @@ public:
         sf::Clock m_timer;
     };
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief static class for estimating the maximum height for text
+    ///
+    ///////////////////////////////////////////////////////////////////
     class W_CharHeight
     {
     public:
+        ///////////////////////////////////////////////////////////////////
+        /// @brief returns the estimated maximum height of a `sf::Text` object
+        ///
+        /// @param text_font current font
+        /// @param char_size text's current character size
+        ///
+        ///////////////////////////////////////////////////////////////////
         static float getHeight(sf::Font text_font, unsigned int char_size);
     private:
-        static sf::Text Ag;
+        static sf::Text Ag; //!< Ag
     };
 };
 }

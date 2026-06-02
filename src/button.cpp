@@ -7,8 +7,8 @@ namespace sfml_widgets // Button
 /// Constructors / Destructor / Operators
 ///////////////////////////////////////////////////////////////////
 
-Button::Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text) : Widget(root, position, size),
-m_text(parameters::font), m_texture(), m_image(m_texture)
+Button::Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size),
+m_text(font), m_texture(), m_image(m_texture)
 {   
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -26,8 +26,8 @@ m_text(parameters::font), m_texture(), m_image(m_texture)
 
 }
 
-Button::Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text) : Widget(root, position, size),
-m_text(parameters::font), m_texture(), m_image(m_texture)
+Button::Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size),
+m_text(font), m_texture(), m_image(m_texture)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -117,9 +117,21 @@ void Button::setTextSize(float ratio)
     updateTextPosition();
 }
 
-void Button::setTextFont(sf::Font font)
+void Button::setTextFont(const sf::Font& font)
 {
+    // outside reference of font so any internal reference gets cleared
     m_text.setFont(font);
+    if(m_font) m_font.reset();
+
+    updateTextSize(); //!< auto update size
+    updateTextPosition();
+}
+
+void Button::setTextFont(const sf::Font&& font)
+{
+    m_font = std::make_unique<const sf::Font>(std::move(font));
+    m_text.setFont(*m_font);
+
     updateTextSize(); //!< auto update size
     updateTextPosition();
 }

@@ -24,7 +24,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "");
+    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the button on a `Frame` object
@@ -35,7 +35,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "");
+    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
 
     Button(Button&&) = delete;
     Button& operator=(Button&&) = delete;
@@ -133,8 +133,25 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a font for the button's text
     ///
+    /// @param font reference to an existing font
+    ///
+    /// @warning if the passed font is an lvalue, it must outline the button
+    /// itself or get replaced before it's deleted
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextFont(sf::Font font);
+    void setTextFont(const sf::Font& font);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Sets a font for the button's text and stores it internally
+    ///
+    /// @param font font instance
+    ///
+    /// @warning the parameter font is stored within the button after the
+    /// call to maintain it's reference for the widget's lifetime with the
+    /// cost of extra memory usage
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates displayed image on button widget
@@ -314,6 +331,7 @@ private:
     // Member Variables
     ///////////////////////////////////////////////////////////////////
 
+    std::unique_ptr<const sf::Font> m_font;                             //!< font for the text
     sf::Text m_text;                                                    //!< Button text
     sf::Texture m_texture;                                              //!< Image texture
     sf::Sprite m_image;                                                 //!< Image sprite

@@ -17,7 +17,7 @@ public:
     /// @param size widget's initial size
     ///
     ///////////////////////////////////////////////////////////////////
-    Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size);
+    Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Takes a master object for internal graphics handling and
@@ -28,7 +28,7 @@ public:
     /// @param size widget's initial size
     ///
     ///////////////////////////////////////////////////////////////////
-    Entry(Frame& root, sf::Vector2f position, sf::Vector2u size);
+    Entry(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
 
     Entry(Entry&& other) = delete;
     Entry& operator=(Entry&& other) = delete;
@@ -189,11 +189,27 @@ public:
     void setCursorWidth(unsigned int width);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the font for both input string and background string
-    /// in entry
+    /// @brief Sets a font for the input text
+    ///
+    /// @param font reference to an existing font
+    ///
+    /// @warning if the passed font is an lvalue, it must outlive the entry
+    /// or get replaced before it's deleted
     ///
     ///////////////////////////////////////////////////////////////////
-    void setFont(const sf::Font& font);
+    void setTextFont(const sf::Font& font);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Sets a font for the input text and stores it internally
+    ///
+    /// @param font font instance
+    ///
+    /// @warning the parameter font is stored within the entry after the
+    /// call to maintain it's reference for the widget's lifetime with the
+    /// cost of extra memory usage
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -341,6 +357,7 @@ private:
     // drawing
     sf::RenderTexture m_renderTexture;
     sf::Sprite m_sprite;
+    std::unique_ptr<const sf::Font> m_font;
     sf::Text m_text;
     sf::Text m_bgText;
     

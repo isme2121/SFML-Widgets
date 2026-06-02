@@ -103,6 +103,16 @@ void ImageFrame::clearImage(bool load_default)
     if(load_default) loadDefaultImage();
 }
 
+const sf::Image ImageFrame::getImage() const
+{
+    return m_imageTexture.copyToImage();
+}
+
+const std::string& ImageFrame::getImagePath() const
+{
+    return m_imagePath;
+}
+
 void ImageFrame::setTheme(TextureStyle __imageframe_style)
 {
     m_style = __imageframe_style;

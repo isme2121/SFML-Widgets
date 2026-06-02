@@ -2,7 +2,7 @@
 
 namespace sfml_widgets // checkbox
 {
-CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, bool initial_state) : Widget(root, position, size), m_text(parameters::font)
+CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size), m_text(font)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -16,7 +16,7 @@ CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u s
     setText(text);
 }
 
-CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, bool initial_state) : Widget(root, position, size), m_text(parameters::font)
+CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size), m_text(font)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -93,9 +93,21 @@ void CheckBox::setTextSize(float ratio)
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
-void CheckBox::setTextFont(sf::Font font)
+void CheckBox::setTextFont(const sf::Font& font)
 {
+    // outside reference of font so any internal reference gets cleared
     m_text.setFont(font);
+    if(m_font) m_font.reset();
+
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
+
+}
+
+void CheckBox::setTextFont(const sf::Font&& font)
+{
+    m_font = std::make_unique<const sf::Font>(std::move(font));
+    m_text.setFont(*m_font);
+
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
