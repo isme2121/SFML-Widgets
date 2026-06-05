@@ -80,34 +80,42 @@ void Widget::configure(FLAGS flags)
 void Widget::setWidgetPosition(sf::Vector2f new_position)
 {
     m_position = new_position;
-    if(s_setOriginals) updateDimensions();
+    updatePosition(); //!< this could change m_position before the important process
+    if(s_setOriginals) updateDimensions(); //!< update originals
+
+    // make sure the shape remains centered while not changing in position
     this->setOrigin(m_size / 2.f);
     this->setPosition(m_position + m_size / 2.f);
+
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
         root->updateGrid();
         root->updateFrameHeight();
     }
-    updatePosition();
 }
 
 void Widget::setWidgetSize(sf::Vector2f new_size)
 {
-    if(new_size.x < 0.f || new_size.x * new_size.y < 0.f) return;
+    if(new_size.x < 0.f || new_size.y < 0.f) return;
     m_size = new_size;
-    if(s_setOriginals) updateDimensions();
+    updateSize(); //!< this could change m_size before the important process
+    if(s_setOriginals) updateDimensions(); //!< update originals
 
-    this->setOrigin(m_size / 2.f);
+    this->setOrigin(m_size / 2.f); //!< keep widget centered for transformations
+
+    // this prevents the widget from expanding from the center, causing it to change in position
     setWidgetPosition(m_position);
+
+    // this denies a deforming of the shape with large radius values
     m_radius = std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f);
+
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
         root->updateGrid();
         root->updateFrameHeight();
     }
-    updateSize();
 }
 
 void Widget::bindMouseEvent(W_MouseEventType event_type, MouseCallback callback, std::optional<sf::Mouse::Button> button)

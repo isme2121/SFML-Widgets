@@ -199,7 +199,12 @@ void Frame::config(FLAGS mask)
 
 void Frame::updatePosition()
 {
-    m_sprite.setPosition(this->getPosition());
+    /*
+    m_position is relative to the top left corner of the shape,
+    we do this since m_sprite's origin is it's center, just
+    like the base widget
+    */
+    m_sprite.setPosition(m_position + m_size / 2.f);
 
     bool grid_is_active = false; //!< memory for GRID flag
     if(checkFlag(m_flags, FLAGS::GRID))

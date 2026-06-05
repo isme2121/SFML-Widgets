@@ -8,8 +8,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
-    m_text.setPosition({0.f, 0.f});
-    m_bgText.setPosition({0.f, 0.f});
+
     setBLinkUpRatio(0.5f);
 
     setWidgetPosition(m_position);
@@ -24,8 +23,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
-    m_text.setPosition({0.f, 0.f});
-    m_bgText.setPosition({0.f, 0.f});
+
     setBLinkUpRatio(0.5f);
 
     setWidgetPosition(m_position);
@@ -339,10 +337,12 @@ void Entry::config(FLAGS mask)
 
 void Entry::updatePosition()
 {
-    // m_position is relative to the top left corner of the shape
-    // getPosition returns origin position, equivalent to the center
-    // we need it because sprite's origin is centered as well
-    m_sprite.setPosition(this->getPosition());
+    /*
+    m_position is relative to the top left corner of the shape,
+    we do this since m_sprite's origin is it's center, just
+    like the base widget
+    */
+    m_sprite.setPosition(m_position + m_size / 2.f);
 }
 
 void Entry::updateSize()

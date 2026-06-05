@@ -131,12 +131,13 @@ public:
     void setTextSize(float ratio);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Sets a font for the button's text
+    /// @brief Sets a font for the button's text and clears the stored font
+    /// if available
     ///
     /// @param font reference to an existing font
     ///
-    /// @warning if the passed font is an lvalue, it must outline the button
-    /// itself or get replaced before it's deleted
+    /// @warning parameter value must outlive the widget to prevent memory errors,
+    /// to store the font in the widget pass an rvalue instead.
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font& font);
@@ -145,10 +146,6 @@ public:
     /// @brief Sets a font for the button's text and stores it internally
     ///
     /// @param font font instance
-    ///
-    /// @warning the parameter font is stored within the button after the
-    /// call to maintain it's reference for the widget's lifetime with the
-    /// cost of extra memory usage
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font&& font);

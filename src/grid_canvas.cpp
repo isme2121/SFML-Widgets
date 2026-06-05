@@ -335,7 +335,7 @@ void GridCanvas::config(FLAGS mask)
 void GridCanvas::updatePosition()
 {
     // m_position and shape position are already set by Widget, texture does not need position set
-    m_drawSprite.setPosition(m_position);
+    m_drawSprite.setPosition(m_position + m_size / 2.f);
 }
 
 void GridCanvas::updateSize()
@@ -343,6 +343,7 @@ void GridCanvas::updateSize()
     if(!m_drawTexture.resize(sf::Vector2u(m_size))) return;
 
     m_drawSprite.setTexture(m_drawTexture.getTexture(), true);
+    m_drawSprite.setOrigin(m_size / 2.f);
     updateClipShader();
     updateCellSize();
     update();
@@ -351,7 +352,7 @@ void GridCanvas::updateSize()
 void GridCanvas::updateRotation()
 {
     m_drawSprite.setRotation(this->getRotation());
-    for(Cell& c : m_cellMap) c.setRotation(this->getRotation());
+    // for(Cell& c : m_cellMap) c.setRotation(this->getRotation());
 }
 
 void GridCanvas::updateState()
