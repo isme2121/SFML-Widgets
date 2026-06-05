@@ -493,6 +493,10 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool isFlags(FLAGS bits) const;
 
+    std::weak_ptr<ToolBox> EnableToolbox();
+
+    void DisableToolbox();
+
 protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Main method for triggering mouse callbacks from a widget
@@ -552,6 +556,8 @@ protected:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateDimensions();
+
+    void drawToolbox();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the shape and updates the necessary functions, called
@@ -656,7 +662,9 @@ protected:
     std::weak_ptr<WidgetTheme> m_theme;
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
-    
+    std::shared_ptr<ToolBox> m_toolBox;
+    sf::Clock m_toolboxTimer;
+
     sf::Shader m_clipShader;                                                        //!< for sprite edge clipping
     std::string m_bgTexturePath;                                                    //!< Path to bg resource on disk
     

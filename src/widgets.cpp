@@ -238,6 +238,7 @@ namespace sfml_widgets // Key
                system != other.system;
     };
 }
+
 namespace sfml_widgets // CaptureSequence
 {
 void CaptureSequence::addSequence(const std::string& name, Sequence sequence, SequenceFunction callback)
@@ -389,7 +390,7 @@ const sf::RenderWindow* RenderContext::getWindowPtr() const
     return m_window;
 } 
 
-const sf::RenderWindow* RenderContext::getRootWindowPtr() const
+sf::RenderWindow* RenderContext::getRootWindowPtr() 
 {
     if(m_frame) return m_frame->getWindowPtr();
     return m_window;
@@ -436,7 +437,7 @@ void WidgetGroup::focusOff(std::optional<const sf::Event> event)
 }
 }
 
-namespace sfml_widgets
+namespace sfml_widgets // WidgetTheme
 {
 WidgetTheme::WidgetTheme(P) {}
 
@@ -479,5 +480,112 @@ void WidgetTheme::copy_theme(const WidgetTheme& t)
         ++m_entryToken;
         ++m_labelToken;
     }
+}
+}
+
+namespace sfml_widgets // ToolBox
+{
+ToolBox::ToolBox(sf::RenderWindow& window, sf::FloatRect abs_bounds) : m_window(window), m_text(parameters::font)
+{
+    this->setFillColor(sf::Color::Red);
+}
+
+void ToolBox::setText(sf::String text)
+{
+    m_text.setString(text);
+    m_needUpdate = true;
+}
+
+const sf::String& ToolBox::getText() const
+{
+    return m_text.getString();
+}
+
+void ToolBox::clearText()
+{
+    m_text.setString("");
+    m_needUpdate = true;
+}
+
+void ToolBox::setCornerRadius(float radius)
+{
+    m_radius = std::max(0.f, std::min(radius, std::min<float>(m_size.x, m_size.y) / 2.f));
+}
+
+void ToolBox::setTextFont(const sf::Font& font)
+{
+    m_text.setFont(font);
+    m_needUpdate = true;
+}
+
+void ToolBox::setTextStyle(sf::Text::Style style)
+{
+    m_text.setStyle(style);
+    m_needUpdate = true;
+}
+
+void ToolBox::setCharacterSize(unsigned int char_size)
+{
+    m_text.setCharacterSize(char_size);
+    m_needUpdate = true;
+}
+
+void ToolBox::setLineSpacing(float factor)
+{
+    m_text.setLineSpacing(factor);
+    m_needUpdate = true;
+}
+
+void ToolBox::setLetterSpacing(float factor)
+{
+    m_text.setLetterSpacing(factor);
+    m_needUpdate = true;
+}
+
+void ToolBox::setBoxPosition(sf::Vector2f position)
+{
+    this->setPosition(position);
+    m_text.setPosition(position);
+}
+
+void ToolBox::draw()
+{
+    if(m_needUpdate) updateShapeBounds();
+    m_window.draw(*this);
+    m_window.draw(m_text);
+}
+
+void ToolBox::updateShapeBounds()
+{
+    m_needUpdate = false;
+    sf::Vector2f text_size = m_text.getLocalBounds().size;
+    m_size.x = std::max(m_size.x, text_size.x);
+    m_size.y = std::max(m_size.y, text_size.y);
+}
+
+std::size_t ToolBox::getPointCount() const
+{
+    return m_cornerPoints * 4;
+}
+
+sf::Vector2f ToolBox::getPoint(std::size_t index) const {
+    std::size_t corner = index / m_cornerPoints;
+    float angle = static_cast<float>(index) / m_cornerPoints * constants::DEGREE90;
+    float rad = angle * constants::PI / constants::DEGREE180;
+
+    // Center of each corner's arc circle
+    sf::Vector2f centers[4] = {
+        { m_radius, m_radius },
+        { m_size.x - m_radius, m_radius },
+        { m_size.x - m_radius, m_size.y - m_radius },
+        { m_radius, m_size.y - m_radius }
+    };
+
+    float a = constants::START_ANGLES[corner] + static_cast<float>(index % m_cornerPoints) / m_cornerPoints * (constants::PI / 2.f);
+
+    return {
+        centers[corner].x + std::cos(a) * m_radius,
+        centers[corner].y + std::sin(a) * m_radius
+    };
 }
 }
