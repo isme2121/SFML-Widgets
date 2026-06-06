@@ -537,8 +537,9 @@ constexpr sf::Time QUEUE_DELAY = sf::milliseconds(150);                     //!<
 constexpr sf::Time HOVER_DURATION = sf::milliseconds(500);                  //!< Hovering duration before tooltip is drawn
 constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period
 
+constexpr unsigned int N_FADING_FRAMES = 120;                               //!< Number of frames for tooltip to appear
 constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
-constexpr unsigned int CHAR_SIZE = 16;                                      //!< Default character size for text used by widgets
+constexpr unsigned int CHAR_SIZE = 12;                                      //!< Default character size for text used by widgets
 constexpr unsigned int CORNER_POINTS = 16;                                  //!< Number of vertices in a rounded widget corner 
 constexpr float SCROLL_RATIO = 0.05f;                                       //!< Frame scrolls by 5% of it's height on each scroll
 constexpr float MAX_ZOOM_LEVEL = 5.f;                                       //!< Default zoom level for `GridCanvas` showing full view

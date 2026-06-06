@@ -495,8 +495,36 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool isFlags(FLAGS bits) const;
 
-    std::weak_ptr<ToolTip> EnableToolTip();
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Initiates ToolTip for this widget and returns it's pointer
+    ///
+    /// ToolTip is drawn at `abs_position` parameter after hovering on this
+    /// widget for `delay_ms` period of time, each parameter here can be
+    /// directly updated from the returned pointer alongside the text content itself.
+    ///
+    /// @param abs_position position relative to the widget's window
+    /// @param delay_ms hover duration in milliseconds
+    /// @param text_size character size used by text
+    /// @param style ToolTip's color style
+    ///
+    /// @see `Widget::DisableToolTip`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
+                                         sf::Time delay_ms = parameters::HOVER_DURATION,
+                                         unsigned int text_size = parameters::CHAR_SIZE,
+                                         ToolTipStyle style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears the current ToolTip instance
+    ///
+    /// Any weak pointer pointing at the generated ToolTip becomes expired and
+    /// ToolTip is no longer drawn after hovering, it can be enabled again but
+    /// it's parameters are reset to default.
+    ///
+    /// @see `Widget::EnableToolTip`
+    ///
+    ///////////////////////////////////////////////////////////////////
     void DisableToolTip();
 
 protected:

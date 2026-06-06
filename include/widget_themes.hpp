@@ -141,6 +141,17 @@ struct LabelStyle
     float text_outline_transparent_thickness;
 };
 
+struct ToolTipStyle
+{
+    sf::Color fill_color;
+    sf::Color outline_color;
+    float outline_thickness;
+
+    sf::Color text_color;
+    sf::Color text_outline_color;
+    float text_outline_thickness;
+};
+
 struct CellColor
 {
     sf::Color bg_color;
@@ -1231,6 +1242,31 @@ constexpr LabelStyle LABEL_MIDNIGHT_ROSE =
     0.f                     // text_outline_transparent_thickness
 };
 };
+
+namespace tooltip_style
+{
+constexpr ToolTipStyle TOOLTIP_DEFAULT_DARK = 
+{
+    {28, 28, 32},           // fill_color
+    {205, 205, 212},        // outline_color
+    1.0f,                   // outline_thickness
+
+    {218, 215, 208},        // text_color
+    {42, 42, 48},           // text_outline_color
+    0.0f                    // text_outline_thickness
+};
+
+constexpr ToolTipStyle TOOLTIP_DEFAULT_LIGHT = 
+{
+    {245, 245, 247},        // fill_color
+    {58, 58, 68},           // outline_color
+    1.0f,                   // outline_thickness
+
+    {30, 30, 35},           // text_color
+    {218, 215, 208},        // text_outline_color
+    0.0f                    // text_outline_thickness
+};
+}
 
 constexpr CellColor DEFAULT_CELL_COLOR =
 {

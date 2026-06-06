@@ -1,5 +1,6 @@
 #pragma once
-#include "widgets.hpp"
+#include "widget_themes.hpp"
+
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
@@ -24,6 +25,8 @@ namespace sfml_widgets
 class ToolTip : private sf::Shape
 {
 public:
+    void setDelay(sf::Time delay_ms);
+    void setStyle(ToolTipStyle style);
     void setText(sf::String text);
     const sf::String& getText() const;
     void clearText();
@@ -38,14 +41,14 @@ public:
     void setLetterSpacing(float factor);
 
 private:
-    ToolTip(sf::RenderWindow& window);
+    ToolTip(sf::RenderWindow& window, sf::Vector2f position, sf::Time ms_delay, ToolTipStyle style);
     ToolTip(const ToolTip&) = delete;
     ToolTip(ToolTip&&) = delete;
     ToolTip& operator=(const ToolTip&) = delete;
     ToolTip& operator=(ToolTip&&) = delete;
 
     void draw(bool is_hovered);
-
+    void stepTransparency();
     void updateShapeBounds();
 
     std::size_t getPointCount() const override;
@@ -53,12 +56,18 @@ private:
 
     sf::RenderWindow& m_window;
     sf::Text m_text;
+    ToolTipStyle m_style;
+    bool m_needUpdate = true;
+
+    sf::Vector2f m_size;
     float m_radius = 0.f;
     std::size_t m_cornerPoints = 16;
-    sf::Vector2f m_size;
+
     sf::Clock m_timer;
     sf::Time m_hoverDuration = parameters::HOVER_DURATION;
-    bool m_needUpdate = true;
+
+    unsigned int m_currentLoop = 1;
+
     friend class Widget;
 };
 }

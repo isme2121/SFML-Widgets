@@ -2,10 +2,27 @@
 
 namespace sfml_widgets
 {
-ToolTip::ToolTip(sf::RenderWindow& window) : m_window(window),
-m_text(parameters::font, "", parameters::CHAR_SIZE)
+ToolTip::ToolTip(sf::RenderWindow& window, sf::Vector2f position, sf::Time ms_delay, ToolTipStyle style) : m_window(window),
+m_text(parameters::font, "", parameters::CHAR_SIZE), m_hoverDuration(ms_delay)
 {
-    this->setFillColor(sf::Color::Red);
+    setBoxPosition(position);
+    setStyle(style);
+    m_timer.reset();
+}
+void ToolTip::setDelay(sf::Time delay_ms)
+{
+    m_hoverDuration = delay_ms;
+}
+
+void ToolTip::setStyle(ToolTipStyle style)
+{
+    m_style = style;
+    this->setFillColor(m_style.fill_color);
+    this->setOutlineColor(m_style.outline_color);
+    this->setOutlineThickness(m_style.outline_thickness);
+    m_text.setFillColor(m_style.text_color);
+    m_text.setOutlineColor(m_style.text_outline_color);
+    m_text.setOutlineThickness(m_style.text_outline_thickness);
 }
 
 void ToolTip::setText(sf::String text)
@@ -72,15 +89,37 @@ void ToolTip::draw(bool is_hovered)
     if(is_hovered)
     {
         if(!m_timer.isRunning()) m_timer.restart();
-        
         if(m_timer.getElapsedTime() >= m_hoverDuration)
         {
             if(m_needUpdate) updateShapeBounds();
+            stepTransparency();
             m_window.draw(*this);
             m_window.draw(m_text);
         }
     }
-    else m_timer.reset();
+    else
+    {
+        m_currentLoop = 1;
+        m_timer.reset();
+    }
+}
+
+void ToolTip::stepTransparency()
+{
+    if(m_currentLoop > parameters::N_FADING_FRAMES) return;
+
+    const float T_LEVEL = static_cast<float>(m_currentLoop) / static_cast<float>(parameters::N_FADING_FRAMES);
+
+    std::function<sf::Color(sf::Color)> scaled = [T_LEVEL](sf::Color c)
+    {
+        c.a = std::round<uint8_t>(static_cast<float>(c.a) * T_LEVEL);
+        return c;
+    };
+    this->setFillColor(scaled(m_style.fill_color));
+    this->setOutlineColor(scaled(m_style.outline_color));
+    m_text.setFillColor(scaled(m_style.text_color));
+    m_text.setOutlineColor(scaled(m_style.text_outline_color));
+    ++m_currentLoop;
 }
 
 void ToolTip::updateShapeBounds()

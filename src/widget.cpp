@@ -486,11 +486,12 @@ bool Widget::isFlags(FLAGS bits) const
     return checkFlags(m_flags, bits);
 }
 
-std::weak_ptr<ToolTip> Widget::EnableToolTip()
+std::weak_ptr<ToolTip> Widget::EnableToolTip(sf::Vector2f abs_position, sf::Time delay_ms, unsigned int text_size, ToolTipStyle style)
 {
     if(m_ToolTip) m_ToolTip.reset(); //!< invalidate any generated weak ptr
 
-    m_ToolTip = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr()));
+    m_ToolTip = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr(), abs_position, delay_ms, style));
+    if(m_ToolTip) m_ToolTip->setCharacterSize(text_size);
     return m_ToolTip;
 }
 
