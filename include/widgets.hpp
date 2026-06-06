@@ -1,4 +1,5 @@
 #pragma once
+
 #ifndef WIDGETS_HPP
 #define WIDGETS_HPP
 #include <SFML/Graphics.hpp>
@@ -22,7 +23,7 @@ class ImageFrame;
 class CheckBox;
 class Entry;
 class Label;
-class ToolBox;
+class ToolTip;
 class WidgetGroup;
 template <typename DERIVED_TYPE> struct __WidgetStyle;
 class CaptureSequence;
@@ -503,63 +504,6 @@ private:
     size_t m_max_sequence = 0;                                  //!< Max number of keys needed to match a saved sequence
 };
 
-///////////////////////////////////////////////////////////////////
-/// @brief Integrated in widget, shows a text screen after hovering
-/// on a widget
-///
-/// 1. a toolbox is initiated after calling `Widget::addToolBox` which
-///    returns a weak_ptr of that internal object
-///
-/// 2. user can then add text to that object which is displayed once
-///    the toolbox appears
-///
-/// 3. toolbox saves it's style and content until the widget is destroyed
-///    or calls `Widget::removeToolBox`
-///
-/// 4. position is configured by the user however, it is relative to
-///    the root window so for accurate representation, use the absolute
-///    position instead.
-///
-///////////////////////////////////////////////////////////////////
-class ToolBox : private sf::Shape
-{
-public:
-    void setText(sf::String text);
-    const sf::String& getText() const;
-    void clearText();
-
-    void setBoxPosition(sf::Vector2f position);
-    void setCornerRadius(float radius);
-
-    void setTextFont(const sf::Font& font);
-    void setTextStyle(sf::Text::Style style);
-    void setCharacterSize(unsigned int char_size);
-    void setLineSpacing(float factor);
-    void setLetterSpacing(float factor);
-
-private:
-    ToolBox(sf::RenderWindow& window, sf::FloatRect abs_bounds);
-    ToolBox(const ToolBox&) = delete;
-    ToolBox(ToolBox&&) = delete;
-    ToolBox& operator=(const ToolBox&) = delete;
-    ToolBox& operator=(ToolBox&&) = delete;
-
-    void draw();
-
-    void updateShapeBounds();
-
-    std::size_t getPointCount() const override;
-    sf::Vector2f getPoint(std::size_t index) const override;
-
-    sf::RenderWindow& m_window;
-    sf::Text m_text;
-    float m_radius = 0.f;
-    std::size_t m_cornerPoints = 16;
-    sf::Vector2f m_size;
-    bool m_needUpdate = true;
-    friend class Widget;
-};
-
 namespace constants
 {
 constexpr std::size_t KSTALE = std::numeric_limits<std::size_t>::max();
@@ -590,9 +534,11 @@ constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!<
 
 constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for event triggering
 constexpr sf::Time QUEUE_DELAY = sf::milliseconds(150);                     //!< Delay between keyboard events
+constexpr sf::Time HOVER_DURATION = sf::milliseconds(500);                  //!< Hovering duration before tooltip is drawn
 constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period
 
 constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
+constexpr unsigned int CHAR_SIZE = 16;                                      //!< Default character size for text used by widgets
 constexpr unsigned int CORNER_POINTS = 16;                                  //!< Number of vertices in a rounded widget corner 
 constexpr float SCROLL_RATIO = 0.05f;                                       //!< Frame scrolls by 5% of it's height on each scroll
 constexpr float MAX_ZOOM_LEVEL = 5.f;                                       //!< Default zoom level for `GridCanvas` showing full view

@@ -1,5 +1,4 @@
 #include "../include/button.hpp"
-#include <iostream>
 
 namespace sfml_widgets // Button
 {

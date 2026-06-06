@@ -12,7 +12,6 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     setFlag(m_flags, FLAGS::INIT);
     s_widgets.emplace_back(this);
     m_windowSize = sf::Vector2f(root.getSize());
-    m_toolboxTimer.reset();
 }
 
 Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_name("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
@@ -22,7 +21,6 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     setFlag(m_flags, FLAGS::INIT);
     s_widgets.emplace_back(this);
     m_windowSize = sf::Vector2f(root.getWindowPtr()->getSize());
-    m_toolboxTimer.reset();
 }
 
 Widget::~Widget()
@@ -53,7 +51,7 @@ void Widget::draw()
     else m_master.draw(*this);
 
     drawWidget();
-    drawToolbox();
+    if(m_ToolTip) m_ToolTip->draw(checkFlag(m_flags, FLAGS::HOVERED));
 }
 
 void Widget::configure(FLAGS flags)
@@ -488,29 +486,17 @@ bool Widget::isFlags(FLAGS bits) const
     return checkFlags(m_flags, bits);
 }
 
-std::weak_ptr<ToolBox> Widget::EnableToolbox()
+std::weak_ptr<ToolTip> Widget::EnableToolTip()
 {
-    if(m_toolBox) m_toolBox.reset(); //!< invalidate any generated weak ptr
+    if(m_ToolTip) m_ToolTip.reset(); //!< invalidate any generated weak ptr
 
-    m_toolBox = std::shared_ptr<ToolBox>(new ToolBox(*m_master.getRootWindowPtr(), getAbsoluteBounds()));
-    return m_toolBox;
+    m_ToolTip = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr()));
+    return m_ToolTip;
 }
 
-void Widget::DisableToolbox()
+void Widget::DisableToolTip()
 {
-    m_toolBox.reset();
-}
-
-void Widget::drawToolbox()
-{
-    if(!m_toolBox) return;
-
-    if(checkFlag(m_flags, FLAGS::HOVERED))
-    {
-        if(!m_toolboxTimer.isRunning()) m_toolboxTimer.restart();
-        else if(m_toolboxTimer.getElapsedTime() >= sf::seconds(1.f)) m_toolBox->draw();
-    }
-    else m_toolboxTimer.reset();
+    m_ToolTip.reset();
 }
 
 ///////////////////////////////////////////////////////////////////

@@ -54,6 +54,7 @@ add_library(widgets
     src/widgets.cpp
     src/widget.cpp
     src/frame.cpp
+    src/tooltip.cpp
 )
 target_include_directories(widgets PUBLIC include)
 target_link_libraries(widgets PUBLIC

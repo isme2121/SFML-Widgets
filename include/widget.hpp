@@ -1,5 +1,7 @@
 #pragma once
 #include "widget_themes.hpp"
+#include "tooltip.hpp"
+
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
@@ -493,9 +495,9 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool isFlags(FLAGS bits) const;
 
-    std::weak_ptr<ToolBox> EnableToolbox();
+    std::weak_ptr<ToolTip> EnableToolTip();
 
-    void DisableToolbox();
+    void DisableToolTip();
 
 protected:
     ///////////////////////////////////////////////////////////////////
@@ -557,7 +559,7 @@ protected:
     ///////////////////////////////////////////////////////////////////
     void updateDimensions();
 
-    void drawToolbox();
+    void drawToolTip();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the shape and updates the necessary functions, called
@@ -662,8 +664,7 @@ protected:
     std::weak_ptr<WidgetTheme> m_theme;
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
-    std::shared_ptr<ToolBox> m_toolBox;
-    sf::Clock m_toolboxTimer;
+    std::shared_ptr<ToolTip> m_ToolTip;
 
     sf::Shader m_clipShader;                                                        //!< for sprite edge clipping
     std::string m_bgTexturePath;                                                    //!< Path to bg resource on disk

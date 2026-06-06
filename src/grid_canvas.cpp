@@ -1,3 +1,4 @@
+#include "../include/frame.hpp"
 #include "../include/grid_canvas.hpp"
 
 namespace sfml_widgets // GridCanvas
