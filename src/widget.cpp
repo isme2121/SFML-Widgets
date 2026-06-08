@@ -117,6 +117,7 @@ void Widget::setWidgetSize(sf::Vector2f new_size)
         root->updateGrid();
         root->updateFrameHeight();
     }
+    update();   //!< forgot that Shape overrides are in widget now
 }
 
 void Widget::bindMouseEvent(W_MouseEventType event_type, MouseCallback callback, std::optional<sf::Mouse::Button> button)
@@ -341,6 +342,7 @@ void Widget::setCornerRadius(float radius)
     {
         m_cornerPoints = parameters::CORNER_POINTS;
     }
+    update();
     updateClipShader();
 }
 
@@ -488,7 +490,7 @@ bool Widget::isFlags(FLAGS bits) const
 
 std::weak_ptr<ToolTip> Widget::EnableToolTip(sf::Vector2f abs_position, sf::Time delay_ms, unsigned int text_size, ToolTipStyle style)
 {
-    if(m_ToolTip) m_ToolTip.reset(); //!< invalidate any generated weak ptr
+    if(m_ToolTip) return m_ToolTip;
 
     m_ToolTip = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr(), abs_position, delay_ms, style));
     if(m_ToolTip) m_ToolTip->setCharacterSize(text_size);

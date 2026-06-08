@@ -148,7 +148,6 @@ void ImageFrame::updateSize()
     m_imageSprite.setTexture(m_imageTexture, true);
 
     updateClipShader();
-    update();
 }
 
 void ImageFrame::updateRotation()

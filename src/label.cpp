@@ -77,6 +77,13 @@ void Label::setText(sf::String text)
     updateTextPosition();
 }
 
+void Label::setCharacterLimit(unsigned int char_limit)
+{
+    m_charLimit = char_limit;
+    m_text.setString(m_text.getString().substring(0, std::min(m_charLimit, m_text.getString().getSize())));
+}
+
+
 void Label::setTextSize(unsigned int char_size)
 {
     m_textSizeRatio = 0.f;
@@ -145,7 +152,7 @@ void Label::setLetterSpacing(float factor)
 
 void Label::setPaddingRatio(float ratio)
 {
-    if(ratio < 0.f || ratio > 0.5f) return;
+    if(ratio < 0.f || ratio > 1.f) return;
     m_paddingRatio = ratio;
     updateTextSize();
     updateTextPosition();
@@ -174,7 +181,6 @@ void Label::updateSize()
 {
     updateTextSize();
     updateTextPosition(); //!< keep text aligned
-    update();
 }
 
 void Label::updateRotation()
@@ -302,34 +308,37 @@ void Label::updateTextPosition()
     sf::FloatRect bounds = m_text.getLocalBounds();
     m_text.setOrigin(bounds.position + bounds.size / 2.f);
 
-    const float padX = m_size.x * m_paddingRatio;
-    const float padY = m_size.y * m_paddingRatio;
+    const float CENTER = m_size.x / 2.f;
+    const float MIDDLE = m_size.y / 2.f;
+    const float TEXT_CENTER = bounds.size.x / 2.f;
+    const float TEXT_MIDDLE = bounds.size.y / 2.f;
+    const float DIFF = 1.f - m_paddingRatio;
 
     sf::Vector2f local;
 
     switch(m_horizontalAlign)
     {
     case HAlign::Left:
-        local.x = padX + bounds.size.x / 2.f;
+        local.x = TEXT_CENTER * DIFF + CENTER * m_paddingRatio;
         break;
     case HAlign::Center:
-        local.x = m_size.x / 2.f;
+        local.x = CENTER;
         break;
     case HAlign::Right:
-        local.x = m_size.x - padX - bounds.size.x / 2.f;
+        local.x = (m_size.x - TEXT_CENTER) * DIFF + CENTER * m_paddingRatio;
         break;
     }
 
     switch(m_verticalAlign)
     {
     case VAlign::Top:
-        local.y = padY + bounds.size.y / 2.f;
+        local.y = TEXT_MIDDLE * DIFF + MIDDLE * m_paddingRatio;
         break;
     case VAlign::Middle:
-        local.y = m_size.y / 2.f;
+        local.y = MIDDLE;
         break;
     case VAlign::Bottom:
-        local.y = m_size.y - padY - bounds.size.y / 2.f;
+        local.y = (m_size.y - TEXT_MIDDLE) * DIFF + MIDDLE * m_paddingRatio;
         break;
     }
 
@@ -338,8 +347,22 @@ void Label::updateTextPosition()
 
 void Label::updateShapeBounds()
 {
-    sf::Vector2f size = m_text.getLocalBounds().size;
-    m_size.x = std::max(m_size.x, size.x + 2.f * m_size.x * m_paddingRatio);
-    m_size.y = std::max(m_size.y, size.y + 2.f * m_size.y * m_paddingRatio);
+    const sf::FloatRect bounds = m_text.getLocalBounds();
+    const sf::String& text = m_text.getString();
+    const float line_height = m_text.getFont().getLineSpacing(m_text.getCharacterSize());
+
+    const int n_lines = 1 + static_cast<int>
+    (
+        std::count(text.begin(), text.end(), static_cast<uint32_t>('\n'))
+    );
+
+    const float width = bounds.position.x + bounds.size.x;
+
+    const float height = n_lines * line_height;
+
+    m_size.x = std::max(m_size.x, width + 0.5f * m_size.x * m_paddingRatio);
+    m_size.y = std::max(m_size.y, height + 0.5f * m_size.y * m_paddingRatio);
+    m_radius = std::max(0.f, std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f));
+    update();
 }
 }

@@ -227,7 +227,6 @@ void Button::updateSize()
     updateTextPosition(); //!< keep text aligned
     updateImageSize();
     updateImagePosition();  //!< image position scales with button size
-    update();
 }
 
 void Button::updateRotation()

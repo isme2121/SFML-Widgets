@@ -6,7 +6,7 @@ ToolTip::ToolTip(sf::RenderWindow& window, sf::Vector2f position, sf::Time ms_de
 m_text(parameters::font, "", parameters::CHAR_SIZE), m_hoverDuration(ms_delay)
 {
     setBoxPosition(position);
-    setStyle(style);
+    setTheme(style);
     m_timer.reset();
 }
 void ToolTip::setDelay(sf::Time delay_ms)
@@ -14,7 +14,7 @@ void ToolTip::setDelay(sf::Time delay_ms)
     m_hoverDuration = delay_ms;
 }
 
-void ToolTip::setStyle(ToolTipStyle style)
+void ToolTip::setTheme(ToolTipStyle style)
 {
     m_style = style;
     this->setFillColor(m_style.fill_color);
@@ -99,16 +99,16 @@ void ToolTip::draw(bool is_hovered)
     }
     else
     {
-        m_currentLoop = 1;
+        m_currentLevel = 1;
         m_timer.reset();
     }
 }
 
 void ToolTip::stepTransparency()
 {
-    if(m_currentLoop > parameters::N_FADING_FRAMES) return;
+    if(m_currentLevel > parameters::N_FADING_FRAMES) return;
 
-    const float T_LEVEL = static_cast<float>(m_currentLoop) / static_cast<float>(parameters::N_FADING_FRAMES);
+    const float T_LEVEL = static_cast<float>(m_currentLevel) / static_cast<float>(parameters::N_FADING_FRAMES);
 
     std::function<sf::Color(sf::Color)> scaled = [T_LEVEL](sf::Color c)
     {
@@ -119,7 +119,7 @@ void ToolTip::stepTransparency()
     this->setOutlineColor(scaled(m_style.outline_color));
     m_text.setFillColor(scaled(m_style.text_color));
     m_text.setOutlineColor(scaled(m_style.text_outline_color));
-    ++m_currentLoop;
+    ++m_currentLevel;
 }
 
 void ToolTip::updateShapeBounds()
@@ -139,10 +139,18 @@ void ToolTip::updateShapeBounds()
 
     const float height = n_lines * line_height;
 
-    m_size.x = std::max(m_size.x, width);
-    m_size.y = std::max(m_size.y, height);
+    m_size.x = std::max(s_MIN_SIZE.x, width);
+    m_size.y = std::max(s_MIN_SIZE.y, height);
     m_radius = std::max(0.f, std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f));
-
+    if(m_radius == 0.f)
+    {
+        m_radius = 0.f;
+        m_cornerPoints = 1;
+    }
+    else
+    {
+        m_cornerPoints = parameters::CORNER_POINTS;
+    }
     update();
 }
 

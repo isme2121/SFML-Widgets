@@ -96,6 +96,17 @@ public:
     void setText(sf::String text);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the max number of characters in the label
+    ///
+    /// Cuts the current string if the new limit is smaller than the current
+    /// size of the string.
+    ///
+    /// @param char_limit new cap
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setCharacterLimit(unsigned int char_limit);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Manually set the character size for the label
     ///
     /// Label is set with a constant character size, to add a variant
@@ -106,7 +117,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTextSize(unsigned int char_size);
 
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Set character size scale based on the shape's size
     ///
     /// Text size would scale with size.y of the widget if this
@@ -115,7 +126,7 @@ public:
     ///
     /// @param ratio percent value from `0.f` to `1.f`
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setTextSize(float ratio);
 
     ///////////////////////////////////////////////////////////////////
@@ -146,7 +157,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTextStyle(sf::Text::Style style);
 
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Shifts the label horizontally
     ///
     /// The text itself remains inside the widget box but shifts based
@@ -156,10 +167,10 @@ public:
     ///
     /// @see `Label::setPaddingRatio`
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setHorizontalAlignment(HAlign h = HAlign::Center);
 
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Shifts the label vertically
     ///
     /// The text itself remains inside the widget box but shifts based
@@ -169,40 +180,39 @@ public:
     ///
     /// @see `Label::setPaddingRatio`
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setVerticalAlignment(VAlign v = VAlign::Middle);
 
-    ////////////////////////////////////////////////////////////
-    /// @brief Updates the spacing between lines
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the vertical space between lines that is defined
+    /// by the font
     ///
-    /// @param factor spacing ratio
+    /// @param factor default is `1.f`
     ///
-    /// @see `Label::setLetterSpacing`
-    ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setLineSpacing(float factor);
 
-    ////////////////////////////////////////////////////////////
-    /// @brief Updates the spacing between characters
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the horizontal space between characters that is
+    /// defined by the font
     ///
-    /// @param factor spacing ratio
+    /// @param factor default is `1.f`
     ///
-    /// @see `Label::setLineSpacing`
-    ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setLetterSpacing(float factor);
 
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the padding value for text alignment
     ///
     /// Ratio scales with the shape's size, If ratio is set to
-    /// `0.f` then any alignment type would leave the text centered.
+    /// `0.f` then any alignment type would leave the text centered, if
+    /// ratio is set to `1.f` then the text is always centered.
     ///
-    /// @param ratio float value from `0.f` to `0.5f`
+    /// @param ratio float value from `0.f` to `1.f`
     ///
     /// @see `Label::setHorizontalAlignment`, `Label::setVerticalAlignment`
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     void setPaddingRatio(float ratio);
 
     ///////////////////////////////////////////////////////////////////
@@ -317,22 +327,22 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateShapeBounds();
 
-    std::unique_ptr<const sf::Font> m_font;
-    sf::Text m_text;
+    std::unique_ptr<const sf::Font> m_font;                     //!< Reference for internal font
+    sf::Text m_text;                                            //!< Label's text
 
-    std::size_t m_charLimit = parameters::CHAR_LIMIT;
-    unsigned int m_charSize = 24;
-    float m_textSizeRatio = 0.f;
-    float  m_paddingRatio = 0.25f;
-    HAlign m_horizontalAlign = HAlign::Center;
-    VAlign m_verticalAlign = VAlign::Middle;
+    std::size_t m_charLimit = parameters::CHAR_LIMIT;           //!< Max number of characters
+    unsigned int m_charSize = 24;                               //!< Default character size
+    float m_textSizeRatio = 0.f;                                //!< Default character size ratio (disabled initially)
+    float  m_paddingRatio = 0.f;                                //!< Default padding, set from 0 to 1 and scales with alignment
+    HAlign m_horizontalAlign = HAlign::Center;                  //!< Horizontal alignment, scales with padding
+    VAlign m_verticalAlign = VAlign::Middle;                    //!< Vertical alignment, scales with padding
 
-    LabelStyle m_style = Theme::label_style::LABEL_SLATE_VIOLET;
+    LabelStyle m_style = Theme::label_style::LABEL_SLATE_VIOLET;//!< Label theme
 public:
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Horizontal placement of the text object
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     enum class HAlign
     {
         Left,
@@ -340,10 +350,10 @@ public:
         Right
     };
 
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     /// @brief Vertical placement of the text object
     ///
-    ////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     enum class VAlign
     {
         Top,

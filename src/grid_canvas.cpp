@@ -347,7 +347,6 @@ void GridCanvas::updateSize()
     m_drawSprite.setOrigin(m_size / 2.f);
     updateClipShader();
     updateCellSize();
-    update();
 }
 
 void GridCanvas::updateRotation()

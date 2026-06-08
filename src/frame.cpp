@@ -236,7 +236,6 @@ void Frame::updateSize()
 
     // shader scales with size
     updateClipShader();
-    update();
 }
 
 void Frame::updateRotation()

@@ -502,6 +502,9 @@ public:
     /// widget for `delay_ms` period of time, each parameter here can be
     /// directly updated from the returned pointer alongside the text content itself.
     ///
+    /// Calling this method while ToolTip is already enabled simply returns a
+    /// weak pointer to the same ToolTip object.
+    ///
     /// @param abs_position position relative to the widget's window
     /// @param delay_ms hover duration in milliseconds
     /// @param text_size character size used by text
@@ -510,7 +513,7 @@ public:
     /// @see `Widget::DisableToolTip`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
+    [[nodiscard]] std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
                                          sf::Time delay_ms = parameters::HOVER_DURATION,
                                          unsigned int text_size = parameters::CHAR_SIZE,
                                          ToolTipStyle style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK);

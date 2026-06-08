@@ -353,7 +353,6 @@ void Entry::updateSize()
     m_sprite.setOrigin(m_size / 2.f);
     updateText();
     updateClipShader();
-    update();
 }
 
 void Entry::updateRotation()
