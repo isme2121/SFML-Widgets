@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include "widget.hpp"
 
 #ifdef WIDGETS_HPP
@@ -572,7 +573,7 @@ public:
     /// @see `resetShader`
     ///
     ///////////////////////////////////////////////////////////////////
-    void loadShader(const std::string& shader_path);
+    void loadShader(const std::string_view& shader_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @ Clears loaded color shader from cell

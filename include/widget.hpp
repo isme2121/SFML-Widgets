@@ -1,4 +1,5 @@
 #pragma once
+#include <deque>
 #include "widget_themes.hpp"
 #include "tooltip.hpp"
 
@@ -191,7 +192,7 @@ public:
     /// @return true if loading was successful, otherwise false.
     ///
     ///////////////////////////////////////////////////////////////////
-    bool loadClipShader(const std::string& shader_path);
+    bool loadClipShader(const std::string_view& shader_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Loads shader parameters from fragment file for background
@@ -208,7 +209,7 @@ public:
     /// @return true if loading was successful, otherwise false.
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool loadColorShader(const std::string& shader_path);
+    bool loadColorShader(const std::string_view& shader_path);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears color shader if available

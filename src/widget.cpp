@@ -1,3 +1,4 @@
+#include <cmath>
 #include "../include/frame.hpp"
 
 namespace sfml_widgets // Widget
@@ -213,7 +214,7 @@ void Widget::unbindShortCut(const std::string& tag)
     m_binds.deleteSequence(tag);
 }
 
-bool Widget::loadClipShader(const std::string& shader_path)
+bool Widget::loadClipShader(const std::string_view& shader_path)
 {
     if(!sf::Shader::isAvailable()) return false;
     if(m_clipShader.loadFromFile(shader_path, sf::Shader::Type::Fragment))
@@ -225,7 +226,7 @@ bool Widget::loadClipShader(const std::string& shader_path)
     return false;
 }
 
-bool Widget::loadColorShader(const std::string& shader_path)
+bool Widget::loadColorShader(const std::string_view& shader_path)
 {
     if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE) || !sf::Shader::isAvailable()) return false;
     
@@ -377,6 +378,7 @@ void Widget::addToQueue(std::size_t after_frames, std::function<void()> callback
         m_events.emplace_front(std::move(after_frames), std::move(callback));
     }
     else m_events.emplace_back(std::move(after_frames), std::move(callback));
+
     checkQueue();
 }
 

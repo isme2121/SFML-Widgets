@@ -736,7 +736,7 @@ void Cell::clearImage()
     resetFlag(m_flags, FLAGS::IMAGE | FLAGS::COLORSHADER);
 }
 
-void Cell::loadShader(const std::string& shader_path)
+void Cell::loadShader(const std::string_view& shader_path)
 {
     if(!sf::Shader::isAvailable()) return;
 

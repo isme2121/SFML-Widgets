@@ -1,3 +1,4 @@
+#include <cmath>
 #include "../include/label.hpp"
 
 namespace sfml_widgets
@@ -287,12 +288,12 @@ void Label::updateTextSize()
 
     if(m_textSizeRatio > 0.f)
     {
-        float targetHeight  = m_size.y * m_textSizeRatio;
-        float currentHeight = W_CharHeight::getHeight(m_text.getFont(),
+        float target_height  = m_size.y * m_textSizeRatio;
+        float current_height = W_CharHeight::getHeight(m_text.getFont(),
                                                       m_text.getCharacterSize());
-        if(currentHeight > 0.f)
+        if(current_height > 0.f)
         {
-            float ratio = targetHeight / currentHeight;
+            float ratio = target_height / current_height;
             m_charSize  = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
         }
     }

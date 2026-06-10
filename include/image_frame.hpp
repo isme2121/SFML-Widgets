@@ -96,22 +96,20 @@ public:
     bool setImage(const std::string& image_path);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Clears the current image data from the widget
-    ///
-    /// @param load_default choose to use the default image with true, otherwise
-    /// keeps the frame empty
+    /// @brief Clears the current image data from the widget, does nothing
+    /// if no image is loaded
     ///
     /// @see `setImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    void clearImage(bool load_default = true);
+    void clearImage();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief creates a copy image of the current texture and returns it
-    ///
+    /// if available
     ///
     ///////////////////////////////////////////////////////////////////
-    const sf::Image getImage() const;
+    std::optional<const sf::Image> getImage() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns the current loaded image's path
@@ -127,7 +125,7 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(TextureStyle __imageframe_style);
+    void setTheme(TextureStyle imageframe_style);
 
 private:
 
@@ -222,15 +220,30 @@ private:
     void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Loads the default image as a placeholder
-    ///
-    /// @return true if process is successful, otherwise false
+    /// @brief Writes "No Image" text on widget box if no image is loaded
     ///
     ///////////////////////////////////////////////////////////////////
-    bool loadDefaultImage();
+    void writeText();
 
-    sf::Texture m_imageTexture;                                         //!< Image texture
-    sf::Sprite m_imageSprite;                                           //!< Sprite to display the texture
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Update "No Image" text's size and position, does nothing
+    /// if an image is currently loaded
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateText();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the loaded image size
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateImageSize();
+
+    std::unique_ptr<sf::RenderTexture> m_textTexturePtr;                //!< Text texture
+    std::unique_ptr<sf::Texture> m_imageTexturePtr;                     //!< Image texture
+    std::unique_ptr<sf::Text> m_noImageTextPtr;                         //!< Text displayed when no image is selected
+
+    std::unique_ptr<sf::Sprite> m_imageSpritePtr;                       //!< Sprite to display the texture
+
     std::string m_imagePath;                                            //!< Path to currently loaded image
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Image frame's default style
 };

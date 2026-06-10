@@ -9,9 +9,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <deque>
-#include <array>
-#include <cmath>
 
 namespace sfml_widgets
 {
@@ -55,17 +52,17 @@ enum class FLAGS : std::int32_t
     IDLE = 0,                       //!< Default state
     INIT = 1,                       //!< Initalized state
     MODIFIED = 1 << 2,              //!< State: `set automatically after an update`
+    FOCUSED = 1 << 3,               //!< State: `widget is clicked, only one widget can be focused at a time`
 
-    RESTRICTED = 1 << 3,            //!< State: `certain functions are limited temporarily`
     HOVERED = 1 << 4,               //!< State: `mouse hovered within widget bounds`
     SELECTED = 1 << 5,              //!< State: `widget is not yet active but can trigger callbacks and set active`
-    FOCUSED = 1 << 6,               //!< State: `widget is clicked, only one widget can be focused at a time`
+    RESTRICTED = 1 << 6,            //!< State: `certain functions are limited temporarily`
     ACTIVE = 1 << 7,                //!< State: `active widget state as ACTIVE_BUTTON is pressed`
     SET = 1 << 8,                   //!< State: `1 state, used in checkbox and entry`
     RESET = 1 << 9,                 //!< State: `0 state, used in entry`
     TRANSPARENT = 1 << 10,          //!< State: `transparent state, set by AUTOHIDE when not hovering`
     DRAWING = 1 << 11,              //!< State: `drawing state for containers`
-    SHORTSKIP = 1 << 12,            //!< State: `skips a process within one function`
+    SHORTSKIP = 1 << 12,            //!< State: `skips a small process`
     LONGSKIP = 1 << 13,             //!< State: `skips a process until a condition is satisfied, used by Widget`
 
     INDICATOR = 1 << 14,            //!< Configured flag: `unique widget indicator`
@@ -88,8 +85,7 @@ enum class FLAGS : std::int32_t
     SEPARATORS = 1 << 28,           //!< Flag: `line separators in frame is enabled`
     ZOOM = 1 << 29,                 //!< Configured Flag: `zooming is enabled for canvas`
     PAN = 1 << 30,                  //!< Configured Flag: `panning is enabled for canvas`
-    BLOCKBGIMAGE = 1 << 31          //!< Configured Flag: `blocks loading fill texture, clears it with shader if enabled`
-
+    BLOCKBGIMAGE = 1 << 31,          //!< Configured Flag: `blocks loading fill texture, clears it with shader if enabled`
 };
 
 enum class SeparatorType
@@ -533,7 +529,7 @@ constexpr bool STACK_MOUSE_CALLBACKS = false;                               //!<
 constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!< Allows the frame callback to trigger after a child callback
 
 constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for event triggering
-constexpr sf::Time QUEUE_DELAY = sf::milliseconds(150);                     //!< Delay between keyboard events
+constexpr sf::Time QUEUE_DELAY = sf::milliseconds(0);                       //!< Delay between keyboard events
 constexpr sf::Time HOVER_DURATION = sf::milliseconds(500);                  //!< Hovering duration before tooltip is drawn
 constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period
 
@@ -552,14 +548,12 @@ constexpr float MAX_DEADZONE_RATIO = 0.1f;                                  //!<
 
 inline const sf::Font font("assets/fonts/default.otf"); //!< temporary font
 
-// Place holder image
-inline const std::string DEFAULT_IMAGE_PATH{"assets/images/paper.png"};
 // Clip button's image + opacity effect, uniform => texture, size, radius, image_opacity
-inline const std::string SPRITE_CLIP_COLOR_SHADER_PATH{"assets/shaders/button_clip_opacity.frag"};
+constexpr std::string_view SPRITE_CLIP_COLOR_SHADER_PATH = "assets/shaders/button_clip_opacity.frag";
 // Clip sprite + opacity effect, uniform => texture, size, radius, opacity
-inline const std::string SPRITE_FULLCLIP_OPACITY_SHADER_PATH{"assets/shaders/sprite_clip_opacity.frag"};
+constexpr std::string_view SPRITE_FULLCLIP_OPACITY_SHADER_PATH = "assets/shaders/sprite_clip_opacity.frag";
 // Shader for updating a texture's color and opacity based on input if it has texture, uniform => texture, bg_color, opacity, outline_color, has_texture
-inline const std::string TEXTURE_COLOR_SHADER_PATH{"assets/shaders/texture_color.frag"};
+constexpr std::string_view TEXTURE_COLOR_SHADER_PATH = "assets/shaders/texture_color.frag";
 }
 }
 #endif

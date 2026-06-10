@@ -340,7 +340,7 @@ void Entry::updatePosition()
     /*
     m_position is relative to the top left corner of the shape,
     we do this since m_sprite's origin is it's center, just
-    like the base widget
+    like the base widget shape
     */
     m_sprite.setPosition(m_position + m_size / 2.f);
 }

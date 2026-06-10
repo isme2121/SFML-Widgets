@@ -1,3 +1,4 @@
+#include <cmath>
 #include "../include/tooltip.hpp"
 
 namespace sfml_widgets
