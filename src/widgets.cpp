@@ -270,9 +270,9 @@ void CaptureSequence::deleteSequence(const std::string& name)
     }
 }
 
-bool CaptureSequence::checkEvents(const sf::Event& _event)
+bool CaptureSequence::checkEvents(const sf::Event& key_event)
 {
-    const sf::Event::KeyPressed* key = _event.getIf<sf::Event::KeyPressed>();
+    const sf::Event::KeyPressed* key = key_event.getIf<sf::Event::KeyPressed>();
     if(!key) return 0;
     m_current_sequence.push_back(*key);
     return compareSequence();
@@ -358,10 +358,10 @@ RenderContext& RenderContext::operator=(RenderContext&& other) noexcept
     return *this;
 }
 
-void RenderContext::draw(const sf::Drawable& __widget, const sf::RenderStates __state)
+void RenderContext::draw(const sf::Drawable& widget, const sf::RenderStates state)
 {
-    if(m_window) m_window->draw(__widget, __state);
-    else m_frame->drawChildWidget(__widget, __state);
+    if(m_window) m_window->draw(widget, state);
+    else m_frame->drawChildWidget(widget, state);
 }
 
 sf::Vector2f RenderContext::mapMousePosition(sf::Vector2i mouse_position) const
@@ -370,20 +370,20 @@ sf::Vector2f RenderContext::mapMousePosition(sf::Vector2i mouse_position) const
     return m_frame->mapPixelToCoords(mouse_position);
 }
 
-void RenderContext::setWindowView(const sf::View& __v)
+void RenderContext::setWindowView(const sf::View& v)
 {
-    if(!m_window) m_frame->getWindowPtr()->setView(__v);
-    else m_window->setView(__v);
+    if(!m_window) m_frame->getWindowPtr()->setView(v);
+    else m_window->setView(v);
 }
 
-void RenderContext::setWindowPtr(sf::RenderWindow* __winScreenPtr)
+void RenderContext::setWindowPtr(sf::RenderWindow* win_ptr)
 {
-    m_window = __winScreenPtr;
+    m_window = win_ptr;
 }
 
-void RenderContext::setFramePtr(Frame* __frPtr)
+void RenderContext::setFramePtr(Frame* frame_ptr)
 {
-    m_frame = __frPtr;
+    m_frame = frame_ptr;
 }
 
 const sf::RenderWindow* RenderContext::getWindowPtr() const
@@ -425,13 +425,13 @@ bool WidgetGroup::contains(const Widget* w) const
     return std::find(m_cult.begin(), m_cult.end(), w) != m_cult.end();
 }
 
-void WidgetGroup::focusOn(std::optional<const sf::Event> event)
+void WidgetGroup::focusOn(std::optional<sf::Event> event)
 {
     for(Widget* w : m_cult)
         if(w->m_gainFocusCallBack) w->m_gainFocusCallBack(event);
 }
 
-void WidgetGroup::focusOff(std::optional<const sf::Event> event)
+void WidgetGroup::focusOff(std::optional<sf::Event> event)
 {
     for(Widget* w : m_cult)
         if(w->m_loseFocusCallBack) w->m_loseFocusCallBack(event);

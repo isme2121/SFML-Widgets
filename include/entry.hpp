@@ -35,28 +35,6 @@ public:
     Entry& operator=(Entry&& other) = delete;
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events.
-    ///
-    /// Call the method in the events loop for assigned methods callbacks,
-    /// can optionally pass the current raw mouse position, this makes the
-    /// widget skip getting the mouse position itself and can save computing
-    /// time when multiple widgets are checking for event.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    /// @see `bindMouseEvent`, `unbindMouseEvent`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note widgets with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
-    /// trigger mouse events.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events.
@@ -220,9 +198,11 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(EntryStyle __entry_style);
+    void setTheme(EntryStyle entry_style);
 
 private:
+    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget on master object
     ///
@@ -371,7 +351,7 @@ private:
     std::size_t m_inputLimit = parameters::CHAR_LIMIT;              //!< Max possible number of characters
     float m_textSizeRatio = 0.5f;                                   //!< How much space does the text take based on entry's height
     float m_textOffsetRatio = 0.1f;
-    unsigned int m_charSize = 24;
+    unsigned int m_charSize = parameters::CHAR_SIZE;
     unsigned int m_cursorWidth = 1;
     char m_placeholderCharacter = 0;                                //!< Visible character replacing the actual content
     sf::Time m_cursorOnDuration;

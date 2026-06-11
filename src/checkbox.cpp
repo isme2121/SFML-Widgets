@@ -10,7 +10,6 @@ CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u s
     m_currentTextColorPtr = &m_style.text_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
-    setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     if(initial_state) setFlag(m_flags, FLAGS::SET);
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
@@ -24,28 +23,20 @@ CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const 
     m_currentTextColorPtr = &m_style.text_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
     
-    setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     if(initial_state) setFlag(m_flags, FLAGS::SET);
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     setText(text);
 }
 
-bool CheckBox::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
+void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
-
-    if(!mouse_position) *mouse_position = getMousePosition();
-    W_MouseEventDetails details =  mouseCallBackEvent(event, *mouse_position);
-
     if(details.event_type == W_MouseEventType::Release && details.button == parameters::ACTIVE_MOUSE_BUTTON&& checkFlag(m_flags, FLAGS::SELECTED))
     {
         toggle(m_flags, FLAGS::SET);
         if(m_clickCallback) m_clickCallback(event);
         details.is_used = true;
     }
-
-    return details.is_used;
 }
 
 bool CheckBox::captureKeyEvents(const sf::Event& event)
@@ -187,7 +178,7 @@ void CheckBox::updateState()
 
     if(checkFlag(m_flags, FLAGS::SET))
     {
-        if(checkFlag(m_flags, FLAGS::BGIMAGE)) this->setTexture(m_bgTexturePtr.get());
+        if(m_bgTexturePtr) this->setTexture(m_bgTexturePtr.get());
 
         m_currentBgColorPtr = &m_style.fill_on_color;
 
@@ -221,7 +212,7 @@ void CheckBox::updateState()
     }
     else
     {
-        if(checkFlag(m_flags, FLAGS::BGIMAGE)) this->setTexture(nullptr);
+        if(m_bgTexturePtr) this->setTexture(nullptr);
 
         if(checkFlag(m_flags, FLAGS::BLOCKED))
         {
@@ -261,7 +252,7 @@ void CheckBox::updateState()
 
 void CheckBox::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<CheckBox>();
         if(synced_token == m_generationToken) return;
@@ -278,8 +269,8 @@ void CheckBox::updateClipShader()
 
 void CheckBox::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlags(m_flags, FLAGS::BGIMAGE | FLAGS::SET); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get() && checkFlag(m_flags, FLAGS::SET); 
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     if(render_texture)
     {

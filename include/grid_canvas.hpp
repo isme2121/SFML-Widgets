@@ -47,30 +47,6 @@ public:
     GridCanvas& operator=(const GridCanvas& other) = delete;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events
-    ///
-    /// Called in the events loop, can recieve the current mouse position based on
-    /// root window view to skip a few steps internally.
-    ///
-    /// Mouse events such as pressing, scrolling, holding are triggered within the
-    /// method while also updating the widget's status such as focus, select, hover
-    /// , and transparent, then trigger a callback if assigned to an event by the user.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note canvas with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
-    /// trigger mouse events.
-    ///
-    /// @see `Widget::bindMouseEvent`, `Widget::unbindMouseEvent`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& _event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
-    
-    ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events
     ///
     /// Captures keyboard events in the events loop, can capture individual
@@ -259,6 +235,9 @@ public:
 
     const std::size_t MAX_CELL_COUNT;        //!< Maximum possible number of cells in canvas object
 private:
+    bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
+
+    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws canvas on the screen

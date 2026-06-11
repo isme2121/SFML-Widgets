@@ -33,16 +33,12 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     configure(FLAGS::INDICATOR);
 }
 
-bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
+void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESTRICTED)) return false;
-    if(!mouse_position) *mouse_position = getMousePosition();
-    W_MouseEventDetails details = mouseCallBackEvent(event, *mouse_position);
-
     // clicked on entry
     if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == parameters::ACTIVE_MOUSE_BUTTON)
     {
-        sf::Vector2f root_view = m_master.mapMousePosition(*mouse_position);                        //!< relative to the master
+        sf::Vector2f root_view = m_master.mapMousePosition(mouse_position);                         //!< relative to the master
         sf::Vector2f transform_view = this->getInverseTransform().transformPoint(root_view);        //!< considering rotation
         sf::Vector2f local_view = m_renderTexture.mapPixelToCoords(sf::Vector2i(transform_view));   //!< considering texture view (padding)
 
@@ -58,8 +54,6 @@ bool Entry::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2
         updateView();
         details.is_used = true;
     }
-
-    return details.is_used;
 }
 
 bool Entry::captureKeyEvents(const sf::Event& event)
@@ -80,8 +74,8 @@ bool Entry::captureKeyEvents(const sf::Event& event)
         return true;
     }
 
-    if(!checkFlag(m_flags, FLAGS::FOCUSED)) return false;
     /* This section requires the widget to be focused */
+    if(!checkFlag(m_flags, FLAGS::FOCUSED)) return false;
 
     if(const sf::Event::TextEntered* _input = event.getIf<sf::Event::TextEntered>())
     {
@@ -312,8 +306,6 @@ void Entry::setTheme(EntryStyle __entry_style)
 
 void Entry::drawWidget()
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
-
     if(m_textBuffer.empty() && !checkFlag(m_flags, FLAGS::FOCUSED))
         m_renderTexture.draw(m_bgText);
     else
@@ -322,7 +314,8 @@ void Entry::drawWidget()
     drawCursorLine();
     m_renderTexture.display();
     m_sprite.setTexture(m_renderTexture.getTexture());
-    m_master.draw(m_sprite, &m_clipShader);
+    if(m_clipShaderPtr) m_master.draw(m_sprite, m_clipShaderPtr.get());
+    else m_master.draw(m_sprite);
 }
 
 void Entry::config(FLAGS mask)
@@ -423,7 +416,7 @@ void Entry::updateState()
 
 void Entry::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<Entry>();
         if(synced_token == m_generationToken) return;
@@ -435,18 +428,18 @@ void Entry::updateTheme()
 
 void Entry::updateClipShader()
 {
-    if(!checkFlag(m_flags, FLAGS::CLIPSHADER)) return;
+    if(!m_clipShaderPtr) return;
 
-    m_clipShader.setUniform("texture",  sf::Shader::CurrentTexture);
-    m_clipShader.setUniform("size",     sf::Glsl::Vec2(m_size));
-    m_clipShader.setUniform("radius",   m_radius);
-    m_clipShader.setUniform("opacity",   m_opacity);
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
 }
 
 void Entry::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     if(render_texture)
     {
@@ -543,19 +536,6 @@ void Entry::updateText()
             m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
             m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
         }
-        else
-        {
-            current_height = W_CharHeight::getHeight(m_bgText.getFont(), m_bgText.getCharacterSize());
-            if(current_height > 0.f)
-            {
-                float ratio = final_height / current_height;
-                m_charSize = static_cast<unsigned int>(m_bgText.getCharacterSize() * ratio);
-                float line_spacing = m_bgText.getFont().getLineSpacing(m_charSize);
-                float y_offset = (m_size.y - line_spacing) / 2.f;
-                m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
-                m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
-            }
-        }
     }
     
     m_text.setCharacterSize(m_charSize);
@@ -570,7 +550,7 @@ float Entry::getCursorCoordinate() const
 void Entry::updateContentWidth()
 {
     m_textBoxWidth = m_text.findCharacterPos(m_textBuffer.size()).x + m_textOffsetRatio * m_size.y;
-    m_maxPanOffset    = std::max(0.f, (m_textBoxWidth + m_cursorWidth) - m_size.x);
+    m_maxPanOffset = std::max(0.f, (m_textBoxWidth + m_cursorWidth) - m_size.x);
     m_currentPanOffset = std::clamp(m_currentPanOffset, 0.f, m_maxPanOffset);
 
     updateView();

@@ -33,17 +33,34 @@ m_gridMapping(get_prime_combination(cell_count))
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
-bool GridCanvas::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
+bool GridCanvas::captureKeyEvents(const sf::Event& event)
 {
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::HIDDEN | FLAGS::RESTRICTED)) return false;
+    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
 
-    if(!mouse_position) *mouse_position = getMousePosition();
-    sf::Vector2i local_mouse_position = getLocalPixel(*mouse_position); //!< doesn't considers canvas view
+    if(m_binds.checkEvents(event))
+    {
+        if(parameters::QUEUE_DELAY != sf::Time::Zero)
+        {
+            // rate limit
+            setFlag(m_flags, FLAGS::RESTRICTED);
+            addToQueue(parameters::QUEUE_DELAY, [this]()
+            {
+                resetFlag(m_flags, FLAGS::RESTRICTED);
+            }, 
+            true);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
     sf::Vector2f local_view_pixel = m_drawTexture.mapPixelToCoords(local_mouse_position); //!< considers view
 
     // canvas widget events
-    W_MouseEventDetails details = mouseCallBackEvent(event, *mouse_position);
-
+    
     // update all cells first
     bool canvas_hovered = checkFlag(m_flags, FLAGS::HOVERED); //!< block cell hovering if canvas not hovered
     bool transparent_cells = checkFlag(m_flags, FLAGS::AUTOHIDE) & !canvas_hovered; //!< make all cells transparent or not
@@ -55,11 +72,17 @@ bool GridCanvas::captureMouseEvents(const sf::Event& event, std::optional<sf::Ve
         if(checkFlag(m_flags, FLAGS::INDICATOR) && !m_selectedCell->isFlag(FLAGS::SELECTED)) setFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
         else if(!checkFlag(m_flags, FLAGS::INDICATOR) && m_selectedCell->isFlag(FLAGS::SELECTED)) resetFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
     }
+    return false;
+}
+
+void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
 
     // click event
     if(details.event_type == W_MouseEventType::Press)
     {
-        if(!checkFlag(m_flags, FLAGS::HOVERED)) return details.is_used; //!< Not hovering
+        if(!checkFlag(m_flags, FLAGS::HOVERED)) return; //!< Not hovering
 
         /* currently hovering */
 
@@ -70,7 +93,7 @@ bool GridCanvas::captureMouseEvents(const sf::Event& event, std::optional<sf::Ve
             m_selectedCell = nullptr;
         }
         
-        if(details.button != parameters::ACTIVE_MOUSE_BUTTON) return details.is_used;
+        if(details.button != parameters::ACTIVE_MOUSE_BUTTON) return;
 
         /* left mouse button was clicked section */
 
@@ -126,29 +149,6 @@ bool GridCanvas::captureMouseEvents(const sf::Event& event, std::optional<sf::Ve
             details.is_used = true;
         }
     }
-
-    return details.is_used;
-}
-
-bool GridCanvas::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event))
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
 }
 
 Cell* GridCanvas::at(unsigned int row, unsigned int col)
@@ -319,12 +319,13 @@ void GridCanvas::drawWidget()
 
     m_drawTexture.display();
     m_drawSprite.setTexture(m_drawTexture.getTexture());
-    m_master.draw(m_drawSprite, &m_clipShader);
+    if(m_clipShaderPtr) m_master.draw(m_drawSprite, m_clipShaderPtr.get());
+    else m_master.draw(m_drawSprite);
 }
 
 void GridCanvas::config(FLAGS mask)
 {
-    resetFlag(mask, FLAGS::AUTOHIDE | FLAGS::BLOCKBGIMAGE); //!< cells follow canvas's m_flags directly for autohide
+    resetFlag(mask, FLAGS::AUTOHIDE | FLAGS::NOBGIMAGE | FLAGS::TRANSPARENT); //!< cells follow canvas's m_flags directly for autohide
 
     for(Cell& cell : m_cellMap)
     {
@@ -406,7 +407,7 @@ void GridCanvas::updateState()
 
 void GridCanvas::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<GridCanvas>();
         if(synced_token == m_generationToken) return;
@@ -418,18 +419,18 @@ void GridCanvas::updateTheme()
 
 void GridCanvas::updateClipShader()
 {
-    if(!checkFlag(m_flags, FLAGS::CLIPSHADER)) return;
+    if(!m_clipShaderPtr) return;
 
-    m_clipShader.setUniform("texture",  sf::Shader::CurrentTexture);
-    m_clipShader.setUniform("size",     sf::Glsl::Vec2(m_size));
-    m_clipShader.setUniform("radius",   m_radius);
-    m_clipShader.setUniform("opacity",   m_opacity);
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
 }
 
 void GridCanvas::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
 
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     if(render_texture)
@@ -685,7 +686,7 @@ void Cell::setCellOutlineThickness(DIRECTION direction, float thickness)
 
 bool Cell::setImage(const std::string& image_path)
 {
-    if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) return false;
+    if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
     ImageCache& global_image_buffer = ImageCache::getInstance();
     std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
     if(!disk_image) return false;
@@ -718,7 +719,7 @@ bool Cell::setImage(const std::string& image_path)
     m_bgImagePath = std::move(image_path);
     m_bgTexturePtr->setSmooth(true);
     this->setTexture(m_bgTexturePtr.get(), true);
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) loadShader(parameters::TEXTURE_COLOR_SHADER_PATH);
+    if(!m_imageShaderPtr) loadShader(parameters::TEXTURE_COLOR_SHADER_PATH);
     setFlag(m_flags, FLAGS::IMAGE);
 
     return true;
@@ -733,7 +734,7 @@ void Cell::clearImage()
     m_imageShaderPtr.reset();
     m_bgTexturePtr.reset();
     m_bgImagePath.clear();
-    resetFlag(m_flags, FLAGS::IMAGE | FLAGS::COLORSHADER);
+    resetFlag(m_flags, FLAGS::IMAGE);
 }
 
 void Cell::loadShader(const std::string_view& shader_path)
@@ -741,21 +742,10 @@ void Cell::loadShader(const std::string_view& shader_path)
     if(!sf::Shader::isAvailable()) return;
 
     m_imageShaderPtr = std::make_unique<sf::Shader>();
-    if(m_imageShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
-    {
-        setFlag(m_flags, FLAGS::COLORSHADER);
-    }
-    else
-    {
-        resetShader();
-    }
+    if(m_imageShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment)) return;
+    m_imageShaderPtr.reset();
 }
 
-void Cell::resetShader()
-{
-    m_imageShaderPtr.reset();
-    resetFlag(m_flags, FLAGS::COLORSHADER);
-}
 sf::Vector2f Cell::getCellPosition() const
 {
     return this->getPosition();
@@ -774,7 +764,7 @@ bool Cell::isFlag(FLAGS flag) const
 void Cell::drawCell()
 {
     updateCell();
-    if(checkFlag(m_flags, FLAGS::COLORSHADER)) m_rootDrawerPtr->draw(*this, m_imageShaderPtr.get());
+    if(m_imageShaderPtr) m_rootDrawerPtr->draw(*this, m_imageShaderPtr.get());
     else m_rootDrawerPtr->draw(*this);
 
     m_rootDrawerPtr->draw(m_top.getVertices(), 6, sf::PrimitiveType::Triangles);
@@ -812,13 +802,13 @@ bool Cell::updateState(sf::Vector2f local_mouse_position, bool auto_hide, bool c
     if(canvas_hovered && isHovered(local_mouse_position))
     {
         if(!checkFlag(m_flags, FLAGS::HOVERED)) setFlag(m_flags, FLAGS::HOVERED);
-        if(checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::TRANSPARENT);
+        if(checkFlag(m_flags, FLAGS::ALPHAREDUCED)) resetFlag(m_flags, FLAGS::ALPHAREDUCED);
         return true;
     }
     // not hovering
     if(checkFlag(m_flags, FLAGS::HOVERED)) resetFlag(m_flags, FLAGS::HOVERED);
-    if(auto_hide || checkFlag(m_flags, FLAGS::AUTOHIDE)) setFlag(m_flags, FLAGS::TRANSPARENT);
-    else resetFlag(m_flags, FLAGS::TRANSPARENT);
+    if(auto_hide || checkFlag(m_flags, FLAGS::AUTOHIDE)) setFlag(m_flags, FLAGS::ALPHAREDUCED);
+    else resetFlag(m_flags, FLAGS::ALPHAREDUCED);
     return false;
 }
 
@@ -931,8 +921,8 @@ void Cell::updateCanvasStyle(TextureStyle* stylePtr)
 
 void Cell::updateShader(sf::Color bg_color, float transparent_level)
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::IMAGE); 
+    if(!m_imageShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
 
     // for background image texture
     m_imageShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);

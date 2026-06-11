@@ -7,8 +7,8 @@ namespace sfml_widgets // Button
 /// Constructors / Destructor / Operators
 ///////////////////////////////////////////////////////////////////
 
-Button::Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size),
-m_text(font), m_texture(), m_image(m_texture)
+Button::Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size),
+m_text(font)
 {   
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -26,8 +26,8 @@ m_text(font), m_texture(), m_image(m_texture)
 
 }
 
-Button::Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size),
-m_text(font), m_texture(), m_image(m_texture)
+Button::Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size),
+m_text(font)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -47,14 +47,6 @@ m_text(font), m_texture(), m_image(m_texture)
 Button::~Button()
 {
     clearImage();
-}
-
-bool Button::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
-{
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
-
-    if(!mouse_position) *mouse_position = getMousePosition();
-    return mouseCallBackEvent(event, *mouse_position).is_used;
 }
 
 bool Button::captureKeyEvents(const sf::Event& event)
@@ -78,12 +70,12 @@ bool Button::captureKeyEvents(const sf::Event& event)
     return false;
 }
 
-void Button::setText(const std::string& text)
+void Button::setText(const sf::String& text)
 {
-    if(text.length() >= parameters::CHAR_LIMIT) return;
+    m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
 
-    if(!text.empty()) setFlag(m_flags, FLAGS::TEXT);
-    else resetFlag(m_flags, FLAGS::TEXT);
+    if(text.isEmpty()) resetFlag(m_flags, FLAGS::TEXT);
+    else setFlag(m_flags, FLAGS::TEXT);
     
     m_text.setString(text);
     updateTextSize();
@@ -121,7 +113,7 @@ void Button::setTextFont(const sf::Font& font)
 {
     // outside reference of font so any internal reference gets cleared
     m_text.setFont(font);
-    if(m_font) m_font.reset();
+    if(m_fontPtr) m_fontPtr.reset();
 
     updateTextSize(); //!< auto update size
     updateTextPosition();
@@ -129,14 +121,14 @@ void Button::setTextFont(const sf::Font& font)
 
 void Button::setTextFont(const sf::Font&& font)
 {
-    m_font = std::make_unique<const sf::Font>(std::move(font));
-    m_text.setFont(*m_font);
+    m_fontPtr = std::make_unique<const sf::Font>(std::move(font));
+    m_text.setFont(*m_fontPtr);
 
     updateTextSize(); //!< auto update size
     updateTextPosition();
 }
 
-bool Button::setImage(const std::string& image_path)
+bool Button::setImage(const sf::String& image_path)
 {
     // load from disk
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
@@ -159,12 +151,19 @@ bool Button::setImage(const std::string& image_path)
         return false;
     }
 
-    if(checkFlag(m_flags, FLAGS::IMAGE)) global_image_buffer.decrementRefCounter(m_imagePath);
+    if(m_texturePtr) global_image_buffer.decrementRefCounter(m_imagePath);
     // texture update
-    m_texture = std::move(temp);
+    m_texturePtr = std::make_unique<sf::Texture>(std::move(temp));
     m_imagePath = std::move(image_path);
-    m_texture.setSmooth(true);
-    m_image.setTexture(m_texture, true);
+    m_texturePtr->setSmooth(true);
+
+    if(!m_imagePtr)
+    {
+        m_imagePtr = std::make_unique<sf::Sprite>(*m_texturePtr);
+        m_imagePtr->setRotation(this->getRotation());
+    }
+
+    else m_imagePtr->setTexture(*m_texturePtr, true);
 
     setFlag(m_flags, FLAGS::IMAGE);
     updateClipShader();
@@ -185,16 +184,18 @@ void Button::setImageSide(Button::Side image_side)
 
 void Button::clearImage()
 {
-    if(!checkFlag(m_flags, FLAGS::IMAGE)) return;
-    resetFlag(m_flags, FLAGS::IMAGE);
-    m_texture = sf::Texture();
+    if(!m_texturePtr) return;
+
     ImageCache::getInstance().decrementRefCounter(m_imagePath);
+    m_texturePtr.reset();
+    m_imagePtr.reset();
     m_imagePath.clear();
+    resetFlag(m_flags, FLAGS::IMAGE);
 }
 
-void Button::setTheme(ButtonStyle __button_style)
+void Button::setTheme(ButtonStyle button_style)
 {
-    m_style = __button_style;
+    m_style = button_style;
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
@@ -204,13 +205,12 @@ void Button::setTheme(ButtonStyle __button_style)
 
 void Button::drawWidget()
 {
-    if(checkFlag(m_flags, FLAGS::IMAGE)) m_master.draw(m_image, &m_clipShader);
+    if(m_imagePtr)
+    {
+        if(m_clipShaderPtr) m_master.draw(*m_imagePtr, m_clipShaderPtr.get());
+        else m_master.draw(*m_imagePtr);
+    }
     if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
-}
-
-void Button::config(FLAGS mask)
-{
-
 }
 
 void Button::updatePosition()
@@ -233,7 +233,7 @@ void Button::updateSize()
 void Button::updateRotation()
 {
     m_text.setRotation(this->getRotation());
-    m_image.setRotation(this->getRotation());
+    if(m_imagePtr) m_imagePtr->setRotation(this->getRotation());
     updateTextPosition();
     updateImagePosition();
 }
@@ -292,7 +292,7 @@ void Button::updateState()
 
 void Button::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<Button>();
         if(synced_token == m_generationToken) return;
@@ -304,20 +304,20 @@ void Button::updateTheme()
 
 void Button::updateClipShader()
 {
-    if(!checkFlag(m_flags, FLAGS::CLIPSHADER)) return;
+    if(!m_clipShaderPtr) return;
 
     // side image sprite
-    m_clipShader.setUniform("texture",  sf::Shader::CurrentTexture);
-    m_clipShader.setUniform("size",     sf::Glsl::Vec2(m_size));
-    m_clipShader.setUniform("radius",   m_radius);
-    m_clipShader.setUniform("opacity", m_opacity);
-    m_clipShader.setUniform("side", m_imagePosition == Side::Right ? 1.f : 0.f);
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
+    m_clipShaderPtr->setUniform("side", m_imagePosition == Side::Right ? 1.f : 0.f);
 }
 
 void Button::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
 
     // for background image texture
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
@@ -342,10 +342,10 @@ void Button::updateTextPosition()
 {
     if(!checkFlag(m_flags, FLAGS::TEXT)) return;
 
-    if(checkFlag(m_flags, FLAGS::IMAGE) && m_imagePosition == Side::Center)
+    if(m_imagePosition == Side::Center)
     {
+        m_imagePosition = Side::Left;
         if(m_textPosition == Side::Left) m_imagePosition = Side::Right;
-        else m_imagePosition = Side::Left;
     }
 
     sf::FloatRect bounds = m_text.getLocalBounds();
@@ -391,10 +391,10 @@ void Button::updateTextSize()
 
 void Button::updateImagePosition()
 {
-    if(!checkFlag(m_flags, FLAGS::IMAGE)) return;
+    if(!m_imagePtr) return;
 
-    sf::FloatRect bounds = m_image.getLocalBounds();
-    m_image.setOrigin(bounds.position + bounds.size / 2.f);
+    sf::FloatRect bounds = m_imagePtr->getLocalBounds();
+    m_imagePtr->setOrigin(bounds.position + bounds.size / 2.f);
 
     sf::Vector2f local_offset;
     local_offset.y = m_size.y / 2.f;
@@ -414,30 +414,32 @@ void Button::updateImagePosition()
         break;
     
     }
-    m_image.setPosition(this->getTransform().transformPoint(local_offset));
+    m_imagePtr->setPosition(this->getTransform().transformPoint(local_offset));
 }
 
 bool Button::updateImageSize()
 {
-    if(!checkFlag(m_flags, FLAGS::IMAGE)) return false;
+    if(!m_texturePtr || !m_imagePtr) return false;
     sf::Vector2u new_image_size{static_cast<unsigned int>(m_size.x) / 3, static_cast<unsigned int>(m_size.y)}; //!< image takes a third of the button's width
     std::optional<sf::Image> resized_image;
-    // Since IMAGE flag is up, it's safe to assume that image is already loaded in memory
-    // unless if another widget double cleared the same path, then the following loads from disk
-    // and if the image is not found on disk, then texture resizes with degraded quality
+
+    // obtains original image from cache
     std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_imagePath, false);
     
+    // copy and resize the image
     if(disk_image) resized_image = resize_image(**disk_image, new_image_size);
-    else resized_image = resize_image(m_texture.copyToImage(), new_image_size);
+    // image somehow not found in cache nor disk, try to copy existing data instead
+    else resized_image = resize_image(m_texturePtr->copyToImage(), new_image_size);
 
     if(resized_image)
     {
         sf::Texture temp;
         if(temp.loadFromImage(*resized_image))
         {
-            m_texture = std::move(temp);
-            m_texture.setSmooth(true);
-            m_image.setTexture(m_texture, true);
+            // try to load this from memory to skip temp
+            m_texturePtr = std::make_unique<sf::Texture>(std::move(temp));
+            m_texturePtr->setSmooth(true);
+            m_imagePtr->setTexture(*m_texturePtr, true);
             return true;
         }
     }

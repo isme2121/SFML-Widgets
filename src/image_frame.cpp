@@ -13,7 +13,7 @@ ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
     // no need for background texture
-    setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
 ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
@@ -26,21 +26,12 @@ ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, co
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
     // no need for background texture
-    setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
 ImageFrame::~ImageFrame()
 {
     clearImage();
-}
-
-bool ImageFrame::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
-{
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESTRICTED)) return false;
-
-    if(!mouse_position) *mouse_position = getMousePosition();
-
-    return mouseCallBackEvent(event, *mouse_position).is_used;
 }
 
 bool ImageFrame::captureKeyEvents(const sf::Event& event)
@@ -95,6 +86,7 @@ bool ImageFrame::setImage(const std::string& image_path)
         m_textTexturePtr->clear(sf::Color::Transparent);
         m_textTexturePtr.reset();
         m_noImageTextPtr.reset();
+        resetFlag(m_flags, FLAGS::TEXT);
     }
 
     // texture update
@@ -157,13 +149,14 @@ void ImageFrame::drawWidget()
 
     // if we have an image, it would already be assigned to sprite
     // so no need for setTexture call
-    m_master.draw(*m_imageSpritePtr, &m_clipShader);
+    if(m_clipShaderPtr) m_master.draw(*m_imageSpritePtr, m_clipShaderPtr.get());
+    else m_master.draw(*m_imageSpritePtr);
 }
 
 void ImageFrame::config(FLAGS mask)
 {
     // keep bg image blocked
-    if(!checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) setFlag(m_flags, FLAGS::BLOCKBGIMAGE);
+    if(!checkFlag(m_flags, FLAGS::NOBGIMAGE)) setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
 void ImageFrame::updatePosition()
@@ -245,7 +238,7 @@ void ImageFrame::updateState()
 
 void ImageFrame::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<ImageFrame>();
         if(synced_token == m_generationToken) return;
@@ -257,12 +250,12 @@ void ImageFrame::updateTheme()
 
 void ImageFrame::updateClipShader()
 {
-    if(!checkFlag(m_flags, FLAGS::CLIPSHADER)) return;
+    if(!m_clipShaderPtr) return;
 
-    m_clipShader.setUniform("texture", sf::Shader::CurrentTexture);
-    m_clipShader.setUniform("size", sf::Glsl::Vec2(m_size));
-    m_clipShader.setUniform("radius", m_radius);
-    m_clipShader.setUniform("opacity", m_opacity);
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
 }
 
 void ImageFrame::updateColorShader()
@@ -280,6 +273,7 @@ void ImageFrame::writeText()
     // allocate sprite here if needed
     if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(m_textTexturePtr->getTexture());
 
+    setFlag(m_flags, FLAGS::TEXT);
     updateText();
 }
 

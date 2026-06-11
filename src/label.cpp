@@ -10,7 +10,6 @@ m_text(font)
     m_currentOutlineColorPtr = &m_style.text_outline_color;
     m_currentOutlineThicknessPtr = &m_style.text_outline_thickness;
 
-    setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     setText(text);
@@ -24,19 +23,10 @@ m_text(font)
     m_currentOutlineColorPtr = &m_style.text_outline_color;
     m_currentOutlineThicknessPtr = &m_style.text_outline_thickness;
 
-    setFlag(m_flags, FLAGS::CLIPSHADER); //!< Allow radius update
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     setText(text);
     this->setOutlineThickness(0.f);
-}
-
-bool Label::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
-{
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
-
-    if(!mouse_position) *mouse_position = getMousePosition();
-    return mouseCallBackEvent(event, *mouse_position).is_used;
 }
 
 bool Label::captureKeyEvents(const sf::Event& event)
@@ -243,7 +233,7 @@ void Label::updateState()
 
 void Label::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<Label>();
         if(synced_token == m_generationToken) return;
@@ -260,8 +250,8 @@ void Label::updateClipShader()
 
 void Label::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
 
     // for background image texture
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);

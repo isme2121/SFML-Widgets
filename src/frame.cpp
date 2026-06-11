@@ -54,12 +54,8 @@ Frame::~Frame()
     }
 }
 
-bool Frame::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
+bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESTRICTED)) return false;
-
-    if(!mouse_position) *mouse_position = getMousePosition();
-
     // handle widgets events
     std::vector<Widget*>::reverse_iterator it_end = m_childWidgets.rbegin();
     std::vector<Widget*>::const_reverse_iterator it_begin = m_childWidgets.crend();
@@ -72,18 +68,17 @@ bool Frame::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2
         }
         ++it_end;
     }
+    return false;
+}
 
-    // handle frame widget events
-    W_MouseEventDetails details = mouseCallBackEvent(event, *mouse_position);
-
+void Frame::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
     // handle frame unique events
     if(details.event_type == W_MouseEventType::Scroll && checkFlag(m_flags, FLAGS::HOVERED))
     {
         scroll(details.scroll_delta);
         details.is_used = true;
     }
-
-    return details.is_used;
 }
 
 bool Frame::captureKeyEvents(const sf::Event& event)
@@ -124,7 +119,8 @@ void Frame::display()
 
     m_texture.display();
     m_sprite.setTexture(m_texture.getTexture());
-    m_master.draw(m_sprite, &m_clipShader);
+    if(m_clipShaderPtr) m_master.draw(m_sprite, m_clipShaderPtr.get());
+    else m_master.draw(m_sprite);
 }
 
 sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
@@ -193,7 +189,7 @@ void Frame::drawWidget()
 
 void Frame::config(FLAGS mask)
 {
-    resetFlag(mask, FLAGS::GRID | FLAGS::INDICATOR | FLAGS::AUTOHIDE | FLAGS::AUTOSELECT | FLAGS::SCROLL | FLAGS::PAN | FLAGS::BLOCKBGIMAGE);
+    mask &= (FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE);
     for(Widget* w : m_childWidgets) w->configure(mask);
 }
 
@@ -294,7 +290,7 @@ void Frame::updateState()
 
 void Frame::updateTheme()
 {
-    if(auto t = m_theme.lock())
+    if(auto t = m_themePtr.lock())
     {
         const std::size_t synced_token = t->getToken<Frame>();
         if(synced_token == m_generationToken) return;
@@ -306,18 +302,18 @@ void Frame::updateTheme()
 
 void Frame::updateClipShader()
 {
-    if(!checkFlag(m_flags, FLAGS::CLIPSHADER)) return;
+    if(!m_clipShaderPtr) return;
 
-    m_clipShader.setUniform("texture",  sf::Shader::CurrentTexture);
-    m_clipShader.setUniform("size",     sf::Glsl::Vec2(m_size));
-    m_clipShader.setUniform("radius",   m_radius);
-    m_clipShader.setUniform("opacity",   m_opacity);
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
 }
 
 void Frame::updateColorShader()
 {
-    if(!checkFlag(m_flags, FLAGS::COLORSHADER)) return;
-    bool render_texture = checkFlag(m_flags, FLAGS::BGIMAGE); 
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
 
     m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     if(render_texture)
@@ -507,10 +503,8 @@ void Frame::scroll(float delta)
     refreshView();
 }
 
-void Frame::drawChildWidget(const sf::Drawable& __widget, const sf::RenderStates state)
+void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
-
     // prevent refreshing at each call
     if(!checkFlag(m_flags, FLAGS::DRAWING))
     {
@@ -520,20 +514,20 @@ void Frame::drawChildWidget(const sf::Drawable& __widget, const sf::RenderStates
         updateState();
     }
 
-    m_texture.draw(__widget, state);
+    m_texture.draw(w, state);
 }
 
-void Frame::addWidget(Widget& __widget)
+void Frame::addWidget(Widget& w)
 {
-    m_childWidgets.emplace_back(&__widget);
+    m_childWidgets.emplace_back(&w);
     updateGrid();
     updateFrameHeight();
     setFlag(m_flags, FLAGS::LONGSKIP); //!< skip initial drawing part (child widget handles it)
 }
 
-void Frame::removeWidget(Widget& __widget)
+void Frame::removeWidget(Widget& w)
 {
-    std::vector<Widget*>::iterator it = std::find(m_childWidgets.begin(), m_childWidgets.end(), &__widget);
+    std::vector<Widget*>::iterator it = std::find(m_childWidgets.begin(), m_childWidgets.end(), &w);
     if(it != m_childWidgets.end()) 
     {
         m_childWidgets.erase(it);
@@ -543,13 +537,13 @@ void Frame::removeWidget(Widget& __widget)
     }
 }
 
-void Frame::updateWidget(Widget& __old_widget, Widget& __new_widget)
+void Frame::updateWidget(Widget& old_widget, Widget& new_widget)
 {
-    std::vector<Widget*>::iterator it = std::find(m_childWidgets.begin(), m_childWidgets.end(), &__old_widget);
+    std::vector<Widget*>::iterator it = std::find(m_childWidgets.begin(), m_childWidgets.end(), &old_widget);
     if(it != m_childWidgets.end())
     {
         m_childWidgets.erase(it);
-        m_childWidgets.emplace_back(&__new_widget);
+        m_childWidgets.emplace_back(&new_widget);
     }
 }
 }

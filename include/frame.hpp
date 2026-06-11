@@ -40,30 +40,6 @@ public:
     Frame& operator=(const Frame& other) = delete;
 
     ~Frame() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events
-    ///
-    /// Called in the events loop, can recieve the current mouse position based on
-    /// root window view to skip a few steps internally.
-    ///
-    /// This method handles the frame's child widgets' mouse events first so avoid
-    /// calling this method for any child widget manually after calling it from the root
-    /// frame object.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note frame with `FLAGS::BLOCKED | FLAGS::HIDDEN | FLAGS::RESTRICTED`
-    /// states cannot trigger mouse events.
-    ///
-    /// @see `Widget::bindMouseEvent`, `Widget::unbindMouseEvent`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& _event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events
@@ -175,6 +151,10 @@ public:
     void setTheme(TextureStyle __frame_style);
 
 private:
+    bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
+
+    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the frame and it's child widgets
     ///
@@ -322,34 +302,34 @@ private:
     /// @see `RenderContext`, `Frame::draw`, `Frame::display`
     ///
     ///////////////////////////////////////////////////////////////////
-    void drawChildWidget(const sf::Drawable& __widget, const sf::RenderStates state = sf::RenderStates::Default);
+    void drawChildWidget(const sf::Drawable& w, const sf::RenderStates state = sf::RenderStates::Default);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Appends a child widget to frame, managed by base class
     ///
-    /// @param __widget new widget to add
+    /// @param w new widget to add
     ///
     ///////////////////////////////////////////////////////////////////
-    void addWidget(Widget& __widget);
+    void addWidget(Widget& w);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes a child widget's reference from frame, managed
     /// by base class
     ///
-    /// @param __widget child widget to remove
+    /// @param w child widget to remove
     ///
     ///////////////////////////////////////////////////////////////////
-    void removeWidget(Widget& __widget);
+    void removeWidget(Widget& w);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates a reference to an existing child widget after moving,
     /// managed by base class
     ///
-    /// @param __old_widget reference to previous widget
-    /// @param __new_widget reference to the same widget after moving
+    /// @param old_widget reference to previous widget
+    /// @param new_widget reference to the same widget after moving
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateWidget(Widget& __old_widget, Widget& __new_widget);
+    void updateWidget(Widget& old_widget, Widget& new_widget);
 
     ///////////////////////////////////////////////////////////////////
     /// Member Variables

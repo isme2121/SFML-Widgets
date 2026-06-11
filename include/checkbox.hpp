@@ -37,31 +37,6 @@ public:
     CheckBox& operator=(const CheckBox&) = delete;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events.
-    ///
-    /// Called in the events loop, can recieve the current mouse position based on
-    /// root window view to skip a few steps internally.
-    ///
-    /// Mouse events such as pressing, scrolling, holding are triggered within the
-    /// method while also updating the widget's status such as focus, select, hover
-    /// , and transparent, then trigger a callback if assigned to an event by the user.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note widgets with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
-    /// trigger mouse events.
-    ///
-    /// @see `Widget::bindMouseEvent`, `Widget::unbindMouseEvent`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
-    
-    ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events.
     ///
     /// Captures keyboard events in the events loop, can capture individual
@@ -199,9 +174,11 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(CheckboxStyle __checkbox_style);
+    void setTheme(CheckboxStyle checkbox_style);
 
 private:
+    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the checkbox on master object
     ///
@@ -308,9 +285,9 @@ private:
     MouseCallback m_clickCallback = nullptr;                                //!< State update callback
     sf::Color* m_currentTextColorPtr = nullptr;                             //!< Pointer to the current text color
     DIRECTION m_textSide = DIRECTION::LEFT;                                 //!< Text's position based on the checkbox
-    float m_textSizeRatio = 0.5f;                                           //!< Text size scale based on check box size and direction
-    unsigned int m_charSize = 24;                                           //!< Actual text size, can be set manually or updated with ratio
-    float m_deadSpace = 0.3f;                                               //!< Space between text and the checkbox
+    float m_textSizeRatio = 0.5f;                                           //!< Text size scale based on check box size and direction, range= [0.f, 2.f]
+    unsigned int m_charSize = parameters::CHAR_SIZE;                        //!< Actual text size, can be set manually or updated with ratio
+    float m_deadSpace = 0.2f;                                               //!< Space between text and the checkbox
     CheckboxStyle m_style = Theme::checkbox_style::CHECKBOX_STALE_VIOLET;   //!< Checkbox's default style
 };
 

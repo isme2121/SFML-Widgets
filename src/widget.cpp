@@ -7,7 +7,7 @@ namespace sfml_widgets // Widget
 /// Public
 ///////////////////////////////////////////////////////////////////
 
-Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_name("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
+Widget::Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
 m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     setFlag(m_flags, FLAGS::INIT);
@@ -15,7 +15,7 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     m_windowSize = sf::Vector2f(root.getSize());
 }
 
-Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_name("Widget_" + std::to_string(s_widgets.size())), m_master(root), m_size(size), m_position(position),
+Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
 m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 {
     root.addWidget(*this);
@@ -26,10 +26,10 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 
 Widget::~Widget()
 {
-    resetBackGroundTexture(true);
+    resetBackgroundTexture();
     if(s_focusedWidgetPtr == this) s_focusedWidgetPtr = nullptr;
     if(s_widgetToFocusPtr == this) s_widgetToFocusPtr = nullptr;
-    if(auto w_group = m_group.lock()) w_group->remove(this);
+    if(auto w_group = m_groupPtr.lock()) w_group->remove(this);
     if(Frame* root = m_master.getFramePtr()) root->removeWidget(*this);
     std::vector<Widget*>::const_iterator this_is_it = std::find(s_widgets.begin(), s_widgets.end(), this);
     if(this_is_it != s_widgets.end()) s_widgets.erase(this_is_it);
@@ -46,13 +46,13 @@ void Widget::draw()
     
     updateFocus();      //!< updates focused widget and triggers focus and unfocus callback
     
-    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
+    if(checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) return;
 
-    if(checkFlag(m_flags, FLAGS::COLORSHADER)) m_master.draw(*this, m_bgShaderPtr.get());
+    if(m_bgShaderPtr) m_master.draw(*this, m_bgShaderPtr.get());
     else m_master.draw(*this);
 
     drawWidget();
-    if(m_ToolTip) m_ToolTip->draw(checkFlag(m_flags, FLAGS::HOVERED));
+    if(m_ToolTipPtr) m_ToolTipPtr->draw(checkFlag(m_flags, FLAGS::HOVERED));
 }
 
 void Widget::configure(FLAGS flags)
@@ -62,23 +62,144 @@ void Widget::configure(FLAGS flags)
     toggle(m_flags, mask);
     setFlag(m_flags, FLAGS::MODIFIED);
 
+    // flags that should remain in sync with root frame if there is one
     if(Frame* root = m_master.getFramePtr())
     {
-        // flags inherited from root frame
         if(root->isFlag(FLAGS::HIDDEN)) mask |= FLAGS::HIDDEN;
         if(root->isFlag(FLAGS::BLOCKED)) mask |= FLAGS::BLOCKED;
     }
 
-    if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) resetBackGroundTexture(true);
+    if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
     
-    // flags that are handled in the events loop should be immediately updated
-    if(checkFlags(m_flags, FLAGS::AUTOHIDE | FLAGS::HOVERED)) resetFlag(m_flags, FLAGS::TRANSPARENT);
-    else if(!checkFlag(m_flags, FLAGS::AUTOHIDE) && checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::TRANSPARENT);
-    else if(checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) setFlag(m_flags, FLAGS::TRANSPARENT);
+    /* flags that should be immediately updated */
+
+    // apply transparency if flag was just set
+    if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+        setFlag(m_flags, FLAGS::ALPHAREDUCED);
+
+    // no TRANSPARENT, remove transparency if we are hovering
+    else if(checkFlag(m_flags, FLAGS::HOVERED))
+        resetFlag(m_flags, FLAGS::ALPHAREDUCED);
+
+    // no TRANSPARENT | HOVERED, remove transparency if AT was just reset
+    else if(!checkFlag(m_flags, FLAGS::AUTOTRANSPARENT) && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
+        resetFlag(m_flags, FLAGS::ALPHAREDUCED);
+
+    // or the opposite of ^
+    else if(checkFlag(m_flags, FLAGS::AUTOTRANSPARENT) && !checkFlag(m_flags, FLAGS::HOVERED))
+        setFlag(m_flags, FLAGS::ALPHAREDUCED);
 
     config(mask);
 }
 
+bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
+{
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
+
+    if(!mouse_position) *mouse_position = getMousePosition();    
+
+    updateMouseState(event, *mouse_position); //!< HOVERED & ALPHAREDUCED flags are updated here
+
+    if(preProcessMouseEvents(event, *mouse_position)) return true;
+
+    W_MouseEventDetails event_details;
+
+    // pressed mouse button
+    if(const sf::Event::MouseButtonPressed* clicked = event.getIf<sf::Event::MouseButtonPressed>())
+    {
+        event_details.event_type = W_MouseEventType::Press;
+        event_details.button = clicked->button;
+
+        m_memButton.reset(); //!< new pressed button
+    
+        if(checkFlag(m_flags, FLAGS::HOVERED))
+        {
+            // only time select and focus flag are set is when clicked
+            setFlag(m_flags, FLAGS::SELECTED);
+            focusWidget(*this, event);
+
+            m_memButton.emplace(clicked->button); //!< for release event
+            if(clicked->button == parameters::ACTIVE_MOUSE_BUTTON) setFlag(m_flags, FLAGS::ACTIVE);
+            
+            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_pressEvents.find(clicked->button);
+            if(it != m_pressEvents.end()) it->second(*clicked);
+
+            event_details.is_used = true;
+        }
+        else
+        {
+            resetFlag(m_flags, FLAGS::SELECTED | FLAGS::ACTIVE);
+            unfocusWidget(*this, event); //!< only time a widget in unfocused is when clicking outside of bounds
+        }
+    }
+
+    // released mouse button (after pressing it)
+    else if(const sf::Event::MouseButtonReleased* released = event.getIf<sf::Event::MouseButtonReleased>())
+    {
+        sf::Mouse::Button released_button = released->button;
+
+        event_details.event_type = W_MouseEventType::Release;
+        event_details.button = released_button;
+
+        if(released_button == parameters::ACTIVE_MOUSE_BUTTON) resetFlag(m_flags, FLAGS::ACTIVE);
+
+        // if widget is selected & hovered & memory mouse button was released
+        if(checkFlags(m_flags, FLAGS::SELECTED | FLAGS::HOVERED) && m_memButton && m_memButton.value() == released_button)
+        {
+            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
+            if(it != m_releaseEvents.end()) it->second(*released);
+            event_details.is_used = true;
+        }
+        else
+        {
+            // widget remains selected unless if mouse was pressed or released outside of bounds
+            resetFlag(m_flags, FLAGS::SELECTED);
+        }
+        // memory resets after releasing mouse anywhere
+        m_memButton.reset();
+    }
+
+    // scrolled while hovering
+    else if(const sf::Event::MouseWheelScrolled* scrolled = event.getIf<sf::Event::MouseWheelScrolled>())
+    {
+        event_details.event_type = W_MouseEventType::Scroll;
+        event_details.scroll_delta = scrolled->delta;
+
+        if(checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
+        {
+            m_scrollCallBack(*scrolled);
+            event_details.is_used = true;
+        }
+    }
+
+    else if(const sf::Event::Resized* resized = event.getIf<sf::Event::Resized>())
+    {
+        event_details.is_used = true;
+        Widget::resizeWidgets(m_master.getRootWindowPtr(), *resized);
+    }
+    
+    // holding mouse button
+    else if(checkFlag(m_flags, FLAGS::ACTIVE))
+    {
+        event_details.event_type = W_MouseEventType::Hold;
+        event_details.button = parameters::ACTIVE_MOUSE_BUTTON;
+
+        if(m_holdCallBack)
+        {
+            m_holdCallBack(event);
+            event_details.is_used = true;
+        }
+        // prevents calling press callback after releasing hold
+        if(checkFlag(m_flags, FLAGS::SELECTED) && parameters::UNSELECT_WHEN_HOLD)
+        {
+            resetFlag(m_flags, FLAGS::SELECTED);
+        }
+    }
+
+    postProcessMouseEvents(event_details, event, *mouse_position);
+    return event_details.is_used;
+
+}
 void Widget::setWidgetPosition(sf::Vector2f new_position)
 {
     m_position = new_position;
@@ -217,40 +338,34 @@ void Widget::unbindShortCut(const std::string& tag)
 bool Widget::loadClipShader(const std::string_view& shader_path)
 {
     if(!sf::Shader::isAvailable()) return false;
-    if(m_clipShader.loadFromFile(shader_path, sf::Shader::Type::Fragment))
+    m_clipShaderPtr= std::make_unique<sf::Shader>();
+    if(m_clipShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
     {
-        setFlag(m_flags, FLAGS::CLIPSHADER);
         updateClipShader();
         return true;
     };
+    m_clipShaderPtr.reset();
     return false;
 }
 
 bool Widget::loadColorShader(const std::string_view& shader_path)
 {
-    if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE) || !sf::Shader::isAvailable()) return false;
+    if(!sf::Shader::isAvailable()) return false;
     
     // discarding previous shader because a fail in loadFromFile may end up clearing it anyways
     m_bgShaderPtr = std::make_unique<sf::Shader>();
     if(m_bgShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
     {   
-        setFlag(m_flags, FLAGS::COLORSHADER);
         updateColorShader();
         return true;
     };
-    resetColorShader();
+    m_bgShaderPtr.reset();
     return false;
 }
 
-void Widget::resetColorShader()
+bool Widget::setBackgroundTexture(const std::string& file_path)
 {
-    m_bgShaderPtr.reset();
-    resetFlag(m_flags, FLAGS::COLORSHADER);
-}
-
-bool Widget::setBackGroundTexture(const std::string& file_path, const std::string& shader_path)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKBGIMAGE)) return false;
+    if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
     // load from disk
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
     std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(file_path);
@@ -272,9 +387,9 @@ bool Widget::setBackGroundTexture(const std::string& file_path, const std::strin
         return false;
     }
 
-    if(checkFlag(m_flags, FLAGS::BGIMAGE))
+    if(m_bgShaderPtr)
     {
-        global_image_buffer.decrementRefCounter(m_bgTexturePath);
+        global_image_buffer.decrementRefCounter(m_bgImagePath);
         *m_bgTexturePtr = std::move(temp); //!< use existing memory
     }
     else
@@ -284,35 +399,34 @@ bool Widget::setBackGroundTexture(const std::string& file_path, const std::strin
     }
     
     // loading shader
-    if(!shader_path.empty()) loadColorShader(shader_path);
+    if(!m_bgShaderPtr) loadColorShader(parameters::TEXTURE_COLOR_SHADER_PATH);
+
     // texture update
     m_bgTexturePtr->setSmooth(true);
     this->setTexture(m_bgTexturePtr.get(), true);
-    m_bgTexturePath = std::move(file_path);
-    setFlag(m_flags, FLAGS::BGIMAGE);
+    m_bgImagePath = std::move(file_path);
+
     return true;
 }
 
-void Widget::resetBackGroundTexture(bool clear_color_shader)
+void Widget::resetBackgroundTexture()
 {
     // BGIMAGE flag is always synced with ptr counter part
-    if(!checkFlag(m_flags, FLAGS::BGIMAGE)) return;
+    if(!m_bgTexturePtr) return;
 
-    ImageCache::getInstance().decrementRefCounter(m_bgTexturePath);
-    resetFlag(m_flags, FLAGS::BGIMAGE);
+    ImageCache::getInstance().decrementRefCounter(m_bgImagePath);
     // clear all image data
     m_bgTexturePtr.reset();
-    m_bgTexturePath.clear();
+    m_bgImagePath.clear();
     this->setTexture(nullptr);
-    if(clear_color_shader) resetColorShader();
 }
 
-void Widget::updateBackGroundSize()
+void Widget::refreshBackgroundTexture()
 {
-    if(!checkFlag(m_flags, FLAGS::BGIMAGE)) return;
+    if(!m_bgShaderPtr) return;
 
     std::optional<sf::Image> resized_image;
-    std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_bgTexturePath, false);
+    std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_bgImagePath, false);
 
     if(disk_image) resized_image = resize_image(**disk_image, sf::Vector2u(m_size));
     else resized_image = resize_image(m_bgTexturePtr->copyToImage(), sf::Vector2u(m_size));
@@ -334,7 +448,7 @@ void Widget::setCornerRadius(float radius)
     m_radius = std::max(0.f, std::min(radius, std::min<float>(m_size.x, m_size.y) / 2.f));
 
     // settle with rect if radius is 0 or radius is set but shader is not available
-    if(m_radius == 0.f || m_radius != 0.f && !checkFlag(m_flags, FLAGS::CLIPSHADER))
+    if(m_radius == 0.f)
     {
         m_radius = 0.f;
         m_cornerPoints = 1;
@@ -401,32 +515,32 @@ void Widget::linkWidget(std::shared_ptr<WidgetGroup>& new_group)
 {
     if(!new_group) return;
 
-    std::shared_ptr<WidgetGroup> resource = m_group.lock();
+    std::shared_ptr<WidgetGroup> resource = m_groupPtr.lock();
     if(resource == new_group) return;
     
     new_group->add(this);
     if(resource) resource->remove(this);
-    m_group = new_group;
+    m_groupPtr = new_group;
 }
 
 void Widget::unlinkWidget()
 {
-    if(std::shared_ptr<WidgetGroup> resource = m_group.lock())
+    if(std::shared_ptr<WidgetGroup> resource = m_groupPtr.lock())
     {
         resource->remove(this);
-        m_group.reset();
+        m_groupPtr.reset();
     }
 }
 
 void Widget::linkTheme(std::shared_ptr<WidgetTheme>& t)
 {
-    m_theme = t;
+    m_themePtr = t;
     m_generationToken = constants::KSTALE;
 }
 
 void Widget::unlinkTheme()
 {
-    m_theme.reset();
+    m_themePtr.reset();
 }
 
 const sf::Vector2f Widget::getWidgetPosition() const
@@ -492,120 +606,35 @@ bool Widget::isFlags(FLAGS bits) const
 
 std::weak_ptr<ToolTip> Widget::EnableToolTip(sf::Vector2f abs_position, sf::Time delay_ms, unsigned int text_size, ToolTipStyle style)
 {
-    if(m_ToolTip) return m_ToolTip;
+    if(m_ToolTipPtr) return m_ToolTipPtr;
 
-    m_ToolTip = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr(), abs_position, delay_ms, style));
-    if(m_ToolTip) m_ToolTip->setCharacterSize(text_size);
-    return m_ToolTip;
+    m_ToolTipPtr = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr(), abs_position, delay_ms, style));
+    if(m_ToolTipPtr) m_ToolTipPtr->setCharacterSize(text_size);
+    return m_ToolTipPtr;
 }
 
 void Widget::DisableToolTip()
 {
-    m_ToolTip.reset();
+    m_ToolTipPtr.reset();
 }
 
 ///////////////////////////////////////////////////////////////////
 /// Protected
 ///////////////////////////////////////////////////////////////////
 
-Widget::W_MouseEventDetails Widget::mouseCallBackEvent(const sf::Event& event, const sf::Vector2i& mouse_position)
+bool Widget::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
-    W_MouseEventDetails event_details;
-    updateMouseState(event, mouse_position); //!< HOVERED & TRANSPARENT flags are updated here
+    return false;
+}
 
-    // pressed mouse button
-    if(const sf::Event::MouseButtonPressed* clicked = event.getIf<sf::Event::MouseButtonPressed>())
-    {
-        event_details.event_type = W_MouseEventType::Press;
-        event_details.button = clicked->button;
-
-        m_memButton.reset(); //!< new pressed button
+void Widget::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
     
-        if(checkFlag(m_flags, FLAGS::HOVERED))
-        {
-            // only time select and focus flag are set is when clicked
-            setFlag(m_flags, FLAGS::SELECTED);
-            focusWidget(*this, event);
+}
 
-            m_memButton.emplace(clicked->button); //!< for release event
-            if(clicked->button == parameters::ACTIVE_MOUSE_BUTTON) setFlag(m_flags, FLAGS::ACTIVE);
-            
-            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_pressEvents.find(clicked->button);
-            if(it != m_pressEvents.end()) it->second(*clicked);
+void Widget::config(FLAGS mask)
+{
 
-            event_details.is_used = true;
-        }
-        else
-        {
-            resetFlag(m_flags, FLAGS::SELECTED | FLAGS::ACTIVE);
-            unfocusWidget(*this, event); //!< only time a widget in unfocused is when clicking outside of bounds
-        }
-    }
-
-    // released mouse button (after pressing it)
-    else if(const sf::Event::MouseButtonReleased* released = event.getIf<sf::Event::MouseButtonReleased>())
-    {
-        sf::Mouse::Button released_button = released->button;
-
-        event_details.event_type = W_MouseEventType::Release;
-        event_details.button = released_button;
-
-        if(released_button == parameters::ACTIVE_MOUSE_BUTTON) resetFlag(m_flags, FLAGS::ACTIVE);
-
-        // if widget is selected & hovered & memory mouse button was released
-        if(checkFlags(m_flags, FLAGS::SELECTED | FLAGS::HOVERED) && m_memButton && m_memButton.value() == released_button)
-        {
-            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
-            if(it != m_releaseEvents.end()) it->second(*released);
-            event_details.is_used = true;
-        }
-        else
-        {
-            // widget remains selected unless if mouse was pressed or released outside of bounds
-            resetFlag(m_flags, FLAGS::SELECTED);
-        }
-        // memory resets after releasing mouse anywhere
-        m_memButton.reset();
-    }
-
-    // scrolled while hovering
-    else if(const sf::Event::MouseWheelScrolled* scrolled = event.getIf<sf::Event::MouseWheelScrolled>())
-    {
-        event_details.event_type = W_MouseEventType::Scroll;
-        event_details.scroll_delta = scrolled->delta;
-
-        if(checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
-        {
-            m_scrollCallBack(*scrolled);
-            event_details.is_used = true;
-        }
-    }
-
-    else if(const sf::Event::Resized* resized = event.getIf<sf::Event::Resized>())
-    {
-        event_details.is_used = true;
-        Widget::resizeWidgets(m_master.getRootWindowPtr(), *resized);
-    }
-    
-    // holding mouse button
-    else if(checkFlag(m_flags, FLAGS::ACTIVE))
-    {
-        event_details.event_type = W_MouseEventType::Hold;
-        event_details.button = parameters::ACTIVE_MOUSE_BUTTON;
-
-        if(m_holdCallBack)
-        {
-            m_holdCallBack(event);
-            event_details.is_used = true;
-        }
-        // prevents calling press callback after releasing hold
-        if(checkFlag(m_flags, FLAGS::SELECTED) && parameters::UNSELECT_WHEN_HOLD)
-        {
-            resetFlag(m_flags, FLAGS::SELECTED);
-        }
-    }
-
-    return event_details;
 }
 
 void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_position)
@@ -618,7 +647,7 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
             setFlag(m_flags, FLAGS::HOVERED);
             if(m_gainhoverCallBack) m_gainhoverCallBack(event);
         }
-        resetFlag(m_flags, FLAGS::TRANSPARENT);
+        if(!checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
     else
     {
@@ -629,10 +658,10 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
         }
 
         bool root_hidden = false;
-        if(Frame* root = m_master.getFramePtr()) root_hidden = root->isFlag(FLAGS::TRANSPARENT);
+        if(Frame* root = m_master.getFramePtr()) root_hidden = root->isFlag(FLAGS::ALPHAREDUCED);
 
-        if(checkFlag(m_flags, FLAGS::AUTOHIDE) || root_hidden) setFlag(m_flags, FLAGS::TRANSPARENT);
-        else resetFlag(m_flags, FLAGS::TRANSPARENT);
+        if(checkFlags(m_flags, FLAGS::AUTOTRANSPARENT | FLAGS::TRANSPARENT) || root_hidden) setFlag(m_flags, FLAGS::ALPHAREDUCED);
+        else resetFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
 }
 
@@ -665,7 +694,7 @@ void Widget::updateFocus()
         if(s_focusedWidgetPtr != s_widgetToFocusPtr) //!< check if old is null or the same widget
         {
             /* here we know there's a new widget to focus */
-            std::shared_ptr<WidgetGroup> new_w_group = s_widgetToFocusPtr->m_group.lock();
+            std::shared_ptr<WidgetGroup> new_w_group = s_widgetToFocusPtr->m_groupPtr.lock();
             bool same_group = false; //!< assuming for now they don't share the same group
 
             if(s_focusedWidgetPtr) //!< old is not null?
@@ -673,7 +702,7 @@ void Widget::updateFocus()
                 // previous focused widget loses the resource even if they share the same group
                 // but only calls the callback if they don't share the same group
                 resetFlag(s_focusedWidgetPtr->m_flags, FLAGS::FOCUSED);
-                std::shared_ptr<WidgetGroup> old_w_group = s_focusedWidgetPtr->m_group.lock();
+                std::shared_ptr<WidgetGroup> old_w_group = s_focusedWidgetPtr->m_groupPtr.lock();
                 same_group = old_w_group && new_w_group && old_w_group == new_w_group;
 
                 if(!same_group)
@@ -707,7 +736,7 @@ void Widget::updateFocus()
         /* prev lose focus and no new widget demands the resource (clicked on non-widget space)*/
         
         resetFlag(s_focusedWidgetPtr->m_flags, FLAGS::FOCUSED);
-        std::shared_ptr<WidgetGroup> old_w_group = s_focusedWidgetPtr->m_group.lock();
+        std::shared_ptr<WidgetGroup> old_w_group = s_focusedWidgetPtr->m_groupPtr.lock();
 
         if(old_w_group && old_w_group->groupFocuslossCallback)
             old_w_group->focusOff(s_memUnfocusEvent);
@@ -758,36 +787,32 @@ sf::Vector2f Widget::getPoint(std::size_t index) const {
     };
 }
 ///////////////////////////////////////////////////////////////////
-/// Public static
+/// Static methods
 ///////////////////////////////////////////////////////////////////
 
-void Widget::focusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
+void Widget::focusWidget(Widget& w, std::optional<sf::Event> event) noexcept
 {
     if(s_FfoundFocusedWidget && !parameters::STACK_MOUSE_CALLBACKS) return;
 
     s_widgetToFocusPtr = &w;
-    s_memFocusEvent.emplace(*_e);
+    s_memFocusEvent.emplace(*event);
     s_FfoundFocusedWidget = true; //!< no more checking unless macro is set
     s_FrequestFocusUpdate = true;
 }
 
-void Widget::unfocusWidget(Widget& w, std::optional<const sf::Event> _e) noexcept
+void Widget::unfocusWidget(Widget& w, std::optional<sf::Event> event) noexcept
 {
     if(s_focusedWidgetPtr && s_focusedWidgetPtr == &w)
     {
         s_FrequestUnfocus = true;
-        s_memUnfocusEvent.emplace(*_e);
+        s_memUnfocusEvent.emplace(*event);
         s_FrequestFocusUpdate = true;
     }
 }
 
-///////////////////////////////////////////////////////////////////
-/// Private static
-///////////////////////////////////////////////////////////////////
-
-void Widget::resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized& _e)
+void Widget::resizeWidgets(const sf::RenderWindow* win_ptr, const sf::Event::Resized& event)
 {
-    sf::Vector2f win_size = sf::Vector2f(_e.size);
+    sf::Vector2f win_size = sf::Vector2f(event.size);
     if(win_size.x * win_size.y == 0.f)
         return;
 
@@ -798,7 +823,7 @@ void Widget::resizeWidgets(const sf::RenderWindow* pw, const sf::Event::Resized&
         const sf::RenderWindow* root = w->m_master.getRootWindowPtr();
 
         // root is the resized window?
-        if((!updated_view) && root && pw == root)
+        if((!updated_view) && root && win_ptr == root)
         {        
             // manually update view of the window to the new size
             sf::FloatRect view_size({0.f, 0.f}, win_size);

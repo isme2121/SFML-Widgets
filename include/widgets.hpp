@@ -36,7 +36,7 @@ class Cell;
 
 using Sequence = std::vector<Key>;                                          //!< Represents a sequence of key presses
 using SequenceFunction = std::function<void()>;                             //!< Required function structure for key press events
-using MouseCallback = std::function<void(std::optional<const sf::Event>)>;  //!< Required function structure for mouse press events
+using MouseCallback = std::function<void(std::optional<sf::Event>)>;  //!< Required function structure for mouse press events
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////         Enums               ///////////////////
@@ -46,46 +46,67 @@ using MouseCallback = std::function<void(std::optional<const sf::Event>)>;  //!<
 /// @brief Bit wise class for updating widget state & control
 /// management class
 ///
+/// The class is divided to multiple sections with each serving a
+/// separate role, their current states can be checked with
+/// `Widget::isFlag` & `Widget::isFlags` methods.
+///
+/// States are for internal flow control and are managed by the class,
+/// Flags however can be toggled using `Widget::configure` method,
+/// Derived flags are implemented in only a number of widgets while
+/// Base flags are universal for all widgets.
+///
+/// Flags are modified using bit operators such as `|`, `&`, `^` and
+/// more.
+///
 ///////////////////////////////////////////////////////////////////
 enum class FLAGS : std::int32_t
 {
-    IDLE = 0,                       //!< Default state
-    INIT = 1,                       //!< Initalized state
+// Main properties for flow control
+    IDLE = 1 << 0,                  //!< State: `default state`
+    INIT = 1 << 1,                  //!< State: `initialized state`
     MODIFIED = 1 << 2,              //!< State: `set automatically after an update`
-    FOCUSED = 1 << 3,               //!< State: `widget is clicked, only one widget can be focused at a time`
+    FOCUSED = 1 << 3,               //!< State: `focus resource obtained from clicking a widget by default`
 
-    HOVERED = 1 << 4,               //!< State: `mouse hovered within widget bounds`
-    SELECTED = 1 << 5,              //!< State: `widget is not yet active but can trigger callbacks and set active`
-    RESTRICTED = 1 << 6,            //!< State: `certain functions are limited temporarily`
-    ACTIVE = 1 << 7,                //!< State: `active widget state as ACTIVE_BUTTON is pressed`
-    SET = 1 << 8,                   //!< State: `1 state, used in checkbox and entry`
-    RESET = 1 << 9,                 //!< State: `0 state, used in entry`
-    TRANSPARENT = 1 << 10,          //!< State: `transparent state, set by AUTOHIDE when not hovering`
-    DRAWING = 1 << 11,              //!< State: `drawing state for containers`
-    SHORTSKIP = 1 << 12,            //!< State: `skips a small process`
-    LONGSKIP = 1 << 13,             //!< State: `skips a process until a condition is satisfied, used by Widget`
+// Base states, controlled within the base class
+    HOVERED = 1 << 4,               //!< State: `widget is hovered`
+    ALPHAREDUCED = 1 << 5,          //!< State: `widget is transparent`
+    SELECTED = 1 << 6,              //!< State: `widget is selected and can trigger callbacks`
+    RESTRICTED = 1 << 7,            //!< State: `widget is blocking certain functions`
+    ACTIVE = 1 << 8,                //!< State: `widget is pressed with the active mouse button or held`
 
-    INDICATOR = 1 << 14,            //!< Configured flag: `unique widget indicator`
-    HIDDEN = 1 << 15,               //!< Configured flag: `invisible widget, does not trigger mouse events`
-    BLOCKED = 1 << 16,              //!< Configured flag: `widget becomes non-interactive`
-    AUTOSELECT = 1 << 17,           //!< Configured flag: `widget is always selected for keyboard events`
-    AUTOHIDE = 1 << 18,             //!< Configured flag: `widget is transparent when not hovered`
+// Derived states, controlled within derived classes
+    DRAWING = 1 << 9,               //!< State: `widget is drawing` @see `Frame`
+    SHORTSKIP = 1 << 10,            //!< State: `widget can skip a repetitive process` @see `Frame`, `CheckBox`
+    LONGSKIP = 1 << 11,             //!< State: `widget can skip a process based on internal conditions` @see `Frame`
+    SET = 1 << 12,                  //!< State: `widget's 1 state` @see `CheckBox`, `Entry`
+    RESET = 1 << 13,                //!< State: `widget's 0 state` @see `CheckBox`, `Entry`
+    TEXT = 1 << 14,                 //!< State: `widget is currently displaying text` @see `Button`
+    IMAGE = 1 << 15,                //!< State: `widget is currently displaying an image (unrelated to background image)` @see `Button`
+    SEPARATORS = 1 << 16,           //!< State: `widget has separator lines enabled` @see `Frame`
+
+// Base configurable flags
+    HIDDEN = 1 << 17,               //!< Configured flag: `widget is invisible`
+    BLOCKED = 1 << 18,              //!< Configured flag: `widget is non-interactive`
+    TRANSPARENT = 1 << 19,          //!< Configured flag: `widget is always transparent`
+    RESIZE = 1 << 20,               //!< Configured Flag: `widget can automatically resize with the window`
+    AUTOSELECT = 1 << 21,           //!< Configured flag: `widget is always selected for keyboard events`
+    AUTOHIDE = 1 << 22,             //!< Configured flag: `widget is hidden when not hovered`
+    AUTOTRANSPARENT = 1 << 23,      //!< Configured flag: `widget is transparent when not hovered`
+    NOBGIMAGE = 1 << 24,            //!< Configured Flag: `widget cannot select a background image`
+
+// Derived configurable flags
+    INDICATOR = 1 << 25,            //!< Configured flag: `widget has a visible indicator` @see `Entry`, `GridCanvas`
+    GRID = 1 << 26,                 //!< Configured Flag: `grid is enabled for widget` @see `Frame`, `GridCanvas`
+    SCROLL = 1 << 27,               //!< Configured Flag: `widget has scrolling enabled` @see `Frame`
+    ZOOM = 1 << 28,                 //!< Configured Flag: `zooming is enabled for widget` @see `GridCanvas`
+    PAN = 1 << 29,                  //!< Configured Flag: `panning is enabled for widget` @see `GridCanvas`
     
-    CLIPSHADER = 1 << 19,           //!< Flag: `shader for sprites is loaded`
-    COLORSHADER = 1 << 20,          //!< Flag: `shader for fill texture is loaded`
+    // CLIPSHADER = 1 << 19,           //!< Flag: `shader for sprites is loaded`
+    // COLORSHADER = 1 << 20,          //!< Flag: `shader for fill texture is loaded`
 
-    RESIZE = 1 << 21,               //!< Configured Flag: `allows widget to scale with window size`
-    TEXT = 1 << 22,                 //!< Flag: `widget is currently displaying text`
-    IMAGE = 1 << 23,                //!< Flag: `widget is currently displaying an image`
-    BGIMAGE = 1 << 24,              //!< Flag: `widget has fill texture loaded`
-    DEFAULTIMAGE = 1 << 25,         //!< Flag: `default image currently used`
+    // BGIMAGE = 1 << 24,              //!< Flag: `widget has fill texture loaded`
+    // DEFAULTIMAGE = 1 << 25,         //!< Flag: `default image currently used`
     
-    GRID = 1 << 26,                 //!< Configured Flag: `grid is enabled for container`
-    SCROLL = 1 << 27,               //!< Configured Flag: `scrolling is enabled for scrollable widgets like frame`
-    SEPARATORS = 1 << 28,           //!< Flag: `line separators in frame is enabled`
-    ZOOM = 1 << 29,                 //!< Configured Flag: `zooming is enabled for canvas`
-    PAN = 1 << 30,                  //!< Configured Flag: `panning is enabled for canvas`
-    BLOCKBGIMAGE = 1 << 31,          //!< Configured Flag: `blocks loading fill texture, clears it with shader if enabled`
 };
 
 enum class SeparatorType
@@ -119,6 +140,7 @@ FLAGS& resetFlag(FLAGS&, FLAGS);        //!< Sets MODIFIED IF not included in bi
 FLAGS& toggle(FLAGS&, FLAGS);           //!< Does not set MODIFIED
 bool checkFlag(const FLAGS&, FLAGS);    //!< Quick boolean check, returns true if any bit is set in both sides
 bool checkFlags(const FLAGS&, FLAGS);   //!< Quick boolean check, returns true if all bits on right are set in left, otherwise false
+
 ///////////////////////////////////////////////////////////////////
 /// @brief Updates image size (does not preserve quality)
 ///
@@ -261,11 +283,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget
     ///
-    /// @param __widget reference to widget
-    /// @param __state rendering state object for the widget
+    /// @param widget reference to widget
+    /// @param state rendering state object for the widget
     ///
     ///////////////////////////////////////////////////////////////////
-    void draw(const sf::Drawable& __widget, const sf::RenderStates __state = sf::RenderStates::Default);
+    void draw(const sf::Drawable& widget, const sf::RenderStates state = sf::RenderStates::Default);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the relative mouse position based on view
@@ -284,19 +306,19 @@ public:
     /// root window view.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setWindowView(const sf::View& __v);
+    void setWindowView(const sf::View& v);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the pointer to the main window
     ///
     ///////////////////////////////////////////////////////////////////
-    void setWindowPtr(sf::RenderWindow* __winScreenPtr);
+    void setWindowPtr(sf::RenderWindow* win_ptr);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the pointer to the root frame
     ///
     ///////////////////////////////////////////////////////////////////
-    void setFramePtr(Frame* __frPtr);
+    void setFramePtr(Frame* frame_ptr);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns a readonly pointer to window object if available
@@ -391,13 +413,13 @@ private:
     /// @brief Calls the focus callback for all widgets in the group
     ///
     ///////////////////////////////////////////////////////////////////
-    void focusOn(std::optional<const sf::Event> event);
+    void focusOn(std::optional<sf::Event> event);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Calls the unfocus callback for all the widgets in the group
     ///
     ///////////////////////////////////////////////////////////////////
-    void focusOff(std::optional<const sf::Event> event);
+    void focusOff(std::optional<sf::Event> event);
 
     std::vector<Widget*> m_cult;    //!< ooga booga
 
@@ -461,12 +483,12 @@ public:
     /// it internally as a sequence, if the sequence of events match a saved
     /// sequence then fires a callback for that sequence.
     ///
-    /// @param _event Event object
+    /// @param key_event Event object
     ///
     /// @return true if a sequence was matched, otherwise false.
     ///
     ///////////////////////////////////////////////////////////////////
-    bool checkEvents(const sf::Event& _event);
+    bool checkEvents(const sf::Event& key_event);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current sequence
@@ -518,10 +540,10 @@ constexpr float START_ANGLES[4] =
 
 namespace parameters
 {
-// indicator | hidden | blocked | autohide | autoselect | grid | scroll | pan | block bg image | resize
+// hidden | blocked | resize | autohide | autoselect | block bg image | indicator |  grid | scroll | zoom | pan
 inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::AUTOHIDE |
                                 FLAGS::AUTOSELECT | FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM |
-                                FLAGS::PAN | FLAGS::BLOCKBGIMAGE | FLAGS::RESIZE;
+                                FLAGS::PAN | FLAGS::NOBGIMAGE | FLAGS::RESIZE;
 
 
 constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default

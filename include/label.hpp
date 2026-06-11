@@ -40,28 +40,6 @@ public:
     Label& operator=(const Label&) = delete;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events.
-    ///
-    /// Call the method in the events loop for assigned methods callbacks,
-    /// can optionally pass the current raw mouse position, this makes the
-    /// widget skip getting the mouse position itself and can save computing
-    /// time when multiple widgets are checking for event.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    /// @see `bindMouseEvent`, `unbindMouseEvent`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note widgets with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
-    /// trigger mouse events.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
-    
-    ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events.
     ///
     /// Captures keyboard events in the events loop, can capture individual

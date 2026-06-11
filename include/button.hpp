@@ -25,7 +25,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
+    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the button on a `Frame` object
@@ -36,37 +36,13 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
+    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
 
     Button(Button&&) = delete;
     Button& operator=(Button&&) = delete;
     Button(const Button&) = delete;
     Button& operator=(const Button&) = delete;
     ~Button() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget mouse events
-    ///
-    /// Called in the events loop, can recieve the current mouse position based on
-    /// root window view to skip a few steps internally.
-    ///
-    /// Mouse events such as pressing, scrolling, holding are triggered within the
-    /// method while also updating the widget's status such as focus, select, hover
-    /// , and transparent, then trigger a callback if assigned to an event by the user.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note button with `FLAGS::BLOCKED` or `FLAGS::HIDDEN` states cannot
-    /// trigger mouse events.
-    ///
-    /// @see `Widget::bindMouseEvent`, `Widget::unbindMouseEvent`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position = std::nullopt) override;
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events
@@ -91,15 +67,16 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates button's text
     ///
-    /// Displays parameter text on the button's surface, text's length
-    /// can go up to `15` characters max.
+    /// Displays parameter text on the button's surface.
+    ///
+    /// Text's length cannot surpass parameter character limit.
     ///
     /// @param text string text
     ///
     /// @see `parameters::CHAR_LIMIT`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setText(const std::string& text);
+    void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's text
@@ -164,7 +141,7 @@ public:
     /// @see `clearImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(const std::string& image_path);
+    bool setImage(const sf::String& image_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's image
@@ -192,10 +169,9 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(ButtonStyle __button_style);
+    void setTheme(ButtonStyle button_style);
 
 private:
-
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the button on master object
     ///
@@ -203,17 +179,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void drawWidget() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `Widget::configure`
-    ///
-    /// @param mask bits passed by `Widget::configure`
-    ///
-    /// @see `Widget::configure`, `parameters::MODIFIABLE`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void config(FLAGS mask) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' positions within the button,
@@ -329,13 +294,15 @@ private:
     // Member Variables
     ///////////////////////////////////////////////////////////////////
 
-    std::unique_ptr<const sf::Font> m_font;                             //!< font for the text
     sf::Text m_text;                                                    //!< Button text
-    sf::Texture m_texture;                                              //!< Image texture
-    sf::Sprite m_image;                                                 //!< Image sprite
-    std::string m_imagePath;                                            //!< Path for used image
+    std::unique_ptr<const sf::Font> m_fontPtr;                          //!< font for the text
+    std::unique_ptr<sf::Texture> m_texturePtr;                          //!< Image texture
+    std::unique_ptr<sf::Sprite> m_imagePtr;                             //!< Image sprite
+
+    sf::String m_imagePath;                                             //!< Path for used image
     float m_charSizeRatio = 0.4f;                                       //!< Button's height occupied by text, prio until it's set to 0.f
-    unsigned int m_charSize = 24;                                       //!< Manual text size assigned by user, not used until ratio is 0.f
+    unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Manual text size assigned by user, not used until ratio is 0.f
+
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
     ButtonStyle m_style = Theme::button_style::BUTTON_STALE_VIOLET;     //!< Button's default style
