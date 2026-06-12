@@ -34,27 +34,6 @@ ImageFrame::~ImageFrame()
     clearImage();
 }
 
-bool ImageFrame::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event)) //!< triggers callback
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool ImageFrame::setImage(const std::string& image_path)
 {
     // load from disk
@@ -246,21 +225,6 @@ void ImageFrame::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<ImageFrame>());
     }
-}
-
-void ImageFrame::updateClipShader()
-{
-    if(!m_clipShaderPtr) return;
-
-    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
-    m_clipShaderPtr->setUniform("radius", m_radius);
-    m_clipShaderPtr->setUniform("opacity", m_opacity);
-}
-
-void ImageFrame::updateColorShader()
-{
-    // no bg image
 }
 
 void ImageFrame::writeText()

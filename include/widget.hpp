@@ -108,7 +108,7 @@ public:
     /// @see `bindShortCut`, `unbindShortCut`, `resizeWidgets`
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual bool captureKeyEvents(const sf::Event& event) = 0;
+    bool captureKeyEvents(const sf::Event& event);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a mouse event with a callback to this widget
@@ -197,7 +197,41 @@ public:
     /// @return true if loading was successful, otherwise false.
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool setBackgroundTexture(const std::string& file_path);
+    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader_path = parameters::TEXTURE_COLOR_SHADER_PATH);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads a shader for handling sprites
+    ///
+    /// Takes the string path to a .frag file to reload shader settings
+    /// for image display, required shader is loaded by default for the
+    /// proper widget types.
+    ///
+    /// @param shader_path fragment file path
+    ///
+    /// @return true if loading was successful, otherwise false.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool loadClipShader(const std::string_view& shader_path);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads shader parameters from fragment file for Background
+    /// texture
+    ///
+    /// Applied to the shape texture, handles transparency and color multiplication
+    /// for the Background texture.
+    ///
+    /// @see `loadClipShader`, `setBackgroundTexture`, `clearBackgroundTexture`,
+    /// `updateColorShader`
+    ///
+    /// @param shader_path fragment file path
+    ///
+    /// @return true if loading was successful, otherwise false.
+    ///
+    ///////////////////////////////////////////////////////////////////    
+    bool loadColorShader(const std::string_view& shader_path);
+
+    void resetClipShader(const std::string_view& shader_path = "");
+    void resetColorShader(const std::string_view& shader_path = "");
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears Background texture data alongside the color shader
@@ -491,40 +525,14 @@ public:
     void DisableToolTip();
 
 protected:
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Loads a shader for handling sprites
-    ///
-    /// Takes the string path to a .frag file to reload shader settings
-    /// for image display, required shader is loaded by default for the
-    /// proper widget types.
-    ///
-    /// @param shader_path fragment file path
-    ///
-    /// @return true if loading was successful, otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool loadClipShader(const std::string_view& shader_path);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Loads shader parameters from fragment file for Background
-    /// texture
-    ///
-    /// Applied to the shape texture, handles transparency and color multiplication
-    /// for the Background texture.
-    ///
-    /// @see `loadClipShader`, `setBackgroundTexture`, `clearBackgroundTexture`,
-    /// `updateColorShader`
-    ///
-    /// @param shader_path fragment file path
-    ///
-    /// @return true if loading was successful, otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////    
-    bool loadColorShader(const std::string_view& shader_path);
 
     virtual bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position);
 
     virtual void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position);
+
+    virtual bool preProcessKeyEvents(const sf::Event& event);
+
+    virtual bool postProcessKeyEvents(const sf::Event& event);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Used to update child widgets for container type Widget or
@@ -596,7 +604,7 @@ protected:
     /// @see `loadClipShader`, `updateState`
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual void updateClipShader() = 0;
+    virtual void updateClipShader();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for color shader
@@ -606,7 +614,7 @@ protected:
     /// @see `loadColorShader`, `updateState`
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual void updateColorShader() = 0;
+    virtual void updateColorShader();
 
 private:
     ///////////////////////////////////////////////////////////////////

@@ -29,27 +29,6 @@ m_text(font)
     this->setOutlineThickness(0.f);
 }
 
-bool Label::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event)) //!< triggers callback
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
-}
-
 void Label::setTheme(LabelStyle label_style)
 {
     m_style = label_style;
@@ -158,11 +137,6 @@ void Label::drawWidget()
     if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
 }
 
-void Label::config(FLAGS mask)
-{
-
-}
-
 void Label::updatePosition()
 {
     updateTextPosition();
@@ -241,35 +215,6 @@ void Label::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<Label>());
     }
-}
-
-void Label::updateClipShader()
-{
-    // no clip shader
-}
-
-void Label::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get(); 
-
-    // for background image texture
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void Label::updateTextSize()

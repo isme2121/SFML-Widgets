@@ -37,27 +37,6 @@ public:
     CheckBox& operator=(const CheckBox&) = delete;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget keyboard events.
-    ///
-    /// Captures keyboard events in the events loop, can capture individual
-    /// physical key presses or a sequence of key press events depending on
-    /// available assigned sequences.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note checkbox must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
-    /// trigger key event, checkboxs with `FLAGS::BLOCKED | FLAGS::RESTRICTED`
-    /// cannot trigger keyboard events.
-    ///
-    /// @see `Widget::bindShortCut`, `Widget::unbindShortCut`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureKeyEvents(const sf::Event& event) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the checkbox's text
     ///
     /// Displays parameter text on the checkbox's surface, text's length
@@ -188,17 +167,6 @@ private:
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `Widget::configure`
-    ///
-    /// @param mask bits passed by `Widget::configure`
-    ///
-    /// @see `Widget::configure`, `parameters::MODIFIABLE`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void config(FLAGS mask) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' positions within the checkbox,
     /// called in `Widget::setWidgetPosition`
     ///
@@ -247,27 +215,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for clipping shader, Not needed for checkbox class
-    ///
-    /// @see `Widget::loadClipShader`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateClipShader() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for color shader
-    ///
-    /// Best called after an update in a shader parameters, color shader
-    /// is applied on background texture that is set via
-    /// `Widget::setBackGroundTexture` and is not needed if no texture
-    /// is assigned.
-    ///
-    /// @see `Widget::loadColorShader`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates text size and position if provided

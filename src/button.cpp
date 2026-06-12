@@ -49,27 +49,6 @@ Button::~Button()
     clearImage();
 }
 
-bool Button::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event)) //!< triggers callback
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
-}
-
 void Button::setText(const sf::String& text)
 {
     m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
@@ -251,7 +230,7 @@ void Button::updateState()
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
         if(checkFlag(m_flags, FLAGS::TEXT)) m_text.setFillColor(m_style.text_blocked_color);
     }
-    else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.1f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
@@ -312,30 +291,6 @@ void Button::updateClipShader()
     m_clipShaderPtr->setUniform("radius", m_radius);
     m_clipShaderPtr->setUniform("opacity", m_opacity);
     m_clipShaderPtr->setUniform("side", m_imagePosition == Side::Right ? 1.f : 0.f);
-}
-
-void Button::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get(); 
-
-    // for background image texture
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void Button::updateTextPosition()

@@ -35,27 +35,6 @@ public:
     Entry& operator=(Entry&& other) = delete;
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
-    
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget keyboard events.
-    ///
-    /// Captures keyboard events in the events loop, can capture individual
-    /// physical key presses or a sequence of key press events depending on
-    /// available assigned sequences.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    ///
-    /// @see `bindShortCut`, `unbindShortCut`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note widget must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
-    /// trigger key event, widgets with `FLAGS::BLOCKED` cannot trigger
-    /// key events.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureKeyEvents(const sf::Event& event) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets text as input
@@ -203,6 +182,8 @@ public:
 private:
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
+    bool postProcessKeyEvents(const sf::Event& event);
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget on master object
     ///
@@ -262,29 +243,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for clipping shader
-    ///
-    /// Best called after an update in a shader parameter, clip shader handles
-    /// clipping edges on sprites.
-    ///
-    /// @see `loadClipShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateClipShader() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for color shader
-    ///
-    /// Best called after an update in a shader parameters, color shader is applied
-    /// on background texture that is set via `setBackGroundTexture` and is not needed
-    /// if no texture is assigned.
-    ///
-    /// @see `loadColorShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current x coordinate of the cursor

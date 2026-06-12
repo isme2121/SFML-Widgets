@@ -56,26 +56,12 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
     }
 }
 
-bool Entry::captureKeyEvents(const sf::Event& event)
+bool Entry::postProcessKeyEvents(const sf::Event& event)
 {
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-    if(m_binds.checkEvents(event)) //!< triggers callback
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-
     /* This section requires the widget to be focused */
     if(!checkFlag(m_flags, FLAGS::FOCUSED)) return false;
+
+    bool event_used = false;
 
     if(const sf::Event::TextEntered* _input = event.getIf<sf::Event::TextEntered>())
     {
@@ -87,6 +73,7 @@ bool Entry::captureKeyEvents(const sf::Event& event)
             updateText();
             updateContentWidth();
             shiftToCursor();
+            event_used = true;
         }
     }
 
@@ -97,11 +84,13 @@ bool Entry::captureKeyEvents(const sf::Event& event)
             case sf::Keyboard::Key::Left: //!< left arrow (move left)
                 if(_key->control) m_cursorIndex = 0;
                 else if(m_cursorIndex > 0) --m_cursorIndex;
+                event_used = true;
                 break;
 
             case sf::Keyboard::Key::Right: //!< right arrow (move right)
                 if(_key->control) m_cursorIndex = m_textBuffer.size();
                 else if(m_cursorIndex < m_textBuffer.size()) ++m_cursorIndex;
+                event_used = true;
                 break;
 
             case sf::Keyboard::Key::X: //!< X (cut)
@@ -109,11 +98,13 @@ bool Entry::captureKeyEvents(const sf::Event& event)
                 {
                     sf::Clipboard::setString(m_textBuffer);
                     clear();
+                    event_used = true;
                 }
                 break;
             
             case sf::Keyboard::Key::C: //!< C (copy)
                 if(_key->control) sf::Clipboard::setString(m_textBuffer);
+                event_used = true;
                 break;
             
             case sf::Keyboard::Key::V: //!< V (paste)
@@ -129,6 +120,7 @@ bool Entry::captureKeyEvents(const sf::Event& event)
                     m_cursorIndex += pasted_str.getSize();
                     writeToEntry();
                     updateText();
+                    event_used = true;
                 }
                 break;
 
@@ -139,6 +131,7 @@ bool Entry::captureKeyEvents(const sf::Event& event)
                     m_cursorIndex = 0;
                     writeToEntry();
                     updateText();
+                    event_used = true;
                 }
                 else if(m_cursorIndex > 0)
                 {
@@ -146,29 +139,33 @@ bool Entry::captureKeyEvents(const sf::Event& event)
                     --m_cursorIndex;
                     writeToEntry();
                     updateText();
+                    event_used = true;
                 }
                 break;
             
             case sf::Keyboard::Key::Delete:
                 clear();
+                event_used = true;
                 break;
 
             case sf::Keyboard::Key::Home:
                 m_cursorIndex = 0;
+                event_used = true;
                 break;
 
             case sf::Keyboard::Key::End:
                 m_cursorIndex = m_textBuffer.size();
+                event_used = true;
                 break;
             
             default:
-                return true;
+                break;
         }
         updateContentWidth();
         shiftToCursor();
     }
 
-    return true;
+    return event_used;
 }
 
 void Entry::setInput(std::string text)
@@ -424,39 +421,6 @@ void Entry::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<Entry>());
     }
-}
-
-void Entry::updateClipShader()
-{
-    if(!m_clipShaderPtr) return;
-
-    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
-    m_clipShaderPtr->setUniform("radius", m_radius);
-    m_clipShaderPtr->setUniform("opacity", m_opacity);
-}
-
-void Entry::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get(); 
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void Entry::drawCursorLine()

@@ -93,20 +93,15 @@ enum class FLAGS : std::int32_t
     AUTOHIDE = 1 << 22,             //!< Configured flag: `widget is hidden when not hovered`
     AUTOTRANSPARENT = 1 << 23,      //!< Configured flag: `widget is transparent when not hovered`
     NOBGIMAGE = 1 << 24,            //!< Configured Flag: `widget cannot select a background image`
+    NOCLIPSHADER = 1 << 25,         //!< Configured Flag: `widget cannot load a clipping shader`
+    NOCOLORSHADER = 1 << 26,        //!< Configured Flag: `widget cannot load a bg color shader`
 
 // Derived configurable flags
-    INDICATOR = 1 << 25,            //!< Configured flag: `widget has a visible indicator` @see `Entry`, `GridCanvas`
-    GRID = 1 << 26,                 //!< Configured Flag: `grid is enabled for widget` @see `Frame`, `GridCanvas`
-    SCROLL = 1 << 27,               //!< Configured Flag: `widget has scrolling enabled` @see `Frame`
-    ZOOM = 1 << 28,                 //!< Configured Flag: `zooming is enabled for widget` @see `GridCanvas`
-    PAN = 1 << 29,                  //!< Configured Flag: `panning is enabled for widget` @see `GridCanvas`
-    
-    // CLIPSHADER = 1 << 19,           //!< Flag: `shader for sprites is loaded`
-    // COLORSHADER = 1 << 20,          //!< Flag: `shader for fill texture is loaded`
-
-    // BGIMAGE = 1 << 24,              //!< Flag: `widget has fill texture loaded`
-    // DEFAULTIMAGE = 1 << 25,         //!< Flag: `default image currently used`
-    
+    INDICATOR = 1 << 27,            //!< Configured flag: `widget has a visible indicator` @see `Entry`, `GridCanvas`
+    GRID = 1 << 28,                 //!< Configured Flag: `grid is enabled for widget` @see `Frame`, `GridCanvas`
+    SCROLL = 1 << 29,               //!< Configured Flag: `widget has scrolling enabled` @see `Frame`
+    ZOOM = 1 << 30,                 //!< Configured Flag: `zooming is enabled for widget` @see `GridCanvas`
+    PAN = 1 << 31                   //!< Configured Flag: `panning is enabled for widget` @see `GridCanvas`
 };
 
 enum class SeparatorType
@@ -541,9 +536,10 @@ constexpr float START_ANGLES[4] =
 namespace parameters
 {
 // hidden | blocked | resize | autohide | autoselect | block bg image | indicator |  grid | scroll | zoom | pan
-inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::AUTOHIDE |
-                                FLAGS::AUTOSELECT | FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM |
-                                FLAGS::PAN | FLAGS::NOBGIMAGE | FLAGS::RESIZE;
+inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
+                                FLAGS::AUTOHIDE | FLAGS::AUTOSELECT | FLAGS::TRANSPARENT | FLAGS::AUTOTRANSPARENT |
+                                FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM | FLAGS::PAN |
+                                FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER;
 
 
 constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default

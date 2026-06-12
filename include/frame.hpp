@@ -42,27 +42,6 @@ public:
     ~Frame() override;
     
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget keyboard events
-    ///
-    /// Captures keyboard events in the events loop, also handles
-    /// keyboard events for child widgets, meaning that only the root
-    /// frame should call this method within the loop in place of it's
-    /// children widgets.
-    ///
-    /// @param event Event object
-    ///
-    /// @return true if the frame triggers a callback, otherwise false.
-    ///
-    /// @note frame must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
-    /// trigger key event, frames with `FLAGS::BLOCKED | FLAGS::RESTRICTED`
-    /// cannot trigger keyboard events.
-    ///
-    /// @see `Widget::bindShortCut`, `Widget::unbindShortCut`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureKeyEvents(const sf::Event& _event) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Shows frame and it's drawn child widgets on the window
     ///
     /// Do not call if `Widget::draw` method is already in use as it is called
@@ -154,6 +133,8 @@ private:
     bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    
+    bool preProcessKeyEvents(const sf::Event& event);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the frame and it's child widgets
@@ -222,28 +203,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for clipping shader
-    ///
-    /// Best called after an update in a shader parameter, clip shader handles
-    /// clipping edges on sprites.
-    ///
-    /// @see `Widget::loadClipShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateClipShader() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for color shader
-    ///
-    /// Best called after an update in a shader parameters, color shader is applied
-    /// on background texture that is set via `setBackGroundTexture`.
-    ///
-    /// @see `Widget::loadColorShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Inforces grid ordering

@@ -40,27 +40,6 @@ public:
     Label& operator=(const Label&) = delete;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget keyboard events.
-    ///
-    /// Captures keyboard events in the events loop, can capture individual
-    /// physical key presses or a sequence of key press events depending on
-    /// available assigned sequences.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    ///
-    /// @see `bindShortCut`, `unbindShortCut`
-    ///
-    /// @return true if an event triggers within the widget or a child widget,
-    /// otherwise false.
-    ///
-    /// @note widget must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
-    /// trigger key event, widgets with `FLAGS::BLOCKED` cannot trigger
-    /// key events.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureKeyEvents(const sf::Event& event) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the text content of the label
     ///
     /// Input is displayed on the label, if it exceeds the size limit then
@@ -211,15 +190,6 @@ private:
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `configure`
-    ///
-    /// @param mask bits passed in `configure`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void config(FLAGS mask) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' positions within the widget,
     /// called in `setWidgetPosition`
     ///
@@ -263,29 +233,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for clipping shader
-    ///
-    /// Best called after an update in a shader parameter, clip shader handles
-    /// clipping edges on sprites.
-    ///
-    /// @see `loadClipShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateClipShader() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for color shader
-    ///
-    /// Best called after an update in a shader parameters, color shader is applied
-    /// on background texture that is set via `setBackGroundTexture` and is not needed
-    /// if no texture is assigned.
-    ///
-    /// @see `loadColorShader`, `updateState`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the character size of text

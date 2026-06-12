@@ -70,6 +70,8 @@ void Widget::configure(FLAGS flags)
     }
 
     if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
+    if(checkFlag(m_flags, FLAGS::NOCLIPSHADER)) resetClipShader();
+    if(checkFlag(m_flags, FLAGS::NOCOLORSHADER)) resetColorShader();
     
     /* flags that should be immediately updated */
 
@@ -200,6 +202,36 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     return event_details.is_used;
 
 }
+
+bool Widget::captureKeyEvents(const sf::Event& event)
+{
+    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::HOVERED | FLAGS::SELECTED)) return false;
+
+    if(preProcessKeyEvents(event)) return true;
+    
+    bool event_used = false;
+
+    if(m_binds.checkEvents(event))
+    {
+        if(parameters::QUEUE_DELAY != sf::Time::Zero)
+        {
+            // rate limit
+            setFlag(m_flags, FLAGS::RESTRICTED);
+            addToQueue(parameters::QUEUE_DELAY,
+            [this]()
+            {
+                resetFlag(m_flags, FLAGS::RESTRICTED);
+            }, 
+            true);
+        }
+        event_used = true;
+    }
+
+    if(postProcessKeyEvents(event)) event_used = true;
+
+    return event_used;
+}
+
 void Widget::setWidgetPosition(sf::Vector2f new_position)
 {
     m_position = new_position;
@@ -337,7 +369,7 @@ void Widget::unbindShortCut(const std::string& tag)
 
 bool Widget::loadClipShader(const std::string_view& shader_path)
 {
-    if(!sf::Shader::isAvailable()) return false;
+    if(!sf::Shader::isAvailable() || checkFlag(m_flags, FLAGS::NOCLIPSHADER)) return false;
     m_clipShaderPtr= std::make_unique<sf::Shader>();
     if(m_clipShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
     {
@@ -350,7 +382,7 @@ bool Widget::loadClipShader(const std::string_view& shader_path)
 
 bool Widget::loadColorShader(const std::string_view& shader_path)
 {
-    if(!sf::Shader::isAvailable()) return false;
+    if(!sf::Shader::isAvailable() || checkFlag(m_flags, FLAGS::NOCOLORSHADER)) return false;
     
     // discarding previous shader because a fail in loadFromFile may end up clearing it anyways
     m_bgShaderPtr = std::make_unique<sf::Shader>();
@@ -363,7 +395,19 @@ bool Widget::loadColorShader(const std::string_view& shader_path)
     return false;
 }
 
-bool Widget::setBackgroundTexture(const std::string& file_path)
+void Widget::resetClipShader(const std::string_view& shader_path)
+{
+    m_clipShaderPtr.reset();
+    if(!shader_path.empty()) loadClipShader(shader_path);
+}
+
+void Widget::resetColorShader(const std::string_view& shader_path)
+{
+    m_bgShaderPtr.reset();
+    if(!shader_path.empty()) loadColorShader(shader_path);
+}
+
+bool Widget::setBackgroundTexture(const std::string& file_path, const std::string_view& shader_path)
 {
     if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
     // load from disk
@@ -399,7 +443,7 @@ bool Widget::setBackgroundTexture(const std::string& file_path)
     }
     
     // loading shader
-    if(!m_bgShaderPtr) loadColorShader(parameters::TEXTURE_COLOR_SHADER_PATH);
+    if(!m_bgShaderPtr) loadColorShader(shader_path);
 
     // texture update
     m_bgTexturePtr->setSmooth(true);
@@ -591,7 +635,9 @@ sf::Vector2i Widget::getMousePosition() const
 
 bool Widget::isHovered(sf::Vector2i mouse_position) const 
 {
-    return this->getGlobalBounds().contains(m_master.mapMousePosition(mouse_position));
+    sf::Vector2f world = m_master.mapMousePosition(mouse_position);
+    sf::Vector2f local = this->getInverseTransform().transformPoint(world);
+    return this->getLocalBounds().contains(local);
 }
 
 bool Widget::isFlag(FLAGS bits) const
@@ -632,6 +678,16 @@ void Widget::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Even
     
 }
 
+bool Widget::preProcessKeyEvents(const sf::Event& event)
+{
+    return false;
+}
+
+bool Widget::postProcessKeyEvents(const sf::Event& event)
+{
+    return false;
+}
+
 void Widget::config(FLAGS mask)
 {
 
@@ -648,6 +704,7 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
             if(m_gainhoverCallBack) m_gainhoverCallBack(event);
         }
         if(!checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::ALPHAREDUCED);
+        else setFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
     else
     {
@@ -660,7 +717,7 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
         bool root_hidden = false;
         if(Frame* root = m_master.getFramePtr()) root_hidden = root->isFlag(FLAGS::ALPHAREDUCED);
 
-        if(checkFlags(m_flags, FLAGS::AUTOTRANSPARENT | FLAGS::TRANSPARENT) || root_hidden) setFlag(m_flags, FLAGS::ALPHAREDUCED);
+        if(checkFlag(m_flags, FLAGS::AUTOTRANSPARENT | FLAGS::TRANSPARENT) || root_hidden) setFlag(m_flags, FLAGS::ALPHAREDUCED);
         else resetFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
 }
@@ -683,6 +740,40 @@ void Widget::checkQueue()
                             }),
                             m_repeatEvents.end()
     );
+}
+
+void Widget::updateClipShader()
+{
+    if(!m_clipShaderPtr) return;
+
+    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
+    m_clipShaderPtr->setUniform("radius", m_radius);
+    m_clipShaderPtr->setUniform("opacity", m_opacity);
+}
+
+void Widget::updateColorShader()
+{
+    if(!m_bgShaderPtr) return;
+    bool render_texture = m_bgTexturePtr.get(); 
+
+    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
+    if(render_texture)
+    {
+        m_bgShaderPtr->setUniform("bg_color",
+            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
+                           m_currentBgColorPtr->g / 255.f,
+                           m_currentBgColorPtr->b / 255.f,
+                           m_currentBgColorPtr->a / 255.f));
+    }
+    else
+    {
+        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
+    }
+
+    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
+    m_bgShaderPtr->setUniform("opacity", m_opacity);
+    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void Widget::updateFocus()

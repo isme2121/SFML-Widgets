@@ -33,27 +33,6 @@ m_gridMapping(get_prime_combination(cell_count))
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
-bool GridCanvas::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event))
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
@@ -415,40 +394,6 @@ void GridCanvas::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<GridCanvas>());
     }
-}
-
-void GridCanvas::updateClipShader()
-{
-    if(!m_clipShaderPtr) return;
-
-    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
-    m_clipShaderPtr->setUniform("radius", m_radius);
-    m_clipShaderPtr->setUniform("opacity", m_opacity);
-}
-
-void GridCanvas::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get(); 
-
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void GridCanvas::updateCellSize()

@@ -81,32 +81,14 @@ void Frame::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
     }
 }
 
-bool Frame::captureKeyEvents(const sf::Event& event)
+bool Frame::preProcessKeyEvents(const sf::Event& event)
 {
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::HOVERED | FLAGS::SELECTED)) return false;
-
     bool event_used = false;
     for(Widget* w : m_childWidgets)
     {
         if(w->captureKeyEvents(event)) event_used = true; //!< because of AUTOSELECT
     }
-    if(event_used) return true;
-
-    if(m_binds.checkEvents(event))
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
+    return event_used;
 }
 
 void Frame::display()
@@ -298,40 +280,6 @@ void Frame::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<Frame>());
     }
-}
-
-void Frame::updateClipShader()
-{
-    if(!m_clipShaderPtr) return;
-
-    m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
-    m_clipShaderPtr->setUniform("radius", m_radius);
-    m_clipShaderPtr->setUniform("opacity", m_opacity);
-}
-
-void Frame::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get(); 
-
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void Frame::updateGrid()

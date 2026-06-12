@@ -39,27 +39,6 @@ void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Ev
     }
 }
 
-bool CheckBox::captureKeyEvents(const sf::Event& event)
-{
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::SELECTED)) return false;
-
-    if(m_binds.checkEvents(event)) //!< triggers callback
-    {
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
-        {
-            // rate limit
-            setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY, [this]()
-            {
-                resetFlag(m_flags, FLAGS::RESTRICTED);
-            }, 
-            true);
-        }
-        return true;
-    }
-    return false;
-}
-
 void CheckBox::setText(const std::string& text)
 {
     if(text.length() >= parameters::CHAR_LIMIT) return;
@@ -148,11 +127,6 @@ void CheckBox::drawWidget()
         updateText();
         m_master.draw(m_text);
     }
-}
-
-void CheckBox::config(FLAGS mask)
-{
-
 }
 
 void CheckBox::updatePosition()
@@ -260,34 +234,6 @@ void CheckBox::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<CheckBox>());
     }
-}
-
-void CheckBox::updateClipShader()
-{
-    // checkbox does not use a sprite
-}
-
-void CheckBox::updateColorShader()
-{
-    if(!m_bgShaderPtr) return;
-    bool render_texture = m_bgTexturePtr.get() && checkFlag(m_flags, FLAGS::SET); 
-    m_bgShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
-    if(render_texture)
-    {
-        m_bgShaderPtr->setUniform("bg_color",
-            sf::Glsl::Vec4(m_currentBgColorPtr->r / 255.f,
-                           m_currentBgColorPtr->g / 255.f,
-                           m_currentBgColorPtr->b / 255.f,
-                           m_currentBgColorPtr->a / 255.f));
-    }
-    else
-    {
-        m_bgShaderPtr->setUniform("bg_color", sf::Glsl::Vec4(*m_currentBgColorPtr));
-    }
-
-    m_bgShaderPtr->setUniform("outline_color", sf::Glsl::Vec4(*m_currentOutlineColorPtr));
-    m_bgShaderPtr->setUniform("opacity", m_opacity);
-    m_bgShaderPtr->setUniform("has_texture", render_texture ? 1.f : 0.f);
 }
 
 void CheckBox::updateText()

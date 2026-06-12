@@ -45,26 +45,6 @@ public:
     ~Button() override;
     
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks for widget keyboard events
-    ///
-    /// Captures keyboard events in the events loop, can capture individual
-    /// physical key presses or a sequence of key press events depending on
-    /// available assigned sequences.
-    ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
-    ///
-    /// @return true if the button triggers a callback, otherwise false.
-    ///
-    /// @note Button must be `FLAGS::SELECTED` or `FLAGS::AUTOSELECT` to
-    /// trigger key event, Buttons with `FLAGS::BLOCKED | FLAGS::RESTRICTED`
-    /// cannot trigger keyboard events.
-    ///
-    /// @see `Widget::bindShortCut`, `Widget::unbindShortCut`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool captureKeyEvents(const sf::Event& event) override;
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates button's text
     ///
     /// Displays parameter text on the button's surface.
@@ -238,18 +218,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateClipShader() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Refresh for color shader
-    ///
-    /// Best called after an update in a shader parameters, color shader
-    /// is applied on background texture that is set via
-    /// `Widget::setBackGroundTexture`.
-    ///
-    /// @see `Widget::loadColorShader`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateColorShader() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates text position
