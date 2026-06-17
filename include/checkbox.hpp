@@ -37,21 +37,53 @@ public:
     CheckBox& operator=(const CheckBox&) = delete;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns a function call to state update event
+    ///
+    /// Callback is triggered whenever the checkbox updates in state,
+    /// the state can be checked using `CheckBox::getState` or 
+    /// `Widget::isFlag(FLAGS::SET)` which returns true if the checkbox is set.
+    ///
+    /// @see `unbindToggleEvent`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void bindToggleEvent(MouseCallback callback);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Removes assigned callback for checkbox's state update
+    ///
+    /// @see `bindToggleEvent`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void unbindToggleEvent();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current state of the checkbox widget
+    ///
+    /// Identical to `Widget::isFlag(FLAGS::SET)` which checks for the
+    /// boolean state of the widget.
+    ///
+    /// @returns true if the checkbox is set, otherwise false
+    ///
+    /// @see `Widget::isFlag`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool getState();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the checkbox's text
     ///
     /// Displays parameter text on the checkbox's surface, text's length
-    /// can go up to `15` characters max.
+    /// can go up to `parameters::CHAR_LIMIT` characters max.
     ///
     /// @param text string text
     ///
-    /// @see `parameters::CHAR_LIMIT`
+    /// @see `parameters::CHAR_LIMIT`, `setTextSize`, `setTextFont`, `setTextSide`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setText(const std::string& text);
+    void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the size of the characters for the checkbox's text
-    ///
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextSize(unsigned int char_size);
@@ -85,55 +117,8 @@ public:
     ///
     /// @param font font instance
     ///
-    /// @warning the parameter font is stored within the checkbox after the
-    /// call to maintain it's reference for the widget's lifetime with the
-    /// cost of extra memory usage
-    ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font&& font);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Assigns a function call to state update event
-    ///
-    /// Callback is triggered whenever the checkbox updates in state,
-    /// the state can be checked using `CheckBox::getState` or 
-    /// `Widget::isFlag(FLAGS::SET)` which returns true if the checkbox is set.
-    ///
-    /// @see `unbindToggleEvent`, `Widget::isFlag`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void bindToggleEvent(MouseCallback callback);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Removes assigned callback for checkbox's state update
-    ///
-    /// @see `bindToggleEvent`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void unbindToggleEvent();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates empty space between text and the checkbox based
-    /// on the corresponding direction's checkbox diameter
-    ///
-    /// Scales with the size of the checkbox itself, can be set from `0.f`
-    /// to `1.f` as a maximum distance, default is `0.3f`.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setSpace(float ratio);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the current state of the checkbox widget
-    ///
-    /// Identical to `Widget::isFlag(FLAGS::SET)` which checks for the
-    /// boolean state of the widget.
-    ///
-    /// @returns true if the checkbox is set, otherwise false
-    ///
-    /// @see `Widget::isFlag`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool getState();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the position of the checkbox's text
@@ -146,6 +131,17 @@ public:
     void setTextSide(DIRECTION side);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the space between text and the checkbox
+    ///
+    /// Ratio is relative to the checkbox's size and scales based on which
+    /// direction the text is positioned (for example, text is placed on the
+    /// left: ratio set to `0.5f` == space is 0.5 * m_size.x in length), default
+    /// is `0.2f`.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setSeparationSpace(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
     ///
     /// Assigned style overrides the current style even if the widget is assigned
@@ -156,30 +152,26 @@ public:
     void setTheme(CheckboxStyle checkbox_style);
 
 private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Calls the checkbox toggle state callback
+    ///
+    ///////////////////////////////////////////////////////////////////
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the checkbox on master object
     ///
-    /// @see `Widget::draw`
-    ///
     ///////////////////////////////////////////////////////////////////
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Handles any extra drawables' positions within the checkbox,
-    /// called in `Widget::setWidgetPosition`
-    ///
-    /// @see `Widget::setWidgetPosition`
+    /// @brief Handles any extra drawables' positions within the checkbox
     ///
     ///////////////////////////////////////////////////////////////////
     void updatePosition() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Handles any extra drawables' sizes within the checkbox,
-    /// called in `setWidgetSize`
-    ///
-    /// @see `Widget::setWidgetSize`
+    /// @brief Handles any extra drawables' sizes within the checkbox.
     ///
     ///////////////////////////////////////////////////////////////////
     void updateSize() override;
@@ -194,24 +186,11 @@ private:
     /// @brief Updates checkbox colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
-    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `HOVERED`
-    /// respectively.
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget:draw`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
@@ -219,43 +198,40 @@ private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates text size and position if provided
     ///
-    /// Refreshes characters' size based on checkbox's size and updates
-    /// it's position.
-    ///
-    /// @see `setText`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateText();
 
-    std::unique_ptr<const sf::Font> m_font;
+    std::unique_ptr<const sf::Font> m_font;                                 //!< Locally stored font
     sf::Text m_text;                                                        //!< Checkbox's text
     MouseCallback m_clickCallback = nullptr;                                //!< State update callback
+
+    float m_textSizeRatio = 0.5f;                                           //!< Text size scale based on check box size and direction, range= [0.f, 2.f]
+    float m_deadSpace = 0.2f;                                               //!< Space between text and the checkbox
+    unsigned int m_charSize = parameters::CHAR_SIZE;                        //!< Actual text size, can be set manually or updated with ratio
+
     sf::Color* m_currentTextColorPtr = nullptr;                             //!< Pointer to the current text color
     DIRECTION m_textSide = DIRECTION::LEFT;                                 //!< Text's position based on the checkbox
-    float m_textSizeRatio = 0.5f;                                           //!< Text size scale based on check box size and direction, range= [0.f, 2.f]
-    unsigned int m_charSize = parameters::CHAR_SIZE;                        //!< Actual text size, can be set manually or updated with ratio
-    float m_deadSpace = 0.2f;                                               //!< Space between text and the checkbox
     CheckboxStyle m_style = Theme::checkbox_style::CHECKBOX_STALE_VIOLET;   //!< Checkbox's default style
 };
 
 template <>
-struct __WidgetStyle<CheckBox>
+struct WidgetStyle<CheckBox>
 {
     using StyleType = CheckboxStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_checkboxTheme;
+        return theme.m_checkboxTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_checkbox)
     {
-        t.m_checkboxTheme = _b;
+        theme.m_checkboxTheme = s_checkbox;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_checkboxToken;
+        return theme.m_checkboxToken;
     }
 };
 }

@@ -632,7 +632,7 @@ void Cell::setCellOutlineThickness(DIRECTION direction, float thickness)
 bool Cell::setImage(const std::string& image_path)
 {
     if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
-    ImageCache& global_image_buffer = ImageCache::getInstance();
+    Widget::ImageCache& global_image_buffer = Widget::ImageCache::getInstance();
     std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
     if(!disk_image) return false;
 
@@ -674,7 +674,7 @@ void Cell::clearImage()
 {
     if(!checkFlag(m_flags, FLAGS::IMAGE)) return;
 
-    ImageCache::getInstance().decrementRefCounter(m_bgImagePath);
+    Widget::ImageCache::getInstance().decrementRefCounter(m_bgImagePath);
     this->setTexture(nullptr);
     m_imageShaderPtr.reset();
     m_bgTexturePtr.reset();
@@ -837,7 +837,7 @@ void Cell::updateImageSize()
 {
     if(!checkFlag(m_flags, FLAGS::IMAGE)) return;
 
-    std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_bgImagePath, false);
+    std::optional<const sf::Image*> disk_image = Widget::ImageCache::getInstance().getImage(m_bgImagePath, false);
 
     std::optional<sf::Image> resized_image;
     if(disk_image) resized_image = resize_image(**disk_image, sf::Vector2u(this->getSize()));

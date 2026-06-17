@@ -50,6 +50,7 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
     // scrolling while hovered
     else if(details.event_type == W_MouseEventType::Scroll && checkFlags(m_flags, FLAGS::HOVERED | FLAGS::SCROLL))
     {
+        // scrolls through text space
         m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (parameters::SCROLL_RATIO * m_size.y * 5.f), 0.f, m_maxPanOffset);
         updateView();
         details.is_used = true;
@@ -63,38 +64,43 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
 
     bool event_used = false;
 
-    if(const sf::Event::TextEntered* _input = event.getIf<sf::Event::TextEntered>())
+    // text entered while focused
+    if(const sf::Event::TextEntered* input_char = event.getIf<sf::Event::TextEntered>())
     {
-        if(_input->unicode >= 32 && _input->unicode != 127 && m_textBuffer.size() <= m_inputLimit && (!m_inputFilter || m_inputFilter && m_inputFilter(_input->unicode)))
+        // char is not a special character + size limit check + filter input
+        if(input_char->unicode >= 32 && input_char->unicode != 127 && m_textBuffer.getSize() <= m_inputLimit && (!m_inputFilter || m_inputFilter && m_inputFilter(input_char->unicode)))
         {
-            m_textBuffer.insert(m_cursorIndex, 1, static_cast<char>(_input->unicode));
+            // insert char
+            m_textBuffer.insert(m_cursorIndex, input_char->unicode);
             ++m_cursorIndex;
-            writeToEntry();
-            updateText();
-            updateContentWidth();
-            shiftToCursor();
+
+            updateText();           //!< update size and position of text
+            writeToEntry();         //!< updates front end
+            updateContentWidth();   //!< update scroll range
+            shiftToCursor();        //!< follow cursor
             event_used = true;
         }
     }
 
-    else if(const sf::Event::KeyPressed* _key = event.getIf<sf::Event::KeyPressed>())
+    // special characters case
+    else if(const sf::Event::KeyPressed* input_key = event.getIf<sf::Event::KeyPressed>())
     {
-        switch (_key->code)
+        switch (input_key->code)
         {
-            case sf::Keyboard::Key::Left: //!< left arrow (move left)
-                if(_key->control) m_cursorIndex = 0;
+            case sf::Keyboard::Key::Left: //!< shift to left
+                if(input_key->control) m_cursorIndex = 0;
                 else if(m_cursorIndex > 0) --m_cursorIndex;
                 event_used = true;
                 break;
 
-            case sf::Keyboard::Key::Right: //!< right arrow (move right)
-                if(_key->control) m_cursorIndex = m_textBuffer.size();
-                else if(m_cursorIndex < m_textBuffer.size()) ++m_cursorIndex;
+            case sf::Keyboard::Key::Right: //!< shift to right
+                if(input_key->control) m_cursorIndex = m_textBuffer.getSize();
+                else if(m_cursorIndex < m_textBuffer.getSize()) ++m_cursorIndex;
                 event_used = true;
                 break;
 
-            case sf::Keyboard::Key::X: //!< X (cut)
-                if(_key->control)
+            case sf::Keyboard::Key::X: //!< cut
+                if(input_key->control)
                 {
                     sf::Clipboard::setString(m_textBuffer);
                     clear();
@@ -102,16 +108,16 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                 }
                 break;
             
-            case sf::Keyboard::Key::C: //!< C (copy)
-                if(_key->control) sf::Clipboard::setString(m_textBuffer);
+            case sf::Keyboard::Key::C: //!< copy
+                if(input_key->control) sf::Clipboard::setString(m_textBuffer);
                 event_used = true;
                 break;
             
-            case sf::Keyboard::Key::V: //!< V (paste)
-                if(_key->control)
+            case sf::Keyboard::Key::V: //!< paste
+                if(input_key->control)
                 {
                     sf::String pasted_str = sf::Clipboard::getString();
-                    std::size_t current_size = m_textBuffer.size();
+                    std::size_t current_size = m_textBuffer.getSize();
                     if(current_size > m_inputLimit) break;
                     else if(current_size + pasted_str.getSize() > m_inputLimit)
                         pasted_str = pasted_str.substring(0, m_inputLimit - current_size);
@@ -125,7 +131,7 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                 break;
 
             case sf::Keyboard::Key::Backspace: //!< remove character(s)
-                if(_key->control)
+                if(input_key->control)
                 {
                     m_textBuffer.erase(0, m_cursorIndex);
                     m_cursorIndex = 0;
@@ -143,18 +149,18 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                 }
                 break;
             
-            case sf::Keyboard::Key::Delete:
+            case sf::Keyboard::Key::Delete: //!< clear all input
                 clear();
                 event_used = true;
                 break;
 
-            case sf::Keyboard::Key::Home:
+            case sf::Keyboard::Key::Home:   //!< back to front
                 m_cursorIndex = 0;
                 event_used = true;
                 break;
 
-            case sf::Keyboard::Key::End:
-                m_cursorIndex = m_textBuffer.size();
+            case sf::Keyboard::Key::End:    //!< go to last
+                m_cursorIndex = m_textBuffer.getSize();
                 event_used = true;
                 break;
             
@@ -168,53 +174,92 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
     return event_used;
 }
 
-void Entry::setInput(std::string text)
+void Entry::setInput(const sf::String& text)
 {
-    if(text.size() > m_inputLimit) text = text.substr(0, m_inputLimit);
+    if(m_inputFilter)
+    {
+        // filter input
+        sf::String result;
+        std::size_t size = std::min(text.getSize(), m_inputLimit);
+        for(std::size_t idx{0}; idx < size; idx++)
+        {
+            const char32_t& c = text[idx];
+            if(m_inputFilter(c)) result += c;
+        }
+        m_textBuffer = result;
+    }
+    else
+    {
+        // cut string if surpasses limit
+        m_textBuffer = text.substring(0, std::min(text.getSize(), m_inputLimit));
+    }
 
-    m_textBuffer = std::move(text);
-    m_cursorIndex = m_textBuffer.size();
-    writeToEntry();
+    m_cursorIndex = m_textBuffer.getSize(); //!< shift to last
+    writeToEntry(); //!< update front end
 
-    focusWidget(*this, std::nullopt); //!< enables cursor
+    // focusWidget(*this, std::nullopt); //!< enables cursor
+}
+
+void Entry::setBackGroundText(const sf::String& bg_text)
+{
+    // limit to 256
+    m_bgText.setString(bg_text.substring(0, std::min(bg_text.getSize(), std::size_t{256})));
 }
 
 void Entry::setCursorIndex(unsigned int idx)
 {
-    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.size());
+    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.getSize());
     shiftToCursor();
-}
-
-void Entry::setBackGroundText(std::string bg_text)
-{
-    if(bg_text.size() > m_inputLimit) bg_text = bg_text.substr(0, m_inputLimit);
-
-    m_bgText.setString(bg_text);
-    updateText();
-}
-
-void Entry::clear()
-{
-    m_textBuffer.clear();
-    m_cursorIndex = 0;
-    writeToEntry();
 }
 
 void Entry::setPlaceholderChar(const char placeholder_char)
 {
+    if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
     m_placeholderCharacter = placeholder_char;
-    writeToEntry(); //!< this handles it
-    updateText();
+    writeToEntry(); //!< updates front end
+    updateText();   //!< update text center
 }
 
-const std::string& Entry::get() const
+void Entry::setInputFilter(std::function<bool(char32_t)> func)
 {
-    return m_textBuffer;
+    m_inputFilter = func;
+}
+
+void Entry::setInputLimit(std::size_t max_chars)
+{
+    m_inputLimit = max_chars;
+
+    // remove extra chars
+    if(m_textBuffer.getSize() > m_inputLimit) m_textBuffer = m_textBuffer.substring(0, m_inputLimit);
+    if(m_cursorIndex > m_inputLimit) m_cursorIndex = m_inputLimit;
+    writeToEntry();
+}
+
+
+
+void Entry::setBLinkUpRatio(float ratio)
+{
+    if(ratio < 0.f || ratio > 1.f) return;
+    m_cursorOnDuration = parameters::BLINK_PERIOD * ratio;
+    m_cursorOffDuration = parameters::BLINK_PERIOD * (1.f - ratio);
+    if(ratio == 1.f)
+    {
+        // skips comparing the timer and always draws cursor when focused
+        setFlag(m_flags, FLAGS::SET);
+        resetFlag(m_flags, FLAGS::RESET);
+    }
+    else if(ratio == 0.f)
+    {
+        // skips comparing the timer and never draws cursor
+        setFlag(m_flags, FLAGS::RESET);
+        resetFlag(m_flags, FLAGS::SET);
+    }
+    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
 }
 
 void Entry::setTextSize(float ratio)
 {
-    if(ratio <= 0.f || ratio > 1.f) return;
+    if(ratio < 0.f || ratio > 1.f) return;
     m_textSizeRatio = ratio;
     updateText();
 }
@@ -258,42 +303,21 @@ void Entry::setTextFont(const sf::Font&& font)
     updateText();
 }
 
-void Entry::setInputLimit(std::size_t max_chars)
+void Entry::clear()
 {
-    m_inputLimit = max_chars;
-    // remove extra chars
-    if(m_textBuffer.size() > m_inputLimit) m_textBuffer = m_textBuffer.substr(0, m_inputLimit);
-    if(m_bgText.getString().getSize() > m_inputLimit) m_bgText.setString(m_bgText.getString().substring(0, m_inputLimit));
-    if(m_cursorIndex > m_inputLimit) m_cursorIndex = m_inputLimit;
+    m_textBuffer.clear();
+    m_cursorIndex = 0;
     writeToEntry();
 }
 
-void Entry::setInputFilter(std::function<bool(char32_t)> func)
+const sf::String& Entry::get() const
 {
-    m_inputFilter = func;
+    return m_textBuffer;
 }
 
-void Entry::setBLinkUpRatio(float ratio)
+void Entry::setTheme(EntryStyle s_entry)
 {
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_cursorOnDuration = parameters::BLINK_PERIOD * ratio;
-    m_cursorOffDuration = parameters::BLINK_PERIOD * (1.f - ratio);
-    if(ratio == 1.f)
-    {
-        setFlag(m_flags, FLAGS::SET);
-        resetFlag(m_flags, FLAGS::RESET);
-    }
-    else if(ratio == 0.f)
-    {
-        setFlag(m_flags, FLAGS::RESET);
-        resetFlag(m_flags, FLAGS::SET);
-    }
-    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
-}
-
-void Entry::setTheme(EntryStyle __entry_style)
-{
-    m_style = __entry_style;
+    m_style = s_entry;
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
@@ -303,7 +327,7 @@ void Entry::setTheme(EntryStyle __entry_style)
 
 void Entry::drawWidget()
 {
-    if(m_textBuffer.empty() && !checkFlag(m_flags, FLAGS::FOCUSED))
+    if(m_textBuffer.isEmpty() && !checkFlag(m_flags, FLAGS::FOCUSED))
         m_renderTexture.draw(m_bgText);
     else
         m_renderTexture.draw(m_text);
@@ -361,7 +385,7 @@ void Entry::updateState()
 
     if(checkFlag(m_flags, FLAGS::BLOCKED))
     {
-        m_opacity = 0.3f;
+        m_opacity = 0.4f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
@@ -370,7 +394,7 @@ void Entry::updateState()
     }
     else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
-        m_opacity = 0.1f;
+        m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;
@@ -423,9 +447,22 @@ void Entry::updateTheme()
     }
 }
 
+void Entry::writeToEntry()
+{
+    if(m_placeholderCharacter == 0)
+    {
+        m_text.setString(m_textBuffer);
+    }
+    else
+    {
+        m_text.setString(std::string(m_textBuffer.getSize(), m_placeholderCharacter));
+    }
+}
+
 void Entry::drawCursorLine()
 {
     if(!checkFlag(m_flags, FLAGS::INDICATOR) || !checkFlag(m_flags, FLAGS::FOCUSED) || checkFlag(m_flags, FLAGS::BLOCKED) || m_cursorWidth == 0) return;
+    // entry is not blocked + focused + enabled cursor + cursor width is > 0
 
     if(checkFlag(m_flags, FLAGS::RESET)) return; //!< 0.f ratio
     else if(checkFlag(m_flags, FLAGS::SET)) resetFlag(m_flags, FLAGS::SHORTSKIP); //!< 1.0 ratio
@@ -466,15 +503,18 @@ void Entry::drawCursorLine()
     m_renderTexture.draw(cursor_line, 6, sf::PrimitiveType::Triangles);
 }
 
-void Entry::setCursorIndex(float x__pos)
+void Entry::setCursorIndex(float x_pos)
 {
-    float accurate_x = x__pos + m_currentPanOffset + m_textOffsetRatio * m_size.y; //!< clicked local pos + pan + text offset
-    float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - accurate_x); //!< begin with the first char
+    // considering panning + scrolling offsets
+    float offset_x = x_pos + m_currentPanOffset + m_textOffsetRatio * m_size.y;
+
+    // finding the smallest diff, starting with index 0
+    float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - offset_x);
     
-    std::size_t text_length = m_textBuffer.size();
+    std::size_t text_length = m_textBuffer.getSize();
     for(std::size_t idx{1}; idx <= text_length; idx++)
     {
-        float dist = std::abs(m_text.findCharacterPos(idx).x - accurate_x);
+        float dist = std::abs(m_text.findCharacterPos(idx).x - offset_x);
         if(dist < smallest_distance)
         {
             smallest_distance  = dist;
@@ -483,8 +523,14 @@ void Entry::setCursorIndex(float x__pos)
     }
 }
 
+float Entry::getCursorCoordinate() const
+{
+    return m_text.findCharacterPos(m_cursorIndex).x; //!< this returns the position at the right of the char
+}
+
 void Entry::updateText()
 {
+    // desired height
     float final_height = m_size.y * m_textSizeRatio;
 
     if(m_textSizeRatio != 0.f)
@@ -495,25 +541,23 @@ void Entry::updateText()
         {
             float ratio = final_height / current_height;
             m_charSize = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
-            float line_spacing = m_text.getFont().getLineSpacing(m_charSize);
-            float y_offset = (m_size.y - line_spacing) / 2.f;
-            m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
-            m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
         }
     }
-    
+    // line up text vertically
+    float line_spacing = m_text.getFont().getLineSpacing(m_charSize);
+    float y_offset = (m_size.y - line_spacing) / 2.f;
+
+    m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+    m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+
     m_text.setCharacterSize(m_charSize);
     m_bgText.setCharacterSize(m_charSize);
 }
 
-float Entry::getCursorCoordinate() const
-{
-    return m_text.findCharacterPos(m_cursorIndex).x;
-}
 
 void Entry::updateContentWidth()
 {
-    m_textBoxWidth = m_text.findCharacterPos(m_textBuffer.size()).x + m_textOffsetRatio * m_size.y;
+    m_textBoxWidth = m_text.findCharacterPos(m_textBuffer.getSize()).x + m_textOffsetRatio * m_size.y;
     m_maxPanOffset = std::max(0.f, (m_textBoxWidth + m_cursorWidth) - m_size.x);
     m_currentPanOffset = std::clamp(m_currentPanOffset, 0.f, m_maxPanOffset);
 
@@ -542,15 +586,5 @@ void Entry::updateView()
                  m_size.y / 2.f});
 
     m_renderTexture.setView(v);
-}
-
-void Entry::writeToEntry()
-{
-    if(m_placeholderCharacter == 0)
-    {
-        m_text.setString(m_textBuffer);
-        return;
-    }
-    m_text.setString(std::string(m_textBuffer.size(), m_placeholderCharacter));
 }
 }

@@ -3,7 +3,7 @@
 
 namespace sfml_widgets
 {
-Label::Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size), 
+Label::Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size), 
 m_text(font)
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -16,7 +16,7 @@ m_text(font)
     this->setOutlineThickness(0.f);
 }
 
-Label::Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font) : Widget(root, position, size),
+Label::Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size),
 m_text(font)
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -35,14 +35,13 @@ void Label::setTheme(LabelStyle label_style)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
-void Label::setText(sf::String text)
+void Label::setText(const sf::String& text)
 {
-    text = text.substring(0, std::min(m_charLimit, text.getSize()));
+    m_text.setString(text.substring(0, std::min(m_charLimit, text.getSize())));
 
-    if(!text.isEmpty()) setFlag(m_flags, FLAGS::TEXT);
+    if(!m_text.getString().isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
 
-    m_text.setString(text);
     updateTextSize();
     updateTextPosition();
 }
@@ -161,7 +160,7 @@ void Label::updateState()
 
     if(checkFlag(m_flags, FLAGS::BLOCKED))
     {
-        m_opacity = 0.2f;
+        m_opacity = 0.5f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.text_outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.text_outline_blocked_thickness;
@@ -169,7 +168,7 @@ void Label::updateState()
     }
     else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
-        m_opacity = 0.1f;
+        m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.text_outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.text_outline_transparent_thickness;
@@ -177,7 +176,7 @@ void Label::updateState()
     }
     else if(checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
     {
-        m_opacity = 0.8f;
+        m_opacity = 0.1f;
         m_currentBgColorPtr = &m_style.fill_active_color;
         m_currentOutlineColorPtr = &m_style.text_outline_active_color;
         m_currentOutlineThicknessPtr = &m_style.text_outline_active_thickness;
@@ -224,6 +223,7 @@ void Label::updateTextSize()
     if(m_textSizeRatio > 0.f)
     {
         float target_height  = m_size.y * m_textSizeRatio;
+        // single line scale
         float current_height = W_CharHeight::getHeight(m_text.getFont(),
                                                       m_text.getCharacterSize());
         if(current_height > 0.f)
@@ -244,60 +244,72 @@ void Label::updateTextPosition()
     sf::FloatRect bounds = m_text.getLocalBounds();
     m_text.setOrigin(bounds.position + bounds.size / 2.f);
 
-    const float CENTER = m_size.x / 2.f;
-    const float MIDDLE = m_size.y / 2.f;
-    const float TEXT_CENTER = bounds.size.x / 2.f;
-    const float TEXT_MIDDLE = bounds.size.y / 2.f;
-    const float DIFF = 1.f - m_paddingRatio;
+    // all local constants
+    const float SHAPE_CENTER = m_size.x / 2.f;      //!< shape horizontal center
+    const float SHAPE_MIDDLE = m_size.y / 2.f;      //!< shape vertical center
+    const float TEXT_CENTER = bounds.size.x / 2.f;  //!< text horizontal center
+    const float TEXT_MIDDLE = bounds.size.y / 2.f;  //!< text vertical center
+    const float DIFF = 1.f - m_paddingRatio;        //!< reverse padding value, makes sure that text is centered if padding = 1.f
 
     sf::Vector2f local;
 
     switch(m_horizontalAlign)
     {
     case HAlign::Left:
-        local.x = TEXT_CENTER * DIFF + CENTER * m_paddingRatio;
+        // DIFF = 0 --> considers shape center only (CENTERED)
+        // DIFF = 1 --> shifts text by half of it's size to keep it inside the shape (MAX LEFT)
+        local.x = TEXT_CENTER * DIFF + SHAPE_CENTER * m_paddingRatio;
         break;
     case HAlign::Center:
-        local.x = CENTER;
+        // placed in the center of the shape
+        local.x = SHAPE_CENTER;
         break;
     case HAlign::Right:
-        local.x = (m_size.x - TEXT_CENTER) * DIFF + CENTER * m_paddingRatio;
+        // DIFF = 0 --> considers shape center only (CENTERED)
+        // DIFF = 1 --> shifts text by shape's size.x value then sub 1/2 * text_size.x to keep it inside the shape (MAX RIGHT)
+        local.x = (m_size.x - TEXT_CENTER) * DIFF + SHAPE_CENTER * m_paddingRatio;
         break;
     }
 
     switch(m_verticalAlign)
     {
     case VAlign::Top:
-        local.y = TEXT_MIDDLE * DIFF + MIDDLE * m_paddingRatio;
+        local.y = TEXT_MIDDLE * DIFF + SHAPE_MIDDLE * m_paddingRatio;
         break;
     case VAlign::Middle:
-        local.y = MIDDLE;
+        local.y = SHAPE_MIDDLE;
         break;
     case VAlign::Bottom:
-        local.y = (m_size.y - TEXT_MIDDLE) * DIFF + MIDDLE * m_paddingRatio;
+        local.y = (m_size.y - TEXT_MIDDLE) * DIFF + SHAPE_MIDDLE * m_paddingRatio;
         break;
     }
 
+    // scales with shape's local coordinates and considers rotation value
     m_text.setPosition(this->getTransform().transformPoint(local));
 }
 
 void Label::updateShapeBounds()
 {
-    const sf::FloatRect bounds = m_text.getLocalBounds();
-    const sf::String& text = m_text.getString();
-    const float line_height = m_text.getFont().getLineSpacing(m_text.getCharacterSize());
+    const sf::FloatRect TEXT_BOUNDS = m_text.getLocalBounds();
+    const sf::String& TEXT = m_text.getString();
 
-    const int n_lines = 1 + static_cast<int>
+    // single line's pixel height
+    const float LINE_HEIGHT = m_text.getFont().getLineSpacing(m_text.getCharacterSize());
+
+    // count the number of lines in label
+    const int N_LINES = 1 + static_cast<int>
     (
-        std::count(text.begin(), text.end(), static_cast<uint32_t>('\n'))
+        std::count(TEXT.begin(), TEXT.end(), static_cast<uint32_t>('\n'))
     );
 
-    const float width = bounds.position.x + bounds.size.x;
+    // considers the full horizontal space of text
+    const float WIDTH = TEXT_BOUNDS.position.x + TEXT_BOUNDS.size.x;
+    const float HEIGHT = N_LINES * LINE_HEIGHT;
 
-    const float height = n_lines * line_height;
+    // minimum size of the shape considers padding ratio
+    m_size.x = std::max(m_size.x, WIDTH + 0.5f * m_size.x * m_paddingRatio);
+    m_size.y = std::max(m_size.y, HEIGHT + 0.5f * m_size.y * m_paddingRatio);
 
-    m_size.x = std::max(m_size.x, width + 0.5f * m_size.x * m_paddingRatio);
-    m_size.y = std::max(m_size.y, height + 0.5f * m_size.y * m_paddingRatio);
     m_radius = std::max(0.f, std::min(m_radius, std::min<float>(m_size.x, m_size.y) / 2.f));
     update();
 }

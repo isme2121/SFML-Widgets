@@ -173,23 +173,24 @@ struct CellColor
 /// widget assigned to the `shared_ptr<WidgetTheme>` automatically
 /// updates it's style to the assigned style with the proper type.
 ///
-/// @see `__WidgetStyle`, `Widget::linkTheme`, `Widget::unlinkTheme`
+/// @see `WidgetStyle`, `Widget::linkTheme`, `Widget::unlinkTheme`
 ///
 ///////////////////////////////////////////////////////////////////
 class WidgetTheme
 {
 private:
+    // prevents constructing from WidgetStyle class
     class P
     {
         P() {}
         friend class WidgetTheme;
     };
 
-    template <typename> friend struct __WidgetStyle; //!< this gets the correct type based on template
+    template <typename> friend struct WidgetStyle; //!< template implementation for each widget type
 
     WidgetTheme(P);
 
-    WidgetTheme(P, ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e, LabelStyle _l);
+    WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label);
     ///////////////////////////////////////////////////////////////////
     /// @brief Various styles for each widget type
     ///////////////////////////////////////////////////////////////////
@@ -223,16 +224,16 @@ public:
     /// `Widget::linkTheme`, each assigned widget remains synced in style
     /// until the shared counter goes to zero.
     ///
-    /// @param _b style for button
-    /// @param _f style for frame, canvas, and image frame (can be differentiated using `setStyle` method)
-    /// @param _c style for checkbox
-    /// @param _e style for entry
-    /// @param _l style for label
+    /// @param s_button style for button
+    /// @param s_texture style for frame, canvas, and image frame (can be differentiated using `setStyle` method)
+    /// @param s_checkbox style for checkbox
+    /// @param s_entry style for entry
+    /// @param s_label style for label
     ///
     /// @return shared pointer with the new `WidgetTheme` resource
     ///
     ///////////////////////////////////////////////////////////////////
-    static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e, LabelStyle _l);
+    static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief creates a `WidgetTheme` resource with copy constructor
@@ -241,20 +242,20 @@ public:
     /// `Widget::linkTheme`, each assigned widget remains synced in style
     /// until the shared counter goes to zero.
     ///
-    /// @param t reference to existing `WidgetTheme` object
+    /// @param theme reference to existing `WidgetTheme` object
     ///
     /// @return shared pointer with the new `WidgetTheme` resource
     ///
     ///////////////////////////////////////////////////////////////////
-    static std::shared_ptr<WidgetTheme> make_theme(const WidgetTheme& t);
+    static std::shared_ptr<WidgetTheme> make_theme(const WidgetTheme& theme);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief copies the content of parameter t to this object
+    /// @brief copies the content of parameter theme to this object
     ///
-    /// @param t reference to existing `WidgetTheme` object
+    /// @param theme reference to existing `WidgetTheme` object
     ///
     ///////////////////////////////////////////////////////////////////
-    void copy_theme(const WidgetTheme& t);
+    void copy_theme(const WidgetTheme& theme);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns current assigned style for template widget type
@@ -265,9 +266,9 @@ public:
     /// 
     ///////////////////////////////////////////////////////////////////
     template <typename WIDGET_DERIVED_TYPE>
-    typename __WidgetStyle<WIDGET_DERIVED_TYPE>::StyleType getStyle()
+    typename WidgetStyle<WIDGET_DERIVED_TYPE>::StyleType getStyle()
     {
-        return __WidgetStyle<WIDGET_DERIVED_TYPE>::get(*this);
+        return WidgetStyle<WIDGET_DERIVED_TYPE>::get(*this);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -275,14 +276,14 @@ public:
     ///
     /// @tparam WIDGET_DERIVED_TYPE derived widget type
     /// 
-    /// @param _t style object optimal for template type
+    /// @param s_widget style object optimal for template type
     ///
     ///////////////////////////////////////////////////////////////////
     template <typename WIDGET_DERIVED_TYPE>
-    void setStyle(typename __WidgetStyle<WIDGET_DERIVED_TYPE>::StyleType _t)
+    void setStyle(typename WidgetStyle<WIDGET_DERIVED_TYPE>::StyleType s_widget)
     {
-        __WidgetStyle<WIDGET_DERIVED_TYPE>::set(*this, _t);
-        ++__WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
+        WidgetStyle<WIDGET_DERIVED_TYPE>::set(*this, s_widget);
+        ++WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -299,7 +300,7 @@ public:
     template <typename WIDGET_DERIVED_TYPE>
     std::size_t getToken() noexcept
     {
-        return __WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
+        return WidgetStyle<WIDGET_DERIVED_TYPE>::token(*this);
     }
 
     WidgetTheme(const WidgetTheme& other) = delete;

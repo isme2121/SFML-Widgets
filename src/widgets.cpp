@@ -112,43 +112,6 @@ sf::Vector2u get_prime_combination(unsigned int n)
 }
 }
 
-namespace sfml_widgets // ImageCache
-{
-ImageCache& ImageCache::getInstance()
-{
-    static ImageCache image_buffer_instance;
-    return image_buffer_instance;
-}
-
-std::optional<const sf::Image*> ImageCache::getImage(const std::string& image_path, bool increment_ref)
-{
-    std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
-    if(it != m_cachedImages.end())
-    {
-        if(increment_ref) ++(it->second.ref_count);
-        return &it->second.image;
-    }
-
-    // load image from disk
-    sf::Image img;
-    if(img.loadFromFile(image_path))
-    {
-        return &m_cachedImages.emplace(image_path, ImageReferenceCounter{std::move(img), 1}).first->second.image;
-    };
-    return std::nullopt;
-}
-
-void ImageCache::decrementRefCounter(const std::string& image_path)
-{
-    std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
-    if(it != m_cachedImages.end())
-    {
-        --it->second.ref_count;
-        if(it->second.ref_count < 1) m_cachedImages.erase(it);
-    }
-}
-}
-
 namespace sfml_widgets // Key
 {
     Key::Key(sf::Keyboard::Key key) : code(key) , scancode(sf::Keyboard::delocalize(key)) {};
@@ -245,13 +208,19 @@ namespace sfml_widgets // CaptureSequence
 void CaptureSequence::addSequence(const std::string& name, Sequence sequence, SequenceFunction callback)
 {
     std::size_t sequence_length = sequence.size();
+    if(sequence_length == 0) return;
+
+    // name tag already exists
+    if(std::find(m_sequences.begin(), m_sequences.end(), name) != m_sequences.end()) return;
+
     SequenceEntry temp{std::move(name), std::move(sequence), std::move(callback)};
     
-    // look for the optimal index for the new sequence based on sequence length
+    // insert new sequence based on length
+    // longer sequences take priority while checking sequences
     std::vector<SequenceEntry>::iterator it = std::lower_bound(m_sequences.begin(), m_sequences.end(), sequence_length,
     [](const SequenceEntry& existing_sequence, std::size_t size)
     {
-        return existing_sequence.sequence.size() > size; // longer sequence = more priority
+        return existing_sequence.sequence.size() > size;
     });
 
     m_sequences.insert(it, std::move(temp));
@@ -264,9 +233,10 @@ void CaptureSequence::deleteSequence(const std::string& name)
     
     if(it != m_sequences.end())
     {
-        size_t temp = it->sequence.size();
+        size_t removed_size = it->sequence.size();
         m_sequences.erase(it);
-        if(m_max_sequence == temp && m_sequences.size() > 0) m_max_sequence = m_sequences.at(0).sequence.size();
+        if(m_max_sequence == removed_size && m_sequences.size() > 0)
+            m_max_sequence = m_sequences.at(0).sequence.size(); //!< take the first index size since it's ordered
     }
 }
 
@@ -293,18 +263,22 @@ inline bool CaptureSequence::compareSequence()
     for(const SequenceEntry& items : m_sequences)
     {
         const Sequence& saved_sequence = items.sequence;
-        if(m_current_sequence.size() < saved_sequence.size()) continue; // not enough keys pressed
+        
+        // not enough keys pressed to match the sequence
+        if(m_current_sequence.size() < saved_sequence.size()) continue;
 
-        Sequence::iterator current_sequence_start_it = m_current_sequence.end() - static_cast<std::ptrdiff_t>(saved_sequence.size()); // ignore extra keys at the front of the sequence
+        // knowing that dynamic sequence is equal or larger than saved sequence
+        // it's safe to take only the range that matches the saved sequence's length
+        Sequence::iterator current_sequence_start_it = m_current_sequence.end() - static_cast<std::ptrdiff_t>(saved_sequence.size());
         if(std::equal(current_sequence_start_it, m_current_sequence.end(), saved_sequence.begin(), saved_sequence.end()))
         {
-            items.callback();
-            reset();
+            items.callback(); //!< assigned callback
+            reset();          //!< clear sequence
             return true;
         }
 
     }
-    // remove keys at first side that exceed max limit
+    // remove older key presses to maintain max size
     if(m_current_sequence.size() > m_max_sequence)
     {
         m_current_sequence.erase(m_current_sequence.begin(), 
@@ -312,11 +286,8 @@ inline bool CaptureSequence::compareSequence()
     }
     return false;
 }
-}
 
-namespace sfml_widgets // SequenceEntry
-{
-bool CaptureSequence::SequenceEntry::operator==(const std::string other_tag)
+bool CaptureSequence::SequenceEntry::operator==(const std::string& other_tag)
 {
     return tag == other_tag;
 }
@@ -325,7 +296,6 @@ bool CaptureSequence::SequenceEntry::operator==(const SequenceEntry& other)
 {
     return tag == other.tag;
 }
-
 }
 
 namespace sfml_widgets // RenderContext
@@ -338,24 +308,6 @@ RenderContext::RenderContext(sf::RenderWindow& window) : m_window(&window), m_fr
 RenderContext::RenderContext(Frame& frame) : m_window(nullptr), m_frame(&frame)
 {
 
-}
-
-RenderContext::RenderContext(RenderContext&& other) noexcept : m_window(other.m_window), m_frame(other.m_frame)
-{
-    other.m_window = nullptr;
-    other.m_frame  = nullptr;
-}
-
-RenderContext& RenderContext::operator=(RenderContext&& other) noexcept
-{
-    if(this != &other)
-    {
-        m_window = other.m_window;
-        m_frame  = other.m_frame;
-        other.m_window = nullptr;
-        other.m_frame  = nullptr;
-    }
-    return *this;
 }
 
 void RenderContext::draw(const sf::Drawable& widget, const sf::RenderStates state)
@@ -410,14 +362,23 @@ std::shared_ptr<WidgetGroup> WidgetGroup::make_group()
     return std::shared_ptr<WidgetGroup>(new WidgetGroup());
 }
 
-void WidgetGroup::add(Widget* w)
+bool WidgetGroup::add(Widget* w)
 {
+    if(std::find(m_cult.begin(), m_cult.end(), w) != m_cult.end())
+        return false; //!< widget already in cult
+
     m_cult.push_back(w);
+    return true;
 }
 
-void WidgetGroup::remove(Widget* w)
+bool WidgetGroup::remove(Widget* w)
 {
-    m_cult.erase(std::remove(m_cult.begin(), m_cult.end(), w), m_cult.end());
+    auto it = std::find(m_cult.begin(), m_cult.end(), w);
+    if(it == m_cult.end()) return false; //!< widget not found in cult
+
+    *it = m_cult.back(); //!< copy the w* of back element to removed element position
+    m_cult.pop_back(); //!< remove last element
+    return true;
 }
 
 bool WidgetGroup::contains(const Widget* w) const
@@ -442,16 +403,16 @@ namespace sfml_widgets // WidgetTheme
 {
 WidgetTheme::WidgetTheme(P) {}
 
-WidgetTheme::WidgetTheme(P, ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e, LabelStyle _l) :
-m_buttonTheme(_b), m_frameTheme(_f), m_gridCanvasTheme(_f), m_imageFrameTheme(_f),
-m_checkboxTheme(_c), m_entryTheme(_e), m_labelTheme(_l)
+WidgetTheme::WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label) :
+m_buttonTheme(s_button), m_frameTheme(s_texture), m_gridCanvasTheme(s_texture), m_imageFrameTheme(s_texture),
+m_checkboxTheme(s_checkbox), m_entryTheme(s_entry), m_labelTheme(s_label)
 {
 
 }
 
-std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle _b, TextureStyle _f, CheckboxStyle _c, EntryStyle _e, LabelStyle _l)
+std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label)
 {
-    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, _b, _f, _c, _e, _l));
+    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, s_button, s_texture, s_checkbox, s_entry, s_label));
 }
 
 std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(const WidgetTheme& t)

@@ -20,7 +20,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
+    Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the label with `Frame`
@@ -32,7 +32,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font);
+    Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
 
     Label(Label&& other) = delete;
     Label& operator=(Label&& other) = delete;
@@ -50,7 +50,7 @@ public:
     /// @see `Label::setTextLimit`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setText(sf::String text);
+    void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the max number of characters in the label
@@ -79,7 +79,7 @@ public:
     ///
     /// Text size would scale with size.y of the widget if this
     /// method is called, set from `0.f` to `1.0f` as a y axis
-    /// ratio with `0.f` disablding ratio scaling.
+    /// ratio with `0.f` disabling ratio scaling.
     ///
     /// @param ratio percent value from `0.f` to `1.f`
     ///
@@ -122,7 +122,7 @@ public:
     ///
     /// @param h alignment type
     ///
-    /// @see `Label::setPaddingRatio`
+    /// @see `setPaddingRatio`
     ///
     ///////////////////////////////////////////////////////////////////
     void setHorizontalAlignment(HAlign h = HAlign::Center);
@@ -135,7 +135,7 @@ public:
     ///
     /// @param v alignment type
     ///
-    /// @see `Label::setPaddingRatio`
+    /// @see `setPaddingRatio`
     ///
     ///////////////////////////////////////////////////////////////////
     void setVerticalAlignment(VAlign v = VAlign::Middle);
@@ -167,7 +167,7 @@ public:
     ///
     /// @param ratio float value from `0.f` to `1.f`
     ///
-    /// @see `Label::setHorizontalAlignment`, `Label::setVerticalAlignment`
+    /// @see `setHorizontalAlignment`, `setVerticalAlignment`
     ///
     ///////////////////////////////////////////////////////////////////
     void setPaddingRatio(float ratio);
@@ -256,9 +256,9 @@ private:
     sf::Text m_text;                                            //!< Label's text
 
     std::size_t m_charLimit = parameters::CHAR_LIMIT;           //!< Max number of characters
-    unsigned int m_charSize = 24;                               //!< Default character size
+    unsigned int m_charSize = parameters::CHAR_SIZE;            //!< Default character size
     float m_textSizeRatio = 0.f;                                //!< Default character size ratio (disabled initially)
-    float  m_paddingRatio = 0.f;                                //!< Default padding, set from 0 to 1 and scales with alignment
+    float m_paddingRatio = 0.f;                                 //!< Default padding, set from 0 to 1 and scales with alignment
     HAlign m_horizontalAlign = HAlign::Center;                  //!< Horizontal alignment, scales with padding
     VAlign m_verticalAlign = VAlign::Middle;                    //!< Vertical alignment, scales with padding
 
@@ -289,23 +289,23 @@ public:
 };
 
 template <>
-struct __WidgetStyle<Label>
+struct WidgetStyle<Label>
 {
     using StyleType = LabelStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_labelTheme;
+        return theme.m_labelTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_label)
     {
-        t.m_labelTheme = _b;
+        theme.m_labelTheme = s_label;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_labelToken;
+        return theme.m_labelToken;
     }
 };
 }

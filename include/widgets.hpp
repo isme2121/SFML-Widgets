@@ -22,11 +22,10 @@ class Entry;
 class Label;
 class ToolTip;
 class WidgetGroup;
-template <typename DERIVED_TYPE> struct __WidgetStyle;
+template <typename DERIVED_TYPE> struct WidgetStyle;
 class CaptureSequence;
 struct Key;
 class RenderContext;
-class ImageCache;
 class CellOutline;
 class Cell;
 
@@ -193,53 +192,99 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////
-/// @brief Static class for storing images used within widgets by paths
-///
-/// @see `ImageReferenceCounter`
+///@brief Keyboard event management class used by `Widget`
 ///
 ///////////////////////////////////////////////////////////////////
-class ImageCache
+class CaptureSequence
 {
+///////////////////////////////////////////////////////////////////
+/// @brief Stores the triggering sequence and assigned callback for
+/// when a keyboard event is triggered
+///
+/// @see `CaptureSequence`
+///
+///////////////////////////////////////////////////////////////////
+struct SequenceEntry
+{
+    std::string tag;
+    Sequence sequence;
+    SequenceFunction callback;
+    
+    bool operator==(const std::string& other_tag);
+    bool operator==(const SequenceEntry& other);
+};
+
 public:
-    static ImageCache& getInstance();
+    CaptureSequence() = default;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Fetch image pointer from memory or loads from disk if not
-    /// found
+    /// @brief Adds a sequence of key presses to memory
     ///
-    /// @param image_path relative path to image as a look up key
-    /// @param increment_ref specify whether to increment reference counter of image,
-    /// set to false if widget already reference's the image.
+    /// Takes a vector of scancode objects to define a sequence of events
+    /// with the correct order.
     ///
-    /// @return read only image pointer if image is found on disk or memory,
-    /// otherwise nullopt
+    /// @param name sequence's reference tag
+    /// @param sequence vector of physical key presses
+    /// @param callback sequence's function, must not accept any parameters
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<const sf::Image*> getImage(const std::string& image_path, bool increment_ref = true);
+    void addSequence(const std::string& name, Sequence sequence, SequenceFunction callback);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Remove a sequence from memory
+    ///
+    /// Remove the first found sequence with entered name, returns if 
+    /// name is not found.
+    ///
+    /// @param name string name used when assigning the sequence
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void deleteSequence(const std::string& name);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Called by widgets after clearing their texture image
+    /// @brief Checks and fires the callback if a sequence matches
     ///
-    /// Decrements reference counter for a pre-loaded image, and frees
-    /// the image memory if no widget is using it.
+    /// Takes the Key press object from the main window events and stores
+    /// it internally as a sequence, if the sequence of events match a saved
+    /// sequence then fires a callback for that sequence.
+    ///
+    /// @param key_event Event object
+    ///
+    /// @return true if a sequence was matched, otherwise false.
     ///
     ///////////////////////////////////////////////////////////////////
-    void decrementRefCounter(const std::string& image_path);
+    bool checkEvents(const sf::Event& key_event);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears the current sequence
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void reset();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current stored sequence entered by the user
+    ///
+    /// @return a vector of physical key press objects.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const Sequence& getCurrentSequence() const;
 
 private:
-    ImageCache() = default;
-    ImageCache(const ImageCache&) = delete;
-    ImageCache& operator=(const ImageCache&) = delete;
-    ImageCache(ImageCache&&) = delete;
-    ImageCache& operator=(ImageCache&&) = delete;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Main sequence comparing method
+    ///
+    /// @return true if a sequence is matched, otherwise false.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    inline bool compareSequence();
 
-    struct ImageReferenceCounter
-    {
-        sf::Image image;
-        std::size_t ref_count;
-    };
+    ///////////////////////////////////////////////////////////////////
+    /// Member variables
+    ///////////////////////////////////////////////////////////////////
 
-    std::unordered_map<std::string, ImageReferenceCounter> m_cachedImages;
+    std::vector<SequenceEntry> m_sequences;                     //!< Stored sequences
+    Sequence m_current_sequence;                                //!< Current sequence
+    size_t m_max_sequence = 0;                                  //!< Max number of keys needed to match a saved sequence
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -269,8 +314,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     explicit RenderContext(Frame& frame);
 
-    RenderContext(RenderContext&& other) noexcept;
-    RenderContext& operator=(RenderContext&& other) noexcept;
+    RenderContext(RenderContext&& other) = delete;
+    RenderContext& operator=(RenderContext&& other) = delete;
 
     RenderContext(const RenderContext& other) = delete;
     RenderContext& operator=(const RenderContext& other) = delete;
@@ -394,15 +439,17 @@ private:
     /// @brief Adds a widget to the group, does nothing if the widget
     /// is already there
     ///
+    /// @return true if the addition was successful, otherwise false
+    ///
     ///////////////////////////////////////////////////////////////////
-    void add(Widget* w);
+    bool add(Widget* w);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes a widget from the group, does nothing if the widget
     /// does not belong in the first place
     ///
     ///////////////////////////////////////////////////////////////////
-    void remove(Widget* w);
+    bool remove(Widget* w);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Calls the focus callback for all widgets in the group
@@ -419,102 +466,6 @@ private:
     std::vector<Widget*> m_cult;    //!< ooga booga
 
     friend class Widget;
-};
-
-///////////////////////////////////////////////////////////////////
-///@brief Keyboard event management class used by `Widget`
-///
-///////////////////////////////////////////////////////////////////
-class CaptureSequence
-{
-///////////////////////////////////////////////////////////////////
-/// @brief Stores the triggering sequence and assigned callback for
-/// when a keyboard event is triggered
-///
-/// @see `CaptureSequence`
-///
-///////////////////////////////////////////////////////////////////
-struct SequenceEntry
-{
-    std::string tag;
-    Sequence sequence;
-    SequenceFunction callback;
-    
-    bool operator==(const std::string other_tag);
-    bool operator==(const SequenceEntry& other);
-};
-
-public:
-    CaptureSequence() = default;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Adds a sequence of key presses to memory
-    ///
-    /// Takes a vector of scancode objects to define a sequence of events
-    /// with the correct order.
-    ///
-    /// @param name sequence's reference tag
-    /// @param sequence vector of physical key presses
-    /// @param callback sequence's function, must not accept any parameters
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void addSequence(const std::string& name, Sequence sequence, SequenceFunction callback);
-    
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Remove a sequence from memory
-    ///
-    /// Remove the first found sequence with entered name, returns if 
-    /// name is not found.
-    ///
-    /// @param name string name used when assigning the sequence
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void deleteSequence(const std::string& name);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks and fires the callback if a sequence matches
-    ///
-    /// Takes the Key press object from the main window events and stores
-    /// it internally as a sequence, if the sequence of events match a saved
-    /// sequence then fires a callback for that sequence.
-    ///
-    /// @param key_event Event object
-    ///
-    /// @return true if a sequence was matched, otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool checkEvents(const sf::Event& key_event);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Clears the current sequence
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void reset();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the current stored sequence entered by the user
-    ///
-    /// @return a vector of physical key press objects.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    const Sequence& getCurrentSequence() const;
-
-private:
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Main sequence comparing method
-    ///
-    /// @return true if a sequence is matched, otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    inline bool compareSequence();
-
-    ///////////////////////////////////////////////////////////////////
-    /// Member variables
-    ///////////////////////////////////////////////////////////////////
-
-    std::vector<SequenceEntry> m_sequences;                     //!< Stored sequences
-    Sequence m_current_sequence;                                //!< Current sequence
-    size_t m_max_sequence = 0;                                  //!< Max number of keys needed to match a saved sequence
 };
 
 namespace constants
@@ -542,11 +493,11 @@ inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKE
                                 FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER;
 
 
-constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default
-constexpr bool STACK_MOUSE_CALLBACKS = false;                               //!< Allows mouse events to trigger on multiple widgets inside a frame (stacked widgets)
-constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!< Allows the frame callback to trigger after a child callback
+constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default (disabled to deny a release callback from triggering at the end of the active state)
+constexpr bool STACK_MOUSE_CALLBACKS = false;                               //!< Allows mouse events to trigger on multiple widgets inside a frame (stacked widgets all call their callbacks if enabled)
+constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!< Allows the frame callback to trigger after a child callback if set (causes un-intended behavior if handled improperly)
+constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for focusing a widget and holding
 
-constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for event triggering
 constexpr sf::Time QUEUE_DELAY = sf::milliseconds(0);                       //!< Delay between keyboard events
 constexpr sf::Time HOVER_DURATION = sf::milliseconds(500);                  //!< Hovering duration before tooltip is drawn
 constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period

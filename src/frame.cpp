@@ -12,6 +12,7 @@ m_window(&window), m_texture(size), m_sprite(m_texture.getTexture()), m_contentH
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
@@ -24,6 +25,7 @@ m_window(root.getWindowPtr()), m_texture(size), m_sprite(m_texture.getTexture())
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
+
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
@@ -44,6 +46,7 @@ Frame::~Frame()
         }
             
     }
+    // places child widgets on the root window
     else if(m_window != nullptr)
     {
         for(Widget* w : m_childWidgets)
@@ -53,6 +56,63 @@ Frame::~Frame()
         }
     }
 }
+
+void Frame::setGrid(sf::Vector2u grid_mapping)
+{
+    m_gridMapping = grid_mapping;
+    // check if non of the grids is 0
+    if(m_gridMapping.x * m_gridMapping.y) 
+    {
+        setFlag(m_flags, FLAGS::GRID);
+        updateGrid();
+        return;
+    }
+    resetFlag(m_flags, FLAGS::GRID);
+}
+
+void Frame::setSeparators(SeparatorType type, float length_ratio, float sep_distance)
+{
+    m_separatorType = type;
+    if(type == SeparatorType::NoSeparator)
+    {
+        resetFlag(m_flags, FLAGS::SEPARATORS);
+        return;
+    }
+    m_separatorRatio = std::clamp(length_ratio, 0.f, 1.f);
+    m_separatorDistance = sep_distance;
+    setFlag(m_flags, FLAGS::SEPARATORS);
+}
+
+void Frame::setTheme(TextureStyle s_frame)
+{
+    m_style = s_frame;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
+sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
+{
+    sf::Vector2f local = sf::Vector2f(mouse_position);
+
+    const Frame* root = this;
+    while(root != nullptr)
+    {
+        // handles world offset + transform ratio
+        local = root->getInverseTransform().transformPoint(local);
+        local.y += root->m_scrollOffset;
+        root = root->m_master.getFramePtr();
+    }
+
+    return local;
+}
+
+sf::RenderWindow* Frame::getWindowPtr() const
+{
+    return m_window;
+}
+
+///////////////////////////////////////////////////////////////////
+/// Private
+///////////////////////////////////////////////////////////////////
 
 bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
@@ -91,79 +151,16 @@ bool Frame::preProcessKeyEvents(const sf::Event& event)
     return event_used;
 }
 
-void Frame::display()
-{
-    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
-
-    resetFlag(m_flags, FLAGS::DRAWING | FLAGS::MODIFIED);
-    
-    drawSeparators();
-
-    m_texture.display();
-    m_sprite.setTexture(m_texture.getTexture());
-    if(m_clipShaderPtr) m_master.draw(m_sprite, m_clipShaderPtr.get());
-    else m_master.draw(m_sprite);
-}
-
-sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
-{
-    sf::Vector2f local = sf::Vector2f(mouse_position);
-
-    const Frame* root = this;
-    while(root != nullptr)
-    {
-        // handles world offset + transform ratio
-        local = root->getInverseTransform().transformPoint(local);
-        local.y += root->m_scrollOffset;
-        root = root->m_master.getFramePtr();
-    }
-
-    return local;
-}
-
-void Frame::setGrid(sf::Vector2u grid_mapping)
-{
-    m_gridMapping = grid_mapping;
-    if(!(m_gridMapping.x * m_gridMapping.y)) 
-    {
-        resetFlag(m_flags, FLAGS::GRID);
-        return;
-    }
-    setFlag(m_flags, FLAGS::GRID);
-    updateGrid();
-}
-
-void Frame::setSeparators(SeparatorType type, float length_ratio, float sep_distance)
-{
-    m_separatorType = type;
-    if(type == SeparatorType::NoSeparator)
-    {
-        resetFlag(m_flags, FLAGS::SEPARATORS);
-        return;
-    }
-    m_separatorRatio = std::clamp(length_ratio, 0.f, 1.f);
-    m_separatorDistance = sep_distance;
-    setFlag(m_flags, FLAGS::SEPARATORS);
-}
-
-sf::RenderWindow* Frame::getWindowPtr() const
-{
-    return m_window;
-}
-
-void Frame::setTheme(TextureStyle __frame_style)
-{
-    m_style = __frame_style;
-    setFlag(m_flags, FLAGS::MODIFIED);
-}
-
-///////////////////////////////////////////////////////////////////
-/// Private
-///////////////////////////////////////////////////////////////////
-
 void Frame::drawWidget()
 {
-    if(checkFlag(m_flags, FLAGS::LONGSKIP)) //!< has child widgets
+    /* 
+    * if LONGSKIP is set --> child widget will call the necessary methods
+    * to update the frame's texture and such and is skipped within the base class
+    * 
+    * if LONGSKIP is reset --> there are no child widgets, and base class has already
+    * called the necessary methods before this section is processed
+    */
+    if(checkFlag(m_flags, FLAGS::LONGSKIP))
         for(Widget* w : m_childWidgets) w->draw();
 
     display();
@@ -230,21 +227,21 @@ void Frame::updateState()
 
     if(checkFlag(m_flags, FLAGS::BLOCKED))
     {
-        m_opacity = 0.3f;
+        m_opacity = 0.5f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
     }
     else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
-        m_opacity = 0.1f;
+        m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;
     }
     else if(checkFlag(m_flags, FLAGS::ACTIVE))
     {
-        m_opacity = 0.8f;
+        m_opacity = 1.f;
         m_currentBgColorPtr = &m_style.fill_active_color;
         m_currentOutlineColorPtr = &m_style.outline_active_color;
         m_currentOutlineThicknessPtr = &m_style.outline_active_thickness;
@@ -282,6 +279,14 @@ void Frame::updateTheme()
     }
 }
 
+void Frame::scroll(float delta)
+{
+    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
+
+    m_scrollOffset = std::clamp(m_scrollOffset + delta * (parameters::SCROLL_RATIO * m_size.y), 0.f, m_maxScroll);
+    refreshView();
+}
+
 void Frame::updateGrid()
 {
     if(!checkFlag(m_flags, FLAGS::GRID) || m_childWidgets.empty()) return;
@@ -311,7 +316,7 @@ void Frame::updateGrid()
 
     const float width_difference = m_size.x / static_cast<float>(m_gridMapping.x);
     const float height_difference = m_size.y / static_cast<float>(m_gridMapping.y);
-    size_t size = sorted_by_position.size();
+    std::size_t size = sorted_by_position.size();
 
     for(std::size_t i{0}; i < size; i++)
     {
@@ -362,19 +367,19 @@ void Frame::drawSeparators()
         });
     }
 
-    size_t size = sorted_by_position.size();
+    std::size_t n_widgets = sorted_by_position.size();
     // we don't want to draw a line after the last widget
-    for(size_t i{0}; i < size - 1; ++i)
+    for(std::size_t i{0}; i < n_widgets - 1; ++i)
     {
-        Widget* Pcurrent = sorted_by_position[i];
-        Widget* Pnext    = sorted_by_position[i + 1];
         sf::Vertex line[2];
+        Widget* current_widget = sorted_by_position[i];
+        Widget* new_widget = sorted_by_position[i + 1];
 
         if(m_separatorType == SeparatorType::Horizontal)
         {
             // gap between bottom of current and top of next
-            float current_bottom_y = Pcurrent->m_position.y + Pcurrent->m_size.y;
-            float distance = Pnext->m_position.y - current_bottom_y;
+            float current_bottom_y = current_widget->m_position.y + current_widget->m_size.y;
+            float distance = new_widget->m_position.y - current_bottom_y;
 
             if(distance < m_separatorDistance) continue;
 
@@ -391,8 +396,8 @@ void Frame::drawSeparators()
         else
         {
             // gap between right of current and left of next
-            float current_right_x = Pcurrent->m_position.x + Pcurrent->m_size.x;
-            float distance = Pnext->m_position.x - current_right_x;
+            float current_right_x = current_widget->m_position.x + current_widget->m_size.x;
+            float distance = new_widget->m_position.x - current_right_x;
 
             if(distance < m_separatorDistance) continue;
 
@@ -411,44 +416,18 @@ void Frame::drawSeparators()
     }
 }
 
-void Frame::updateFrameHeight()
+void Frame::display()
 {
-    if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return; //!< prevent calling for every widget
-    float maxBottom = m_size.y;
-    for(Widget* w : m_childWidgets)
-    {
-        float bottom = w->m_position.y + w->m_size.y;
-        if(bottom > maxBottom)
-            maxBottom = bottom;
-    }
+    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
 
-    m_contentHeight = maxBottom;
-    updateScrollView();
-}
+    resetFlag(m_flags, FLAGS::DRAWING | FLAGS::MODIFIED);
+    
+    drawSeparators();
 
-void Frame::updateScrollView()
-{
-    m_maxScroll = std::max(0.f, m_contentHeight - m_size.y);
-
-    // just in case we lost widget content
-    m_scrollOffset = std::clamp(m_scrollOffset, 0.f, m_maxScroll);
-    refreshView();
-}
-
-void Frame::refreshView()
-{
-    sf::View v = m_texture.getView();
-    v.setCenter({m_size.x / 2.f,
-                 m_size.y / 2.f + m_scrollOffset});
-    m_texture.setView(v);
-}
-
-void Frame::scroll(float delta)
-{
-    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
-
-    m_scrollOffset = std::clamp(m_scrollOffset + delta * (parameters::SCROLL_RATIO * m_size.y), 0.f, m_maxScroll);
-    refreshView();
+    m_texture.display();
+    m_sprite.setTexture(m_texture.getTexture());
+    if(m_clipShaderPtr) m_master.draw(m_sprite, m_clipShaderPtr.get());
+    else m_master.draw(m_sprite);
 }
 
 void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
@@ -456,6 +435,7 @@ void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
     // prevent refreshing at each call
     if(!checkFlag(m_flags, FLAGS::DRAWING))
     {
+        // this is processed after the first child widget is drawn
         setFlag(m_flags, FLAGS::DRAWING);
         checkQueue();
         updateTheme();
@@ -493,5 +473,37 @@ void Frame::updateWidget(Widget& old_widget, Widget& new_widget)
         m_childWidgets.erase(it);
         m_childWidgets.emplace_back(&new_widget);
     }
+}
+
+void Frame::updateFrameHeight()
+{
+    if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return; //!< prevent calling for every widget
+    float maxBottom = m_size.y;
+    for(Widget* w : m_childWidgets)
+    {
+        float bottom = w->m_position.y + w->m_size.y;
+        if(bottom > maxBottom)
+            maxBottom = bottom;
+    }
+
+    m_contentHeight = maxBottom;
+    updateScrollView();
+}
+
+void Frame::updateScrollView()
+{
+    m_maxScroll = std::max(0.f, m_contentHeight - m_size.y);
+
+    // just in case we lost widget content
+    m_scrollOffset = std::clamp(m_scrollOffset, 0.f, m_maxScroll);
+    refreshView();
+}
+
+void Frame::refreshView()
+{
+    sf::View v = m_texture.getView();
+    v.setCenter({m_size.x / 2.f,
+                 m_size.y / 2.f + m_scrollOffset});
+    m_texture.setView(v);
 }
 }

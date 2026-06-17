@@ -16,6 +16,7 @@ public:
     /// @param root window or a frame widget
     /// @param position widget's initial position
     /// @param size widget's initial size
+    /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
     Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
@@ -27,6 +28,7 @@ public:
     /// @param root window or a frame widget
     /// @param position widget's initial position
     /// @param size widget's initial size
+    /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
     Entry(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
@@ -39,12 +41,16 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets text as input
     ///
-    /// Replaces any existing input with parameter text.
-    ///
     /// @see `get`, `clear`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setInput(std::string text);
+    void setInput(const sf::String& text);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the background string content
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setBackGroundText(const sf::String& bg_text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Moves the cursor to the input index
@@ -54,51 +60,6 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     void setCursorIndex(unsigned int idx);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the current input string
-    ///
-    /// @see `setInput`, `clear`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    const std::string& get() const;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Clears the entry's input
-    ///
-    /// @see `setInput`, `get`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void clear();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates character size based on the height of the widget
-    ///
-    /// @param ratio value from 0.f to 1.f
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setTextSize(float ratio);
-    
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates character size with the new value
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setTextSize(unsigned int char_size);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the left offset for text scaling with the entry's
-    /// width
-    ///
-    /// @param ratio set from `0.f` to 0.99..f`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setOffsetRatio(float ratio);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the background string content
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setBackGroundText(std::string bg_text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a filler character for entered text
@@ -141,6 +102,31 @@ public:
     void setBLinkUpRatio(float ratio = 0.5f);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates character size based on the height of the widget,
+    /// default is `0.5f`
+    ///
+    /// @param ratio value from 0.f to 1.f
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextSize(float ratio);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates character size with the new value, default is
+    /// `parameters::CHAR_SIZE`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTextSize(unsigned int char_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the left offset for text scaling with the entry's
+    /// width, default is `0.1f`
+    ///
+    /// @param ratio set from `0.f` to 0.99..f`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setOffsetRatio(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the cursor width
     ///
     ///////////////////////////////////////////////////////////////////
@@ -170,6 +156,22 @@ public:
     void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Clears the entry's input
+    ///
+    /// @see `setInput`, `get`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void clear();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current input string
+    ///
+    /// @see `setInput`, `clear`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const sf::String& get() const;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
     ///
     /// Assigned style overrides the current style even if the widget is assigned
@@ -180,9 +182,17 @@ public:
     void setTheme(EntryStyle entry_style);
 
 private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Selects the entry and enables cursor
+    ///
+    ///////////////////////////////////////////////////////////////////
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
-    bool postProcessKeyEvents(const sf::Event& event);
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Enters text to the entry
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool postProcessKeyEvents(const sf::Event& event) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget on master object
@@ -191,10 +201,7 @@ private:
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `configure`
-    ///
-    /// @param mask bits passed in `configure`
+    /// @brief Restarts the indicator clock if toggled
     ///
     ///////////////////////////////////////////////////////////////////
     void config(FLAGS mask) override;
@@ -202,8 +209,6 @@ private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' positions within the widget,
     /// called in `setWidgetPosition`
-    ///
-    /// @see `setWidgetPosition`
     ///
     ///////////////////////////////////////////////////////////////////
     void updatePosition() override;
@@ -224,37 +229,41 @@ private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates widget colors to match current state alongside shaders
     ///
-    /// Best called within `Draw` override before drawing, it is also
-    /// the optimal method for updating available shaders.
-    ///
-    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `ACTIVE`
-    /// `HOVERED` respectively.
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
     ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the content visible within the entry
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void writeToEntry();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Draws cursor while updating it's designated clock
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void drawCursorLine();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Positions cursor to the closest index to x_pos
+    ///
+    /// x_pos should be in local view as the method considers all current 
+    /// offsets.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setCursorIndex(float x_pos);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current x coordinate of the cursor
     ///
     ///////////////////////////////////////////////////////////////////
     float getCursorCoordinate() const;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Positions cursor to the closest index to x__pos
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setCursorIndex(float x__pos);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates text size and position for both input and background
@@ -281,66 +290,58 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateView();
 
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Draws cursor while updating it's designated clock
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void drawCursorLine();
 
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the content visible within the entry
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void writeToEntry();
+
+
 
     // drawing
-    sf::RenderTexture m_renderTexture;
-    sf::Sprite m_sprite;
-    std::unique_ptr<const sf::Font> m_font;
-    sf::Text m_text;
-    sf::Text m_bgText;
+    sf::RenderTexture m_renderTexture;                              //!< Main drawing texture
+    sf::Sprite m_sprite;                                            //!< Texture's sprite
+    std::unique_ptr<const sf::Font> m_font;                         //!< Optional local font
+    sf::Text m_text;                                                //!< Entry text
+    sf::Text m_bgText;                                              //!< Background text, capped at 256 chars
     
     // data
-    std::string m_textBuffer;                                       //!< Input content
-    std::size_t m_cursorIndex = 0;                                  //!< Points to char in string index + 1, so m_textBuffer[0] == m_cursorIndex{0}
-    std::function<bool(char32_t)> m_inputFilter = nullptr;
+    sf::String m_textBuffer;                                        //!< Entry content
+    std::size_t m_cursorIndex = 0;                                  //!< Points to char in string index + 1, so m_textBuffer[0] = index 1
+    std::function<bool(char32_t)> m_inputFilter = nullptr;          //!< Active input filter for entry, this include `set_input` method as well
 
     // parameters
     std::size_t m_inputLimit = parameters::CHAR_LIMIT;              //!< Max possible number of characters
-    float m_textSizeRatio = 0.5f;                                   //!< How much space does the text take based on entry's height
-    float m_textOffsetRatio = 0.1f;
-    unsigned int m_charSize = parameters::CHAR_SIZE;
-    unsigned int m_cursorWidth = 1;
-    char m_placeholderCharacter = 0;                                //!< Visible character replacing the actual content
-    sf::Time m_cursorOnDuration;
-    sf::Time m_cursorOffDuration;
+    float m_textSizeRatio = 0.5f;                                   //!< Entry determines char size based on it's height
+    float m_textOffsetRatio = 0.1f;                                 //!< Left offset for text
+    unsigned int m_charSize = parameters::CHAR_SIZE;                //!< Entry's char size
+    unsigned int m_cursorWidth = 1;                                 //!< The width of the cursor
+    char m_placeholderCharacter = 0;                                //!< The visual text is replaced by this char, `0` char disables the replacement
+    sf::Time m_cursorOnDuration;                                    //!< Uptime period for cursor
+    sf::Time m_cursorOffDuration;                                   //!< Downtime period for cursor
 
     // funcionality
-    sf::Clock m_blinkTimer;
-    float m_textBoxWidth;                                           //!< Entry's text width
+    sf::Clock m_blinkTimer;                                         //!< Cursor blinking timer
+    float m_textBoxWidth;                                           //!< Entry's text complete width
     float m_currentPanOffset = 0.f;                                 //!< Current panned value
     float m_maxPanOffset = 0.f;                                     //!< Max possible space for panning
     EntryStyle m_style = Theme::entry_style::ENTRY_STALE_VIOLET;    //!< Entry's default style
 };
 
 template <>
-struct __WidgetStyle<Entry>
+struct WidgetStyle<Entry>
 {
     using StyleType = EntryStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_entryTheme;
+        return theme.m_entryTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_entry)
     {
-        t.m_entryTheme = _b;
+        theme.m_entryTheme = s_entry;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_entryToken;
+        return theme.m_entryToken;
     }
 };
 }

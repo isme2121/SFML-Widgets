@@ -9,15 +9,18 @@ namespace sfml_widgets
 ///////////////////////////////////////////////////////////////////
 /// @brief Base class for all widgets
 ///
-/// @see `WidgetGroup`, `Button`, `Frame`, `GridCanvas`, `ImageFrame`, `CheckBox`, `Entry`
+/// @see `WidgetGroup`, `Button`, `Frame`, `Label`, `GridCanvas`, `ImageFrame`, `CheckBox`, `Entry`
 ///
 ///////////////////////////////////////////////////////////////////
 class Widget : protected sf::Shape
 {
-public:
     friend class Frame;
     friend class WidgetGroup;
 
+protected:
+    struct ImageCache;
+
+public:
     enum class W_MouseEventType : int;
     enum class W_CounterType : int;
     struct W_MouseEventDetails;
@@ -59,7 +62,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Toggles control flags for widget
     ///
-    /// Use | operator to pass multiple flags at once.
+    /// Use `|` operator to pass multiple flags at once.
     ///
     /// @param  flags modifiable state flags, @see `MODIFIABLE`
     ///
@@ -67,7 +70,7 @@ public:
     void configure(FLAGS flags);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Sets widget's position based on it's master's view
+    /// @brief Updates widget's position based on it's master's view
     ///
     /// Position is relative to the widget's {0, 0} local coordinates.
     ///
@@ -77,7 +80,7 @@ public:
     void setWidgetPosition(const sf::Vector2f pos);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Sets widget's size
+    /// @brief Updates widget's size
     ///
     /// @see `getWidgetSize`, 
     ///
@@ -85,7 +88,24 @@ public:
     void setWidgetSize(const sf::Vector2f size);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief similar to `sf::Transformable::setRotation` where it overwrites
+    /// the widget's rotation angle
+    ///
+    /// @see `rotateWidget`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setWidgetRotation(float new_angle);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget mouse events
+    ///
+    /// Checks for all kinds of mouse events related to the widget including
+    /// hovering while triggering the proper callback for each event if assigned
+    /// within `bindMouseEvent` method.
+    ///
+    /// Call this method in the events loop once per widget unless if the widget
+    /// belongs to a `Frame`, then calling this from the root `Frame` widget is
+    /// sufficient.
     ///
     /// @param event Event object from `sf::WindowBase::pollEvent`
     /// @param mouse_position optional current mouse position from `sf::Mouse::getPosition`
@@ -101,9 +121,17 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for widget keyboard events
     ///
-    /// @param event Event object from `sf::WindowBase::pollEvent`
+    /// Checks for keyboard events that are assigned to the widget within
+    /// `bindShortCut` method.
     ///
-    /// @warning Multiple widgets with the same sequence can all fire at once.
+    /// Call this method in the events loop once per widget unless if the widget
+    /// belongs to a `Frame`, then calling this from the root `Frame` widget is
+    /// sufficient.
+    ///
+    /// @note Multiple widgets can trigger their assigned callback if they share
+    /// the same key sequence
+    ///
+    /// @param event Event object from `sf::WindowBase::pollEvent`
     ///
     /// @see `bindShortCut`, `unbindShortCut`, `resizeWidgets`
     ///
@@ -116,23 +144,11 @@ public:
     /// Events captured by `captureMouseEvents` such as pressing a
     /// mouse button or scrolling are assigned here.
     ///
-    /// Possible active state for each callback call:
-    /// `~ = not guaranteed`
-    ///
-    /// - PRESS: `FOCUSED`, `HOVERED`, `SELECTED`, `ACTIVE~`
-    ///
-    /// - RELEASE: `HOVERED`, `FOCUSED`, `SELECTED`
-    ///
-    /// - HOLD: `ACTIVE`, `FOCUSED`, `SELECTED~`
-    ///
-    /// - SCROLL: `HOVERED`
-    ///
-    /// - FOCUSSET: `FOCUSED`
-    ///
-    /// - FOCUSLOST: ``
+    /// @note Certain events like `PRESS` & `RELEASE` require specifying which
+    /// button would trigger their respective bindings.
     ///
     /// @param event_type Which event type triggers the callback
-    /// @param callback function call during event match, can take `const sf::Event`
+    /// @param callback function call during event match, can take `sf::Event`
     /// as a parameter
     /// @param button only necessary if event type is `W_MouseEventType::Press` or
     /// `W_MouseEventType::release`
@@ -145,7 +161,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears callback and event sequence from widget.
     ///
-    /// If event type is `W_MouseEventType::Press` or `W_MouseEventType::Release`
+    /// @note If event type is `W_MouseEventType::Press` or `W_MouseEventType::Release`
     /// then a button parameter is required.
     ///
     /// @param event_type Which event type to delete
@@ -159,11 +175,12 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Creates a keyboard sequence event for widget.
     ///
-    /// Takes a vector of `sf::Keyboard::Scancode` objects to define a sequence
-    /// of key presses, sequence can also be a single key press.
+    /// Takes a vector of `Key` objects to define a sequence of key presses,
+    /// sequence can also be a single key press.
     ///
     /// @param tag string reference to the following sequence
-    /// @param key_sequence vector of `sf::Keyboard::Scancode` objects defining a sequence
+    /// @param key_sequence vector<sfml_widgets::Key> objects defining a sequence, passing
+    /// an empty sequence will simply fail to bind
     /// @param callback function that triggers upon matching the sequence, does not take 
     /// any parameters
     ///
@@ -175,69 +192,95 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears callback and event key sequence from widget.
     ///
-    /// @param tag string reference of te sequence
+    /// @param tag string reference of the sequence
     /// 
     /// @see `captureKeyEvents`, `bindShortCut`
     ///
     ///////////////////////////////////////////////////////////////////
     void unbindShortCut(const std::string& tag);
 
-    ///////////////////////////////////////////////////////////////////    
-    /// @brief Assigns an image data to the widget and draws it in the Background
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads a shader for sprites
     ///
-    /// Attempts to load the image data as a fill texture for the widget,
-    /// it also can initiate a coloring shader if a path is provided.
+    /// Tries to load a fragment shader from disk while replacing the
+    /// existing one even if the process fails.
     ///
-    /// The shader handles transparency and color multiplication falses.
+    /// Clip shader is responsible for clipping sprites to match the widget's
+    /// shape based on what the widget requires, not needed for widgets that
+    /// don't use `sf::Sprite` object.
     ///
-    /// @see `loadColorShader`, `clearBackgroundTexture`, `TEXTURE_COLOR_SHADER_PATH`
+    /// @note this process would fail if the hardware does no support shaders or
+    /// `NOCLIPSHADER` flag is set
     ///
-    /// @param file_path string path leading to an image on disk
+    /// @param shader_path fragment file path
     ///
     /// @return true if loading was successful, otherwise false.
+    ///
+    /// @see `resetClipShader`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool loadClipShader(const std::string_view& shader_path = parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+
+    ///////////////////////////////////////////////////////////////////    
+    /// @brief Clears the clipping shader from memory
+    ///
+    /// @param shader_path shader that replaces the previous one
+    ///
+    /// @see `loadClipShader`
+    ///
+    ///////////////////////////////////////////////////////////////////    
+    void resetClipShader(const std::string_view& shader_path = "");
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads a shader for fill color 
+    ///
+    /// Applied to the shape texture by default, handles colors multiplication
+    /// between the shape and any loaded texture.
+    ///
+    /// @note this process would fail if the hardware does no support shaders or
+    /// `NOCOLORSHADER` flag is set
+    ///
+    /// @param shader_path fragment file path
+    ///
+    /// @return true if loading was successful, otherwise false.
+    ///
+    /// @see `resetColorShader`
+    ///
+    ///////////////////////////////////////////////////////////////////    
+    bool loadColorShader(const std::string_view& shader_path = parameters::TEXTURE_COLOR_SHADER_PATH);
+
+    ///////////////////////////////////////////////////////////////////    
+    /// @brief Clears the coloring shader from memory
+    ///
+    /// @param shader_path shader that replaces the previous one
+    ///
+    /// @see `loadColorShader`
+    ///
+    ///////////////////////////////////////////////////////////////////    
+    void resetColorShader(const std::string_view& shader_path = "");
+
+    ///////////////////////////////////////////////////////////////////    
+    /// @brief Loads an image as a fill background
+    ///
+    /// Tries to load an image using it's path in the disk, if `NOBGIMAGE`
+    /// flag is set then the whole process is skipped. This would also load
+    /// a proper color shader if wasn't previously loaded.
+    ///
+    /// @param file_path path to image
+    /// @param shader_path path to .frag file, defaults to parameters shader
+    /// (or pass an empty string to avoid the shader process)
+    ///
+    /// @return true if loading was successful, otherwise false.
+    ///
+    /// @see `loadColorShader`, `clearBackgroundTexture`, `refreshBackgroundTexture`
     ///
     ///////////////////////////////////////////////////////////////////    
     bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader_path = parameters::TEXTURE_COLOR_SHADER_PATH);
 
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Loads a shader for handling sprites
-    ///
-    /// Takes the string path to a .frag file to reload shader settings
-    /// for image display, required shader is loaded by default for the
-    /// proper widget types.
-    ///
-    /// @param shader_path fragment file path
-    ///
-    /// @return true if loading was successful, otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool loadClipShader(const std::string_view& shader_path);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Loads shader parameters from fragment file for Background
-    /// texture
-    ///
-    /// Applied to the shape texture, handles transparency and color multiplication
-    /// for the Background texture.
-    ///
-    /// @see `loadClipShader`, `setBackgroundTexture`, `clearBackgroundTexture`,
-    /// `updateColorShader`
-    ///
-    /// @param shader_path fragment file path
-    ///
-    /// @return true if loading was successful, otherwise false.
-    ///
     ///////////////////////////////////////////////////////////////////    
-    bool loadColorShader(const std::string_view& shader_path);
-
-    void resetClipShader(const std::string_view& shader_path = "");
-    void resetColorShader(const std::string_view& shader_path = "");
-
-    ///////////////////////////////////////////////////////////////////    
-    /// @brief Clears Background texture data alongside the color shader
+    /// @brief Clears Background image texture from memory
     ///
-    /// @see `loadColorShader`, `setBackgroundTexture`,
-    /// `clearColorShader`, `TEXTURE_COLOR_SHADER_PATH`
+    /// @see `setBackgroundTexture`, `refreshBackgroundTexture`
     ///
     ///////////////////////////////////////////////////////////////////    
     void resetBackgroundTexture();
@@ -246,15 +289,19 @@ public:
     /// @brief Resamples the widget's texture data to fit the new size
     /// of the shape
     ///
-    /// @see `setBackgroundTexture`, `clearBackgroundTexture`.
+    /// Can be used to restore image quality in case of a corruption instead
+    /// of reloading the image from disk.
+    ///
+    /// @see `setBackgroundTexture`, `resetBackgroundTexture`.
     ///
     ///////////////////////////////////////////////////////////////////
     void refreshBackgroundTexture();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the shape of the button with rounded corners
+    /// @brief Updates the widget's shape with rounded corners based
+    /// on radius parameter
     ///
-    /// @param radius new corner radius value, radius is 0 by default
+    /// @param radius new corner radius value, `0.f` by default
     ///
     ///////////////////////////////////////////////////////////////////
     void setCornerRadius(float radius);
@@ -263,29 +310,20 @@ public:
     /// @brief similar to `sf::Transformable::rotate` where it adds to the
     /// current rotation angle of the widget
     ///
-    /// @see `Widget::setWidgetRotation`
+    /// @see `setWidgetRotation`
     ///
     ///////////////////////////////////////////////////////////////////
-    void rotateWidget(sf::Angle angle);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief similar to `sf::Transformable::setRotation` where it overwrites
-    /// the widget's rotation angle
-    ///
-    /// @see `Widget::rotateWidget`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setWidgetRotation(sf::Angle new_angle);
+    void rotateWidget(float angle);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a callback for execution after a certain delay
     ///
+    /// @note `BLOCKED` flag pauses any queued event timer
+    ///
     /// @param after_ms delay in ms
     /// @param callback function to trigger
-    /// @param is_priority pauses any on going queues and begins counting
-    /// for this callback
-    ///
-    /// @see `checkQueue`
+    /// @param is_priority takes the current queued event spot, any postponed
+    /// event is only paused until this one executes
     ///
     ///////////////////////////////////////////////////////////////////
     void addToQueue(sf::Time after_ms, std::function<void()> callback, bool is_priority = false);
@@ -294,12 +332,12 @@ public:
     /// @brief Sets a callback for execution after a set number of frames
     /// have passed
     ///
+    /// @note `BLOCKED` flag pauses any queued event timer
+    ///
     /// @param after_frames delay in frames
     /// @param callback function to trigger
-    /// @param is_priority pauses any on going queues and begins counting
-    /// for this callback
-    ///
-    /// @see `checkQueue`
+    /// @param is_priority takes the current queued event spot, any postponed
+    /// event is only paused until this one executes
     ///
     ///////////////////////////////////////////////////////////////////
     void addToQueue(std::size_t after_frames, std::function<void()> callback, bool is_priority = false);
@@ -322,16 +360,16 @@ public:
     void addRoutine(sf::Time ms_period, std::function<bool()> callback);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Creates and starts a repeated process until callback returns
-    /// true
+    /// @brief Creates and starts a repeated process until it terminates
+    /// itself
     ///
-    /// callback is called after a set number of frames have passed,
-    /// the routine terminates if callback returns true or `clearRoutine`
-    /// method is called.
+    /// The event begins the countdown right after assignment and keeps calling
+    /// callback for each period until it returns `true` then clears the process
+    /// from memory. Multiple routines can run concurrently.
     ///
-    /// @note creating multiple assigned routines are processed sequentially
+    /// @note `BLOCKED` flag pauses all routines
     ///
-    /// @param frames_period number of frames to wait before calling callback again
+    /// @param frames_period period relative to the number of loops
     /// @param callback function to call, must return boolean value to indicate
     /// routine termination
     ///
@@ -347,14 +385,19 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Appends this widget to a group of related widgets
     ///
-    /// Widgets of the same group avoid calling unfocus callbacks
-    /// as long as they still own `FOCUSED` resource but the focus callback
-    /// still gets called for the newly focused widget (depends on `WidgetGroup`
-    /// object's public flags).
+    /// This is only needed to control the `FOCUSED` resource between widgets:
+    ///
+    /// `FOCUSED` resource is assigned to only 1 widget at most at each time,
+    /// passing the resource implicitly calls the widget's focus or focuslost callback if
+    /// provided, a widget group can control if they should call those callbacks when
+    /// the resource is passed within the same group (@see `WidgetGroup` for more info).
+    /// 
+    /// For example, a manu bar linked with it's drop boxes to control when they lose
+    /// focus and become hidden again after selecting.
     ///
     /// @param new_group shared ptr of type `WidgetGroup` created using `WidgetGroup::make_group`
     ///    
-    /// @see `WidgetGroup`, `unlinkGroup`, `focusWidget`, `unfocusWidget`
+    /// @see `WidgetGroup`, `unlinkGroup`
     ///
     ///////////////////////////////////////////////////////////////////
     void linkWidget(std::shared_ptr<WidgetGroup>& new_group);
@@ -370,14 +413,12 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns widget to a shared theme object
     ///
-    /// This widget syncs it's style with the assigned theme of `t` storage
-    /// object, style can still be manually assigned if derived widget
-    /// type has provided a `setTheme` method but any update from the shared
-    /// resource would override the changes.
+    /// A shared theme syncs the assigned styles of multiple types of widgets
+    /// while updating them in real time.
     ///
     /// @param t shared ptr of type `WidgetTheme` created using `WidgetTheme::make_theme`
     ///
-    /// @see `WidgetTheme`, `setTheme`, `Widget::unlinkTheme`
+    /// @see `WidgetTheme`, `Widget::unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void linkTheme(std::shared_ptr<WidgetTheme>& t);
@@ -385,16 +426,52 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes syncing of theme with assigned `WidgetTheme` object
     ///
-    /// Current style remains until another theme is assigned to the widget
-    /// or a style is assigned manually.
+    /// Widget keeps it current style and can still be manually updated
+    /// but it would no longer be controled by a shared theme.
     ///
-    /// @see `WidgetTheme`, `setTheme`, `Widget::linkTheme`
+    /// @see `WidgetTheme`, `Widget::linkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void unlinkTheme();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns widget position
+    /// @brief Initiates ToolTip for this widget and returns it's pointer
+    ///
+    /// After hovering on this widget for `delay_ms` period of time, `ToolTip`
+    /// is drawn at `abs_position` parameter relative to the window, each parameter
+    /// here can be directly updated from the returned pointer alongside
+    /// the text content itself.
+    ///
+    /// Calling this method while ToolTip is already enabled simply returns a
+    /// weak pointer to the same ToolTip object.
+    ///
+    /// @param abs_position position relative to the widget's window
+    /// @param delay_ms hover duration in milliseconds
+    /// @param text_size character size used by text
+    /// @param style ToolTip's color style
+    ///
+    /// @see `DisableToolTip`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
+                                         sf::Time delay_ms = parameters::HOVER_DURATION,
+                                         unsigned int text_size = parameters::CHAR_SIZE,
+                                         ToolTipStyle style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears the current ToolTip instance
+    ///
+    /// Any weak pointer pointing at the generated ToolTip becomes expired and
+    /// ToolTip is no longer drawn after hovering, it can be enabled again but
+    /// it's parameters are reset back to default.
+    ///
+    /// @see `EnableToolTip`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void DisableToolTip();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns widget position relative to it's local {0, 0} coordinates
     ///
     /// @see `setWidgetPosition`, `getAbsolutePosition`
     ///
@@ -410,11 +487,9 @@ public:
     const sf::Vector2f getWidgetSize() const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns widget screen position
+    /// @brief Returns the widget's position relative to the window
     ///
-    /// Returns the widget's position on the main window.
-    ///
-    /// @see `getWidgetPosition`
+    /// @see `setWidgetPosition`, `getWidgetPosition`
     ///
     ///////////////////////////////////////////////////////////////////
     const sf::Vector2f getAbsolutePosition() const;
@@ -442,103 +517,101 @@ public:
     const sf::FloatRect getAbsoluteBounds() const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns current mouse position based on the window's view
-    ///
-    ///////////////////////////////////////////////////////////////////
-    sf::Vector2i getMousePosition() const;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Checks whether mouse is hovered on widget or not
-    ///
-    /// Takes the mouse's position on the window to check whether it's hovering
-    /// on the widget.
-    ///
-    /// @param mouse_position Mouse view position based on window
-    ///
-    /// @return true if position exists within the widget's bounds,
-    /// otherwise false.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool isHovered(sf::Vector2i mouse_position) const;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Verifies if input flag is set within the widget, can
-    /// be used to check for all available flags
-    ///
-    /// @param bits bit or multiple bits to check
+    /// @brief Checks for a state or a flag's current condition in this widget
     ///
     /// @return true if at least 1 bit from parameter is set internally,
     /// otherwise false.
     ///
-    /// @see `checkFlag`, `isHovered`, `Widget::isFlags`
+    /// @see `checkFlag`, `isFlags`
     ///
     ///////////////////////////////////////////////////////////////////
     bool isFlag(FLAGS bits) const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Verifies if input flag is set within the widget, can
-    /// be used to check for all available flags
-    ///
-    /// @param bits bit or multiple bits to check
+    /// @brief Checks for multiple states or flags current condition in this widget
     ///
     /// @return true if all bits from parameter are set internally,
     /// otherwise false.
     ///
-    /// @see `checkFlags`, `isHovered`, `Widget::isFlag`
+    /// @see `checkFlags`, `isFlag`
     ///
     ///////////////////////////////////////////////////////////////////
     bool isFlags(FLAGS bits) const;
 
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Initiates ToolTip for this widget and returns it's pointer
-    ///
-    /// ToolTip is drawn at `abs_position` parameter after hovering on this
-    /// widget for `delay_ms` period of time, each parameter here can be
-    /// directly updated from the returned pointer alongside the text content itself.
-    ///
-    /// Calling this method while ToolTip is already enabled simply returns a
-    /// weak pointer to the same ToolTip object.
-    ///
-    /// @param abs_position position relative to the widget's window
-    /// @param delay_ms hover duration in milliseconds
-    /// @param text_size character size used by text
-    /// @param style ToolTip's color style
-    ///
-    /// @see `Widget::DisableToolTip`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
-                                         sf::Time delay_ms = parameters::HOVER_DURATION,
-                                         unsigned int text_size = parameters::CHAR_SIZE,
-                                         ToolTipStyle style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Clears the current ToolTip instance
-    ///
-    /// Any weak pointer pointing at the generated ToolTip becomes expired and
-    /// ToolTip is no longer drawn after hovering, it can be enabled again but
-    /// it's parameters are reset to default.
-    ///
-    /// @see `Widget::EnableToolTip`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void DisableToolTip();
-
 protected:
-
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Optional pre-process for when checking for mouse events
+    ///
+    /// `captureMouseEvents` calls this before doing it's checkup process,
+    /// if true is returned then the rest of the checkup is skipped and true is
+    /// returned, but this is completely optional.
+    ///
+    /// @param event reference to event object passed in `captureMouseEvents`
+    /// @param mouse_position position relative to the window screen
+    ///
+    /// @return true if the event was consumed, otherwise false
+    ///
+    /// @see `captureMouseEvents`
+    ///
+    ///////////////////////////////////////////////////////////////////
     virtual bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Optional post-process for when checking for mouse events
+    ///
+    /// `captureMouseEvents` calls this after doing it's checkup process,
+    /// details parameter is already processed by the widget and stores
+    /// details about the event to skip checking for the type of event, this
+    /// acts as an optional derived extra checkup for the event.
+    ///
+    /// @param details details object
+    /// @param event reference to event object passed in `captureMouseEvents`
+    /// @param mouse_position position relative to the window screen
+    ///
+    /// @see `captureMouseEvents`
+    ///
+    ///////////////////////////////////////////////////////////////////
     virtual void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Optional pre-process for when checking for key events
+    ///
+    /// `captureKeyEvents` calls this before doing it's checkup process,
+    /// if true is returned then the rest of the checkup is skipped and true is
+    /// returned, but this is completely optional.
+    ///
+    /// @param event reference to event object passed in `captureKeyEvents`
+    ///
+    /// @return true if the event was consumed, otherwise false
+    ///
+    /// `captureKeyEvents`
+    ///
+    ///////////////////////////////////////////////////////////////////
     virtual bool preProcessKeyEvents(const sf::Event& event);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Optional post-process for when checking for key events
+    ///
+    /// `captureKeyEvents` calls this after doing it's checkup process,
+    /// at this point, any binding shortcut would have triggered, but this
+    /// can still handles events unique to derived widget for it's own built-in
+    /// features.
+    ///
+    /// @param event reference to event object passed in `captureKeyEvents`
+    ///
+    /// @return true if event is consumed, otherwise false
+    ///
+    /// `captureKeyEvents`
+    ///
+    ///////////////////////////////////////////////////////////////////
     virtual bool postProcessKeyEvents(const sf::Event& event);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `configure`
+    /// @brief Optional post-process for `configure` method
     ///
     /// @param mask bits passed in `configure`
+    ///
+    /// @see `configure`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void config(FLAGS mask);
@@ -546,6 +619,8 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the shape and updates the necessary functions, called
     /// within `draw`
+    ///
+    /// @see `draw`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void drawWidget() = 0;
@@ -571,6 +646,8 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief matches the current angle value with the rest of the widget
     ///
+    /// @see `rotateWidget`, `updateWidgetRotation`
+    ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateRotation() = 0;
 
@@ -579,7 +656,11 @@ protected:
     /// state
     ///
     /// Called in `draw` method, The default tested states are:
-    /// `BLOCKED`, `TRANSPARENT`, `ACTIVE`, `HOVERED` respectively.
+    /// `BLOCKED`, `ALPHAREDUCED`, `ACTIVE`, `HOVERED` respectively.
+    ///
+    /// @note this is the most optimal function to call any once per loop process
+    /// before beginning to draw (such as clearing a rendering object) AS LONG AS
+    /// `LONGSKIP` flag is not set.
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateState() = 0; 
@@ -587,10 +668,10 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
     ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
+    /// @note This method can be skipped if `LONGSKIP` is set
+    /// by the derived class
     ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
+    /// @see `linkTheme`, `unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateTheme() = 0;
@@ -601,7 +682,7 @@ protected:
     /// Best called after an update in a shader parameter, clip shader handles
     /// clipping edges on sprites.
     ///
-    /// @see `loadClipShader`, `updateState`
+    /// @see `loadClipShader`, `resetClipShader`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateClipShader();
@@ -609,27 +690,50 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for color shader
     ///
-    /// Best called after an update in a shader parameters.
+    /// Best called after an update in any of the shader parameters.
     ///
-    /// @see `loadColorShader`, `updateState`
+    /// @see `loadColorShader`, `resetColorShader`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual void updateColorShader();
 
 private:
     ///////////////////////////////////////////////////////////////////
-    /// @brief Called in `mouseCallBackEvent` to update hovering state
+    /// @brief Returns current mouse position based on the window's view
     ///
-    /// Updates HOVERED and ALPHAREDUCED states.
+    ///////////////////////////////////////////////////////////////////
+    sf::Vector2i getMousePosition() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Checks whether the mouse is hovered on widget or not
     ///
-    /// @see `mouseCallBackEvent`
+    /// Takes the mouse's position on the window to check whether it's hovering
+    /// on the widget.
+    ///
+    /// @param mouse_position Mouse view position relative to window
+    ///
+    /// @return true if position exists within the widget's bounds,
+    /// otherwise false.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool isHovered(sf::Vector2i mouse_position) const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates hovered and transparent states for the widget, called
+    /// while checking for mouse events
+    ///
+    /// @param event event reference
+    /// @param mouse_position mouse coordinates relative to window
     ///
     ///////////////////////////////////////////////////////////////////
     void updateMouseState(const sf::Event& event, sf::Vector2i mouse_position);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates internal events' periods such as queues and routines
-    /// and calling their callbacks
+    /// @brief Updates and calls internal queues and routines, called while
+    /// drawing
+    ///
+    /// @note this method can be skipped if `LONGSKIP` flag is set by
+    /// a derived class
     ///
     /// @see `addToQueue`, `addRoutine`
     ///
@@ -699,16 +803,31 @@ private:
 ///////////////////////////////////////////////////////////////////
 // Static Methods
 ///////////////////////////////////////////////////////////////////
-public:
+private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Handles resizing of widgets during a resize event, called
+    /// by an existing widget
+    ///
+    /// @param win_ptr pointer to the resized window
+    /// @param resize_event resize event
+    ///
+    ///////////////////////////////////////////////////////////////////
+    static void resizeWidgets(const sf::RenderWindow* win_ptr, const sf::Event::Resized& resize_event);
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a widget to receive the focus resource at the end
     /// of the loop
     ///
-    /// Focus and focuslost events trigger callbacks assigned by the user,
+    /// Called when a widget is clicked with any mouse button,
+    /// focus and focuslost events trigger callbacks assigned manually,
     /// widgets can be grouped together to maintain focus as one widget.
     ///
-    /// This process is done automatically by the widget class but it's
-    /// valid to use outside the class.
+    /// Only one widget can be focused at a time, and by default, only
+    /// one assignment takes place per loop unless if `parameter::STACK_MOUSE_CALLBACKS`
+    /// is set to true then the assignment becomes more unpredictable but it would
+    /// still only call one focus callback.
+    ///
+    /// This process is done automatically by the widget class.
     ///
     /// @see `unfocusWidget`, `updateFocus`, `WidgetGroup`
     ///
@@ -729,22 +848,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     static void unfocusWidget(Widget& w, std::optional<sf::Event> event) noexcept;
 
-private:
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Handles resizing of widgets during a resize event, called
-    /// by an existing widget
-    ///
-    /// @param win_ptr pointer to the resized window
-    /// @param resize_event resize event
-    ///
-    ///////////////////////////////////////////////////////////////////
-    static void resizeWidgets(const sf::RenderWindow* win_ptr, const sf::Event::Resized& resize_event);
-
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates `FOCUSED` flag for widgets and triggers focus or
     /// focuslost callback
     ///
-    /// Called in `draw` method.
+    /// Called in `draw` method, cannot be skipped.
     ///
     /// @see `focusWidget`, `unfocusWidget`, `WidgetGroup`
     ///
@@ -756,6 +864,7 @@ private:
 ///////////////////////////////////////////////////////////////////
 
     inline static std::vector<Widget*> s_widgets;                                   //!< Reference to every live widget
+    inline static sf::Vector2f s_windowSize = {0.f, 0.f};                           //!< Prevents calling resize method multiple times for no purpose
 
     inline static Widget* s_focusedWidgetPtr = nullptr;                             //!< Pointer to currently focused widget
     inline static Widget* s_widgetToFocusPtr = nullptr;                             //!< Pointer to the upcoming focused widget, this only exists until focus resource is updated
@@ -770,12 +879,24 @@ private:
     inline static bool s_setOriginals = true;                                       //!< Widgets update their original dimensions if set, otherwise skips the process
 
 public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Countdown type for queued events and routines
+    ///
+    /// @see `W_QueueEvent`, `W_RepeatEvent`
+    ///
+    ///////////////////////////////////////////////////////////////////
     enum class W_CounterType
     {
         Time,
         Frames
     };
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief All available types for mouse events
+    ///
+    /// @see `bindMouseEvents`
+    ///
+    ///////////////////////////////////////////////////////////////////
     enum class W_MouseEventType
     {
         Press,
@@ -792,7 +913,7 @@ public:
     /// @brief Used in widget class to pass event information more
     /// efficiently.
     ///
-    /// @see `Widget::captureMouseEvents`
+    /// @see `captureMouseEvents`
     ///
     ///////////////////////////////////////////////////////////////////
     struct W_MouseEventDetails
@@ -810,7 +931,7 @@ public:
     /// within the widget, delay can be paused if a more priority queued
     /// event is pushed onto the stack.
     ///
-    /// @see `Widget::addToQueue`, `Widget::checkQueue`
+    /// @see `addToQueue`, `checkQueue`
     ///
     ///////////////////////////////////////////////////////////////////
     struct W_QueueEvent
@@ -841,11 +962,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Stores a routine information
     ///
-    /// Calls te designated callback for every period until the process returns
-    /// true, a routine can count using time or frames and multiple routines can run
-    /// sequentially in a single widget.
+    /// Calls the designated callback for each period until the process returns
+    /// true, a routine can count using time or loops and multiple routines can run
+    /// concurrently in a single widget.
     ///
-    /// @see `Widget::addRoutine`, `Widget::checkQueue`, `Widget::clearRoutine`
+    /// @see `addRoutine`, `checkQueue`
     ///
     ///////////////////////////////////////////////////////////////////
     struct W_RepeatEvent
@@ -886,6 +1007,56 @@ public:
     private:
         static sf::Text Ag; //!< Ag
     };
+
+protected:
+///////////////////////////////////////////////////////////////////
+/// @brief Static class for storing images used within widgets by paths
+///
+/// @see `ImageReferenceCounter`
+///
+///////////////////////////////////////////////////////////////////
+struct ImageCache
+{
+    static ImageCache& getInstance();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Fetch image pointer from memory or loads from disk if not
+    /// found
+    ///
+    /// @param image_path relative path to image as a look up key
+    /// @param increment_ref specify whether to increment reference counter of image,
+    /// set to false if widget already reference's the image.
+    ///
+    /// @return read only image pointer if image is found on disk or memory,
+    /// otherwise nullopt
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::optional<const sf::Image*> getImage(const std::string& image_path, bool increment_ref = true);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Called by widgets after clearing their texture image
+    ///
+    /// Decrements reference counter for a pre-loaded image, and frees
+    /// the image memory if no widget is using it.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void decrementRefCounter(const std::string& image_path);
+
+private:
+    ImageCache() = default;
+    ImageCache(const ImageCache&) = delete;
+    ImageCache& operator=(const ImageCache&) = delete;
+    ImageCache(ImageCache&&) = delete;
+    ImageCache& operator=(ImageCache&&) = delete;
+
+    struct ImageReferenceCounter
+    {
+        sf::Image image;
+        std::size_t ref_count;
+    };
+
+    std::unordered_map<std::string, ImageReferenceCounter> m_cachedImages;
+};
 };
 }
 #endif

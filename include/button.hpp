@@ -50,27 +50,42 @@ public:
     /// Displays parameter text on the button's surface.
     ///
     /// Text's length cannot surpass parameter character limit.
+    /// @see `parameters::CHAR_LIMIT`
     ///
     /// @param text string text
     ///
-    /// @see `parameters::CHAR_LIMIT`
+    /// @see `setTextSide`, `setTextSize`, `setTextFont`,
     ///
     ///////////////////////////////////////////////////////////////////
     void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates displayed image on button widget
+    ///
+    /// Takes a string path to the image and loads it from disk or cache.
+    /// 
+    /// @param image_path path to image
+    /// @param shader_path path to clip shader, defaults to parameters shader
+    /// (or pass an empty string to avoid the shader process)
+    ///
+    /// @return false if process fails to load the image, otherwise returns true
+    ///
+    /// @see `setImageSide`, `clearImage`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const sf::String& image_path, const std::string_view& shader_path = parameters::SPRITE_CLIP_COLOR_SHADER_PATH);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's text
     ///
     /// Position can be either `Button::Left`, `Button::Center`, or `Button::Right`
-    /// and cannot overlap with image position, if it does then image position is
-    /// moved by the function.
+    /// and cannot overlap with image position.
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextSide(Side text_side);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the size of the characters for the button's text
-    ///
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextSize(unsigned int char_size);
@@ -109,26 +124,10 @@ public:
     void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates displayed image on button widget
-    ///
-    /// Takes a string path to the image and loads it from disk or cache,
-    /// image display position depends on the text position in the widget.
-    /// 
-    /// @param image_path string image_path to image
-    ///
-    /// @return false if process fails to load the image, otherwise returns true
-    ///
-    /// @see `clearImage`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool setImage(const sf::String& image_path);
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's image
     ///
     /// Position can be either `Button::Left`, `Button::Center`, or `Button::Right`
-    /// and cannot overlap with text position, if it does then text position is
-    /// moved by the function.
+    /// and cannot overlap with text position.
     ///
     ///////////////////////////////////////////////////////////////////
     void setImageSide(Side image_side);
@@ -155,8 +154,6 @@ private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the button on master object
     ///
-    /// @see `Widget::draw`
-    ///
     ///////////////////////////////////////////////////////////////////
     void drawWidget() override;
 
@@ -164,16 +161,12 @@ private:
     /// @brief Handles any extra drawables' positions within the button,
     /// called in `Widget::setWidgetPosition`
     ///
-    /// @see `Widget::setWidgetPosition`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updatePosition() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' sizes within the widget,
     /// called in `setWidgetSize`
-    ///
-    /// @see `Widget::setWidgetSize`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateSize() override;
@@ -188,33 +181,17 @@ private:
     /// @brief Updates button colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
-    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `ACTIVE`
-    /// `HOVERED` respectively.
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
     ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Refresh for clipping shader
-    ///
-    /// Best called after an update in a shader parameter, clip shader handles
-    /// clipping edges on sprites.
-    ///
-    /// @see `Widget::loadClipShader`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateClipShader() override;
@@ -228,32 +205,17 @@ private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates text size
     ///
-    /// Refreshes characters' size based on button's width and alligns 
-    /// the text in the center, can move image position if they overlap.
-    ///
-    /// @see `setText`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateTextSize();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates image position if image is available
     ///
-    /// Re-positions the image to the left corner of the button, if image 
-    /// is not provided then returns without changes.
-    ///
-    /// @see `setImage`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateImagePosition();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates image size if image is available
-    ///
-    /// Considers button's dimensions to determine a new size for icon image,
-    /// only called during resizing operations.
-    ///
-    /// @see `setImage`
     ///
     ///////////////////////////////////////////////////////////////////
     bool updateImageSize();
@@ -286,23 +248,23 @@ enum class Side : int
 };
 
 template <>
-struct __WidgetStyle<Button>
+struct WidgetStyle<Button>
 {
     using StyleType = ButtonStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_buttonTheme;
+        return theme.m_buttonTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_button)
     {
-        t.m_buttonTheme = _b;
+        theme.m_buttonTheme = s_button;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_buttonToken;
+        return theme.m_buttonToken;
     }
 };
 }

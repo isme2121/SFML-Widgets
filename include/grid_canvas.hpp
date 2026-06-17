@@ -512,14 +512,6 @@ public:
     void loadShader(const std::string_view& shader_path);
 
     ///////////////////////////////////////////////////////////////////
-    /// @ Clears loaded color shader from cell
-    ///
-    /// @see `loadShader`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void resetShader();
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates position based on canvas view
     ///
     ///////////////////////////////////////////////////////////////////
@@ -621,23 +613,23 @@ public:
 };
 
 template <>
-struct __WidgetStyle<GridCanvas>
+struct WidgetStyle<GridCanvas>
 {
     using StyleType = TextureStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_gridCanvasTheme;
+        return theme.m_gridCanvasTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_grid_canvas)
     {
-        t.m_gridCanvasTheme = _b;
+        theme.m_gridCanvasTheme = s_grid_canvas;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_gridCanvasToken;
+        return theme.m_gridCanvasToken;
     }
 };
 }

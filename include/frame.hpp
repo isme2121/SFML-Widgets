@@ -12,6 +12,9 @@ namespace sfml_widgets
 ///////////////////////////////////////////////////////////////////
 class Frame : public Widget
 {
+    friend class Widget;
+    friend class RenderContext;
+
 public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the frame with `sf::RenderWindow`
@@ -40,55 +43,17 @@ public:
     Frame& operator=(const Frame& other) = delete;
 
     ~Frame() override;
-    
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Shows frame and it's drawn child widgets on the window
-    ///
-    /// Do not call if `Widget::draw` method is already in use as it is called
-    /// automatically within that method, instead, call `Frame::display` if:
-    ///
-    /// 1- `Widget::draw` is not called from the frame object.
-    ///
-    /// 2- if child widgets are drawn manually, then we use `Frame::display`
-    ///    to draw them to the screen.
-    ///
-    /// We can use either methods depending on what we want to archieve:
-    ///
-    /// - use `Widget::draw` to draw all child widgets and the frame.
-    ///
-    /// - use `Frame::display` to draw only the child widgets that previously
-    ///   called their own draw methods within the loop.
-    ///
-    /// @see `Widget::draw`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void display();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns pixel coordinates based on view
-    ///
-    /// Used for accurate coordinates when the frame's view is moved,
-    /// it considers scrolled surface and returns the correct coordinates
-    /// for the widgets but may not match the raw mouse position coordinates.
-    ///
-    /// @param mouse_position mouse position based on window's view from
-    /// `sf::Mouse::getPosition(window)`
-    ///
-    /// @return float coordinates matching the frame's view
-    ///
-    ///////////////////////////////////////////////////////////////////
-    sf::Vector2f mapPixelToCoords(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Enables/Disables grid view for child widgets
     ///
     /// Re-orders all child widgets based on grid parameter and forces
     /// their positions, grid can be disabled by passing one of the
-    /// grids as 0.
+    /// grids as `0`.
     ///
     /// @param grid_mapping number of widgets drawn per view, with
-    /// Ncols X Nrows ratio (Ncols : number of w in one row, Nrows : Number
-    /// of w in one column)
+    /// `Ncols` X `Nrows` ratio (`Ncols`: number of w in one row,
+    /// `Nrows`: Number of w in one column)
     ///
     ///////////////////////////////////////////////////////////////////
     void setGrid(sf::Vector2u grid_mapping);
@@ -99,25 +64,16 @@ public:
     /// Adds separator lines between widgets if they match the parameter
     /// condition.
     ///
-    /// @param _t type of the separator
+    /// @param sep_type type of the separator
     /// @param length_ratio length of the separator line based on frame's size
     /// (depends on separator type)
-    /// @param sep_distance condition distance between widgets to draw a
-    /// separator in between
+    /// @param sep_dist condition distance between widgets to draw a
+    /// separator in between (exp: dist(w1, w2) >= `sep_dist`? draw separator)
     ///
     /// @see `SeparatorType`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setSeparators(SeparatorType _t, float length_ratio, float sep_distance);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns a pointer to root window
-    ///
-    /// Returns a pointer to root window even if the frame is not directly
-    /// placed on top of one.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    sf::RenderWindow* getWindowPtr() const;
+    void setSeparators(SeparatorType sep_type, float length_ratio, float sep_dist);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -127,20 +83,53 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(TextureStyle __frame_style);
+    void setTheme(TextureStyle s_frame);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns accurate coordinates for local view
+    ///
+    /// @param mouse_position mouse position based on window's view
+    ///
+    /// @return float coordinates relative to the frame's view
+    ///
+    ///////////////////////////////////////////////////////////////////
+    sf::Vector2f mapPixelToCoords(sf::Vector2i mouse_position) const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a pointer to root window
+    ///
+    ///////////////////////////////////////////////////////////////////
+    sf::RenderWindow* getWindowPtr() const;
 
 private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Checks for child widgets events first
+    ///
+    /// If a child widget consumes the event, exits `Widget::captureMouseEvents` early
+    /// while returning `true` if `parameters::STACK_FRAME_WITH_WIDGETS` is disabled which it
+    /// is by default.
+    ///
+    ///////////////////////////////////////////////////////////////////
     bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Calls for scrolling event
+    ///
+    ///////////////////////////////////////////////////////////////////
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
     
-    bool preProcessKeyEvents(const sf::Event& event);
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Checks for child widgets events first
+    ///
+    /// If a child widget consumes the event, exits `Widget::captureMouseEvents` early
+    /// while returning `true`. `parameters::STACK_FRAME_WITH_WIDGETS` does not currently
+    /// affect the result.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool preProcessKeyEvents(const sf::Event& event) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the frame and it's child widgets
-    ///
-    /// Calling this method renders `Frame::display` unnecessary as it draws
-    /// all child widgets and frame then displays while updating state.
     ///
     /// @see `display`
     ///
@@ -148,10 +137,8 @@ private:
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `configure`
-    ///
-    /// @param mask bits passed in `configure`
+    /// @brief Allows certain toggled flags to be directly inherited within
+    /// it's child widgets
     ///
     ///////////////////////////////////////////////////////////////////
     void config(FLAGS mask) override;
@@ -160,16 +147,12 @@ private:
     /// @brief Handles any extra drawables' positions within the widget,
     /// called in `setWidgetPosition`
     ///
-    /// @see `setWidgetPosition`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updatePosition() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' sizes within the widget,
     /// called in `setWidgetPosition`
-    ///
-    /// @see `setWidgetSize`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateSize() override;
@@ -184,25 +167,20 @@ private:
     /// @brief Updates frame's colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
-    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `ACTIVE`
-    /// `HOVERED` respectively.
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
     ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief scroll event
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void scroll(float delta);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Inforces grid ordering
@@ -221,37 +199,20 @@ private:
     void drawSeparators();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Refreshes the frame's invisible space
+    /// @brief Updates the drawn content of the frame
     ///
-    /// Called after an update to the frame's height or a widget's position
-    /// to limit scrolling space.
+    /// Should probably stick to `Widget::draw` instead.
     ///
-    /// @see `updateScrollView`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void updateFrameHeight();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the scroll offset after a height update
-    ///
-    /// Shrinks the scrolling space to match the new height
-    ///
-    /// @see `updateFrameHeight`
+    /// @warning this method is called within `drawWidget` override and it's
+    /// responsible for concluding the drawing of the frame and it's child widgets
+    /// for this loop, it should not be used while `draw` is being called from the
+    /// same instance within the loop as it would. The only time `display` is preferred
+    /// is when we decide to draw child widgets individually when compared to
+    /// `Widget::draw` method which draws all child widgets automatically and
+    /// safely handles the entire update process.
     ///
     ///////////////////////////////////////////////////////////////////
-    void updateScrollView();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates view center based on scroll offset
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void refreshView();
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief scroll event
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void scroll(float delta);
+    void display();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws a child widget individually
@@ -291,6 +252,33 @@ private:
     void updateWidget(Widget& old_widget, Widget& new_widget);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Refreshes the frame's invisible space
+    ///
+    /// Called after an update to the frame's height or a widget's position
+    /// to limit scrolling space.
+    ///
+    /// @see `updateScrollView`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateFrameHeight();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the scroll offset after a height update
+    ///
+    /// Shrinks the scrolling space to match the new height
+    ///
+    /// @see `updateFrameHeight`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void updateScrollView();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates view center based on scroll offset
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void refreshView();
+
+    ///////////////////////////////////////////////////////////////////
     /// Member Variables
     ///////////////////////////////////////////////////////////////////
 
@@ -308,29 +296,26 @@ private:
     std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
     sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Frame's default style
-
-    friend class Widget;
-    friend class RenderContext;
 };
 
 template <>
-struct __WidgetStyle<Frame>
+struct WidgetStyle<Frame>
 {
     using StyleType = TextureStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_frameTheme;
+        return theme.m_frameTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_frame)
     {
-        t.m_frameTheme = _b;
+        theme.m_frameTheme = s_frame;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_frameToken;
+        return theme.m_frameToken;
     }
 };
 }

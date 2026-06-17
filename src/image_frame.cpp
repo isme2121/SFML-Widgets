@@ -6,7 +6,7 @@ namespace sfml_widgets
 ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!(!m_imagePath.empty() && setImage(m_imagePath))) writeText();
+    if(!(!m_imagePath.isEmpty() && setImage(m_imagePath))) writeText();
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
@@ -19,7 +19,7 @@ ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector
 ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!(!m_imagePath.empty() && setImage(m_imagePath))) writeText();
+    if(!(!m_imagePath.isEmpty() && setImage(m_imagePath))) writeText();
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
@@ -34,9 +34,9 @@ ImageFrame::~ImageFrame()
     clearImage();
 }
 
-bool ImageFrame::setImage(const std::string& image_path)
+bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& shader_path)
 {
-    // load from disk
+    // load from disk or cache
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
     std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
     if(!disk_image) return false;
@@ -57,11 +57,10 @@ bool ImageFrame::setImage(const std::string& image_path)
         return false;
     }
 
-    if(checkFlag(m_flags, FLAGS::IMAGE)) global_image_buffer.decrementRefCounter(m_imagePath);
-
     // free text memory
     if(m_textTexturePtr)
     {
+        // clear content from window
         m_textTexturePtr->clear(sf::Color::Transparent);
         m_textTexturePtr.reset();
         m_noImageTextPtr.reset();
@@ -69,13 +68,24 @@ bool ImageFrame::setImage(const std::string& image_path)
     }
 
     // texture update
-    m_imageTexturePtr = std::make_unique<sf::Texture>(std::move(temp));
+    if(m_imageTexturePtr)
+    {
+        global_image_buffer.decrementRefCounter(m_imagePath);
+        *m_imageTexturePtr = std::move(temp);
+    }
+    else
+    {
+        m_imageTexturePtr = std::make_unique<sf::Texture>(std::move(temp));
+    }
     m_imagePath = std::move(image_path);
     m_imageTexturePtr->setSmooth(true);
 
     // allocate sprite if needed
     if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(*m_imageTexturePtr);
     else m_imageSpritePtr->setTexture(*m_imageTexturePtr, true);
+
+    // allocate clip shader if provided
+    if(!shader_path.empty() && !m_clipShaderPtr) loadClipShader(shader_path);
 
     // just for isFlag
     setFlag(m_flags, FLAGS::IMAGE);
@@ -100,7 +110,7 @@ std::optional<const sf::Image> ImageFrame::getImage() const
     return std::nullopt;
 }
 
-const std::string& ImageFrame::getImagePath() const
+const sf::String& ImageFrame::getImagePath() const
 {
     return m_imagePath;
 }
@@ -120,7 +130,7 @@ void ImageFrame::drawWidget()
     // check if we should draw text
     if(m_textTexturePtr && m_noImageTextPtr)
     {
-        // render txr is already cleared in widget
+        // render texture is already cleared in updateState
         m_textTexturePtr->draw(*m_noImageTextPtr);
         m_textTexturePtr->display();
         m_imageSpritePtr->setTexture(m_textTexturePtr->getTexture(), true);
@@ -152,11 +162,14 @@ void ImageFrame::updateSize()
 {
     // diplaying image
     if(m_imageTexturePtr && m_imageTexturePtr->resize(sf::Vector2u(m_size)))
-        updateImageSize();
+        updateImageSize(); //!< updates texture
 
     // diplaying text
     else if(m_textTexturePtr && m_textTexturePtr->resize(sf::Vector2u(m_size)))
+    {
         updateText();
+        m_imageSpritePtr->setTexture(m_textTexturePtr->getTexture(), true);
+    }
 
     m_imageSpritePtr->setOrigin(m_size / 2.f);
 
@@ -179,21 +192,21 @@ void ImageFrame::updateState()
 
     if(checkFlag(m_flags, FLAGS::BLOCKED))
     {
-        m_opacity = 0.2f;
+        m_opacity = 0.5f;
         this->setFillColor(m_style.fill_blocked_color);
         this->setOutlineColor(m_style.outline_blocked_color);  
         this->setOutlineThickness(m_style.outline_blocked_thickness); 
     }
     else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
-        m_opacity = 0.1f;
+        m_opacity = 0.2f;
         this->setFillColor(m_style.fill_transparent_color);
         this->setOutlineColor(m_style.outline_transparent_color);
         this->setOutlineThickness(m_style.outline_transparent_thickness);
     }
     else if(checkFlag(m_flags, FLAGS::ACTIVE))
     {
-        m_opacity = 0.8f;
+        m_opacity = 1.f;
         this->setFillColor(m_style.fill_active_color);
         this->setOutlineColor(m_style.outline_active_color);
         this->setOutlineThickness(m_style.outline_active_thickness);
@@ -236,6 +249,7 @@ void ImageFrame::writeText()
 
     // allocate sprite here if needed
     if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(m_textTexturePtr->getTexture());
+    else m_imageSpritePtr->setTexture(m_textTexturePtr->getTexture(), true);
 
     setFlag(m_flags, FLAGS::TEXT);
     updateText();
@@ -279,7 +293,8 @@ void ImageFrame::updateImageSize()
         {
             m_imageTexturePtr = std::make_unique<sf::Texture>(std::move(temp));
             m_imageTexturePtr->setSmooth(true);
-            m_imageSpritePtr->setTexture(*m_imageTexturePtr, true);
+            if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(*m_imageTexturePtr);
+            else m_imageSpritePtr->setTexture(*m_imageTexturePtr, true);
         }
     }
 }

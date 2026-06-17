@@ -40,16 +40,19 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates displayed image on the widget
     ///
-    /// Takes the path of the image to display on the frame, 
+    /// Takes the path of the image to display on the frame, can also load
+    /// a shader for the image frame if no empty string was provided, defaults
+    /// to parameters shader.
     /// 
-    /// @param image_path string image_path to image
+    /// @param image_path path to image
+    /// @param shader_path path to clipping shader
     ///
     /// @return false if process fails to load the image, otherwise returns true
     ///
     /// @see `clearImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(const std::string& image_path);
+    bool setImage(const sf::String& image_path, const std::string_view& shader_path = parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current image data from the widget, does nothing
@@ -71,7 +74,7 @@ public:
     /// @brief returns the current loaded image's path
     ///
     ///////////////////////////////////////////////////////////////////
-    const std::string& getImagePath() const;
+    const sf::String& getImagePath() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -84,22 +87,14 @@ public:
     void setTheme(TextureStyle imageframe_style);
 
 private:
-
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the widget on master object
-    ///
-    /// @see `Widget::draw`
     ///
     ///////////////////////////////////////////////////////////////////
     void drawWidget() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Used to update child widgets for container type Widget or
-    /// add specific rules after updating flags, called in `Widget::configure`
-    ///
-    /// @param mask bits passed by `Widget::configure`
-    ///
-    /// @see `Widget::configure`, `parameters::MODIFIABLE`
+    /// @brief Keeps background image disabled
     ///
     ///////////////////////////////////////////////////////////////////
     void config(FLAGS mask) override;
@@ -108,16 +103,12 @@ private:
     /// @brief Handles any extra drawables' positions within the image frame,
     /// called in `Widget::setWidgetPosition`
     ///
-    /// @see `Widget::setWidgetPosition`
-    ///
     ///////////////////////////////////////////////////////////////////
     void updatePosition() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles any extra drawables' sizes within the widget,
     /// called in `setWidgetSize`
-    ///
-    /// @see `Widget::setWidgetSize`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateSize() override;
@@ -132,22 +123,11 @@ private:
     /// @brief Updates the widget colors to match current state alongside
     /// shaders, called in `Widget::Draw`
     ///
-    /// The default tested states are: `BLOCKED`, `TRANSPARENT`, `ACTIVE`
-    /// `HOVERED` respectively.
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
@@ -172,33 +152,33 @@ private:
     void updateImageSize();
 
     std::unique_ptr<sf::RenderTexture> m_textTexturePtr;                //!< Text texture
+    std::unique_ptr<sf::Sprite> m_imageSpritePtr;                       //!< Sprite to display the texture
+
     std::unique_ptr<sf::Texture> m_imageTexturePtr;                     //!< Image texture
     std::unique_ptr<sf::Text> m_noImageTextPtr;                         //!< Text displayed when no image is selected
 
-    std::unique_ptr<sf::Sprite> m_imageSpritePtr;                       //!< Sprite to display the texture
-
-    std::string m_imagePath;                                            //!< Path to currently loaded image
+    sf::String m_imagePath;                                             //!< Path to currently loaded image
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Image frame's default style
 };
 
 template <>
-struct __WidgetStyle<ImageFrame>
+struct WidgetStyle<ImageFrame>
 {
     using StyleType = TextureStyle;
 
-    static const StyleType& get(const WidgetTheme& t)
+    static const StyleType& get(const WidgetTheme& theme)
     {
-        return t.m_imageFrameTheme;
+        return theme.m_imageFrameTheme;
     }
 
-    static void set(WidgetTheme& t, StyleType _b)
+    static void set(WidgetTheme& theme, StyleType s_image_frame)
     {
-        t.m_imageFrameTheme = _b;
+        theme.m_imageFrameTheme = s_image_frame;
     }
 
-    static std::size_t& token(WidgetTheme& t)
+    static std::size_t& token(WidgetTheme& theme)
     {
-        return t.m_imageFrameToken;
+        return theme.m_imageFrameToken;
     }
 };
 }

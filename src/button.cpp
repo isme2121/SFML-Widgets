@@ -57,9 +57,67 @@ void Button::setText(const sf::String& text)
     else setFlag(m_flags, FLAGS::TEXT);
     
     m_text.setString(text);
+
     updateTextSize();
     updateTextPosition();
     updateImagePosition(); //!< Fix image position in case TEXT flag state has changed
+}
+
+bool Button::setImage(const sf::String& image_path, const std::string_view& shader_path)
+{
+    // load from disk
+    ImageCache& global_image_buffer = ImageCache::getInstance(); 
+    std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
+    if(!disk_image) return false;
+
+    // attempt to make a resized copy
+    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size.x / 3, m_size.y)); //!< image takes a third of the button's width
+    if(!resized_image)
+    {
+        global_image_buffer.decrementRefCounter(image_path);
+        return false;
+    }
+
+    // attempt to copy it
+    sf::Texture temp;
+    if(!temp.loadFromImage(*resized_image))
+    {
+        global_image_buffer.decrementRefCounter(image_path);
+        return false;
+    }
+
+    // load clip shader
+    if(!shader_path.empty() && !m_clipShaderPtr) loadClipShader(shader_path);
+
+    // texture update
+    if(m_texturePtr)
+    {
+        global_image_buffer.decrementRefCounter(m_imagePath);
+        *m_texturePtr = std::move(temp);
+    }
+    else
+    {
+        m_texturePtr = std::make_unique<sf::Texture>(std::move(temp));
+    }
+
+    m_imagePath = std::move(image_path);
+    m_texturePtr->setSmooth(true);
+
+    // construct sprite
+    if(!m_imagePtr)
+    {
+        m_imagePtr = std::make_unique<sf::Sprite>(*m_texturePtr);
+        m_imagePtr->setRotation(this->getRotation());
+    }
+
+    else m_imagePtr->setTexture(*m_texturePtr, true);
+
+    updateClipShader();
+    updateTextPosition();
+    updateImagePosition();
+    setFlag(m_flags, FLAGS::IMAGE);
+
+    return true;
 }
 
 void Button::setTextSide(Button::Side text_side)
@@ -67,6 +125,7 @@ void Button::setTextSide(Button::Side text_side)
     if(m_textPosition == text_side) return;
     if(m_imagePosition == text_side)
         m_imagePosition = m_textPosition;
+
     m_textPosition = text_side;
     updateTextPosition();
     updateImagePosition();
@@ -105,50 +164,6 @@ void Button::setTextFont(const sf::Font&& font)
 
     updateTextSize(); //!< auto update size
     updateTextPosition();
-}
-
-bool Button::setImage(const sf::String& image_path)
-{
-    // load from disk
-    ImageCache& global_image_buffer = ImageCache::getInstance(); 
-    std::optional<const sf::Image*> disk_image = global_image_buffer.getImage(image_path);
-    if(!disk_image) return false;
-
-    // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size.x / 3, m_size.y)); //!< image takes a third of the button's width
-    if(!resized_image)
-    {
-        global_image_buffer.decrementRefCounter(image_path);
-        return false;
-    }
-
-    // attempt to copy it
-    sf::Texture temp;
-    if(!temp.loadFromImage(*resized_image))
-    {
-        global_image_buffer.decrementRefCounter(image_path);
-        return false;
-    }
-
-    if(m_texturePtr) global_image_buffer.decrementRefCounter(m_imagePath);
-    // texture update
-    m_texturePtr = std::make_unique<sf::Texture>(std::move(temp));
-    m_imagePath = std::move(image_path);
-    m_texturePtr->setSmooth(true);
-
-    if(!m_imagePtr)
-    {
-        m_imagePtr = std::make_unique<sf::Sprite>(*m_texturePtr);
-        m_imagePtr->setRotation(this->getRotation());
-    }
-
-    else m_imagePtr->setTexture(*m_texturePtr, true);
-
-    setFlag(m_flags, FLAGS::IMAGE);
-    updateClipShader();
-    updateTextPosition();
-    updateImagePosition();
-    return true;
 }
 
 void Button::setImageSide(Button::Side image_side)
@@ -203,8 +218,8 @@ void Button::updateSize()
 {
     // all methods that scale with size
     updateClipShader();
-    updateTextSize();
-    updateTextPosition(); //!< keep text aligned
+    updateTextSize();       //!< if text scales with ratio
+    updateTextPosition();   //!< keep text aligned
     updateImageSize();
     updateImagePosition();  //!< image position scales with button size
 }
@@ -213,6 +228,7 @@ void Button::updateRotation()
 {
     m_text.setRotation(this->getRotation());
     if(m_imagePtr) m_imagePtr->setRotation(this->getRotation());
+
     updateTextPosition();
     updateImagePosition();
 }
@@ -224,7 +240,7 @@ void Button::updateState()
 
     if(checkFlag(m_flags, FLAGS::BLOCKED))
     {
-        m_opacity = 0.2f;
+        m_opacity = 0.4f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
@@ -232,7 +248,7 @@ void Button::updateState()
     }
     else if(checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
-        m_opacity = 0.1f;
+        m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;

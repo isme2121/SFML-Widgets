@@ -29,21 +29,26 @@ CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const 
     setText(text);
 }
 
-void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+void CheckBox::bindToggleEvent(MouseCallback callback)
 {
-    if(details.event_type == W_MouseEventType::Release && details.button == parameters::ACTIVE_MOUSE_BUTTON&& checkFlag(m_flags, FLAGS::SELECTED))
-    {
-        toggle(m_flags, FLAGS::SET);
-        if(m_clickCallback) m_clickCallback(event);
-        details.is_used = true;
-    }
+    m_clickCallback = callback;
 }
 
-void CheckBox::setText(const std::string& text)
+void CheckBox::unbindToggleEvent()
 {
-    if(text.length() >= parameters::CHAR_LIMIT) return;
+    m_clickCallback = nullptr;
+}
 
-    if(!text.empty()) setFlag(m_flags, FLAGS::TEXT);
+bool CheckBox::getState()
+{
+    return checkFlag(m_flags, FLAGS::SET);
+}
+
+void CheckBox::setText(const sf::String& text)
+{
+    m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
+
+    if(!text.isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
 
     m_text.setString(text);
@@ -52,7 +57,7 @@ void CheckBox::setText(const std::string& text)
 
 void CheckBox::setTextSize(unsigned int char_size)
 {
-    m_textSizeRatio = 0.f;
+    m_textSizeRatio = 0.f;  //!< disables ratio updating
     m_charSize = char_size;
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
@@ -82,31 +87,16 @@ void CheckBox::setTextFont(const sf::Font&& font)
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
-void CheckBox::bindToggleEvent(MouseCallback callback)
-{
-    m_clickCallback = callback;
-}
-
-void CheckBox::unbindToggleEvent()
-{
-    m_clickCallback = nullptr;
-}
-
-void CheckBox::setSpace(float ratio)
-{
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_deadSpace = ratio;
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
-}
-
-bool CheckBox::getState()
-{
-    return checkFlag(m_flags, FLAGS::SET);
-}
-
 void CheckBox::setTextSide(DIRECTION side)
 {
     m_textSide = side;
+    resetFlag(m_flags, FLAGS::SHORTSKIP);
+}
+
+void CheckBox::setSeparationSpace(float ratio)
+{
+    if(ratio < 0.f || ratio > 1.f) return;
+    m_deadSpace = ratio;
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
@@ -119,6 +109,17 @@ void CheckBox::setTheme(CheckboxStyle __checkbox_style)
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
+
+void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+    // checkbox state update
+    if(details.event_type == W_MouseEventType::Release && details.button == parameters::ACTIVE_MOUSE_BUTTON && checkFlag(m_flags, FLAGS::SELECTED))
+    {
+        toggle(m_flags, FLAGS::SET);
+        if(m_clickCallback) m_clickCallback(event);
+        details.is_used = true;
+    }
+}
 
 void CheckBox::drawWidget()
 {
@@ -152,20 +153,21 @@ void CheckBox::updateState()
 
     if(checkFlag(m_flags, FLAGS::SET))
     {
+        // show image if assigned when checkbox = 1
         if(m_bgTexturePtr) this->setTexture(m_bgTexturePtr.get());
 
         m_currentBgColorPtr = &m_style.fill_on_color;
 
         if(checkFlag(m_flags, FLAGS::BLOCKED))
         {
-            m_opacity = 0.2f;
+            m_opacity = 0.4f;
             m_currentBgColorPtr->a = m_style.fill_blocked_color.a;
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
         else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
         {
-            m_opacity = 0.1f;
+            m_opacity = 0.2f;
             m_currentBgColorPtr->a = m_style.fill_trasnparent_color.a;
             m_currentOutlineColorPtr = &m_style.outline_transparent_color;
             m_currentTextColorPtr = & m_style.text_transparent_color;
@@ -190,14 +192,14 @@ void CheckBox::updateState()
 
         if(checkFlag(m_flags, FLAGS::BLOCKED))
         {
-            m_opacity = 0.2f;
+            m_opacity = 0.4f;
             m_currentBgColorPtr = &m_style.fill_blocked_color;
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
         else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
         {
-            m_opacity = 0.1f;
+            m_opacity = 0.2f;
             m_currentBgColorPtr = &m_style.fill_trasnparent_color;
             m_currentOutlineColorPtr = &m_style.outline_transparent_color;
             m_currentTextColorPtr = &m_style.text_transparent_color;
