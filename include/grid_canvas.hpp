@@ -118,16 +118,6 @@ public:
     void setDeadZone(float surface);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the widget color theme
-    ///
-    /// Assigned style overrides the current style even if the widget is assigned
-    /// to a shared theme object, however, an update from the said object
-    /// would also override parameter style in the future.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setTheme(TextureStyle __gridcanvas_style);
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Sets each existing cell's theme to parameter color
     ///
     /// @see `setTheme`
@@ -213,10 +203,27 @@ public:
     ///////////////////////////////////////////////////////////////////
     std::size_t getCellsCount() const;
 
-    const std::size_t MAX_CELL_COUNT;        //!< Maximum possible number of cells in canvas object
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the widget color theme
+    ///
+    /// Assigned style overrides the current style even if the widget is assigned
+    /// to a shared theme object, however, an update from the said object
+    /// would also override parameter style in the future.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setTheme(TextureStyle s_gridCanvas);
+
 private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Processes events for cells
+    ///
+    ///////////////////////////////////////////////////////////////////
     bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Canvas related events, such as selecting, panning, and zooming
+    ///
+    ///////////////////////////////////////////////////////////////////
     void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     ///////////////////////////////////////////////////////////////////
@@ -315,6 +322,10 @@ private:
     ///////////////////////////////////////////////////////////////////
     void limitView(sf::View& v);
 
+    static constexpr float s_MAX_ZOOM_LEVEL = 5.f;                      //!< Default zoom level for showing full view
+    static constexpr float s_MIN_ZOOM_LEVEL = 1.f;                      //!< Smallest view possible while zooming
+    static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;                 //!< Max surface occupation percentage for deadzone
+    
     ///////////////////////////////////////////////////////////////////
     /// Member variables
     ///////////////////////////////////////////////////////////////////
@@ -326,8 +337,9 @@ private:
     std::vector<Cell> m_cellMap;                                        //!< Cells memory space
     sf::Vector2i m_memMousePos = {0, 0};                                //!< Memory state for last clicked pixel inside canvas for panning
     const sf::Vector2u m_gridMapping;                                   //!< rows, columns map for cells
+    const std::size_t MAX_CELL_COUNT;                                   //!< Maximum possible number of cells in canvas object
     sf::Vector2f m_cellSize;                                            //!< Shared size within all cells
-    float m_zoomLevel = parameters::MAX_ZOOM_LEVEL;                     //!< Current zoom value, limited between `MAX_ZOOM_LEVEL` and `MIN_ZOOM_LEVEL`
+    float m_zoomLevel = s_MAX_ZOOM_LEVEL;                               //!< Current zoom value, limited between `s_MAX_ZOOM_LEVEL` and `s_MIN_ZOOM_LEVEL`
     float m_deadZone = 0.f;                                             //!< Passive surface between boundaries and cells
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Canvas's default style
 

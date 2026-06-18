@@ -88,7 +88,7 @@ enum class FLAGS : std::int32_t
     BLOCKED = 1 << 18,              //!< Configured flag: `widget is non-interactive`
     TRANSPARENT = 1 << 19,          //!< Configured flag: `widget is always transparent`
     RESIZE = 1 << 20,               //!< Configured Flag: `widget can automatically resize with the window`
-    AUTOSELECT = 1 << 21,           //!< Configured flag: `widget is always selected for keyboard events`
+    ALWAYSSELECTED = 1 << 21,           //!< Configured flag: `widget is always selected for keyboard events`
     AUTOHIDE = 1 << 22,             //!< Configured flag: `widget is hidden when not hovered`
     AUTOTRANSPARENT = 1 << 23,      //!< Configured flag: `widget is transparent when not hovered`
     NOBGIMAGE = 1 << 24,            //!< Configured Flag: `widget cannot select a background image`
@@ -488,28 +488,13 @@ namespace parameters
 {
 // hidden | blocked | resize | autohide | autoselect | block bg image | indicator |  grid | scroll | zoom | pan
 inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
-                                FLAGS::AUTOHIDE | FLAGS::AUTOSELECT | FLAGS::TRANSPARENT | FLAGS::AUTOTRANSPARENT |
+                                FLAGS::AUTOHIDE | FLAGS::ALWAYSSELECTED | FLAGS::TRANSPARENT | FLAGS::AUTOTRANSPARENT |
                                 FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM | FLAGS::PAN |
                                 FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER;
 
 
-constexpr bool UNSELECT_WHEN_HOLD = false;                                  //!< Should holding a widget unselect it? true by default (disabled to deny a release callback from triggering at the end of the active state)
-constexpr bool STACK_MOUSE_CALLBACKS = false;                               //!< Allows mouse events to trigger on multiple widgets inside a frame (stacked widgets all call their callbacks if enabled)
-constexpr bool STACK_FRAME_WITH_WIDGETS = false;                            //!< Allows the frame callback to trigger after a child callback if set (causes un-intended behavior if handled improperly)
-constexpr sf::Mouse::Button ACTIVE_MOUSE_BUTTON = sf::Mouse::Button::Left;  //!< Mouse button for focusing a widget and holding
-
-constexpr sf::Time QUEUE_DELAY = sf::milliseconds(0);                       //!< Delay between keyboard events
-constexpr sf::Time HOVER_DURATION = sf::milliseconds(500);                  //!< Hovering duration before tooltip is drawn
-constexpr sf::Time BLINK_PERIOD = sf::milliseconds(1000);                   //!< Blinking indicators period
-
-constexpr unsigned int N_FADING_FRAMES = 120;                               //!< Number of frames for tooltip to appear
 constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
 constexpr unsigned int CHAR_SIZE = 12;                                      //!< Default character size for text used by widgets
-constexpr unsigned int CORNER_POINTS = 16;                                  //!< Number of vertices in a rounded widget corner 
-constexpr float SCROLL_RATIO = 0.05f;                                       //!< Frame scrolls by 5% of it's height on each scroll
-constexpr float MAX_ZOOM_LEVEL = 5.f;                                       //!< Default zoom level for `GridCanvas` showing full view
-constexpr float MIN_ZOOM_LEVEL = 1.f;                                       //!< Smallest view possible while zooming in `GridCanvas`
-constexpr float MAX_DEADZONE_RATIO = 0.1f;                                  //!< Max surface occupation percentage for deadzone in `GridCanvas`
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////          Paths              ///////////////////

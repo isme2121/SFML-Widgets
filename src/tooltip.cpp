@@ -107,9 +107,9 @@ void ToolTip::draw(bool is_hovered)
 
 void ToolTip::stepTransparency()
 {
-    if(m_currentLevel > parameters::N_FADING_FRAMES) return;
+    if(m_currentLevel > s_FRAMES_TO_DRAW) return;
 
-    const float T_LEVEL = static_cast<float>(m_currentLevel) / static_cast<float>(parameters::N_FADING_FRAMES);
+    const float T_LEVEL = static_cast<float>(m_currentLevel) / static_cast<float>(s_FRAMES_TO_DRAW);
 
     std::function<sf::Color(sf::Color)> scaled = [T_LEVEL](sf::Color c)
     {
@@ -150,7 +150,7 @@ void ToolTip::updateShapeBounds()
     }
     else
     {
-        m_cornerPoints = parameters::CORNER_POINTS;
+        m_cornerPoints = s_CORNER_POINTS;
     }
     update();
 }

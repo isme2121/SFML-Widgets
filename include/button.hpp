@@ -148,7 +148,7 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(ButtonStyle button_style);
+    void setTheme(ButtonStyle s_button);
 
 private:
     ///////////////////////////////////////////////////////////////////

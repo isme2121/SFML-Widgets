@@ -29,12 +29,6 @@ m_text(font)
     this->setOutlineThickness(0.f);
 }
 
-void Label::setTheme(LabelStyle label_style)
-{
-    m_style = label_style;
-    setFlag(m_flags, FLAGS::MODIFIED);
-}
-
 void Label::setText(const sf::String& text)
 {
     m_text.setString(text.substring(0, std::min(m_charLimit, text.getSize())));
@@ -125,6 +119,12 @@ void Label::setPaddingRatio(float ratio)
     m_paddingRatio = ratio;
     updateTextSize();
     updateTextPosition();
+}
+
+void Label::setTheme(LabelStyle s_label)
+{
+    m_style = s_label;
+    setFlag(m_flags, FLAGS::MODIFIED);
 }
 
 ///////////////////////////////////////////////////////////////////

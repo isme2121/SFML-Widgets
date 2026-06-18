@@ -149,7 +149,7 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(CheckboxStyle checkbox_style);
+    void setTheme(CheckboxStyle s_checkbox);
 
 private:
     ///////////////////////////////////////////////////////////////////

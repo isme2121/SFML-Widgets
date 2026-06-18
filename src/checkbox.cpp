@@ -100,9 +100,9 @@ void CheckBox::setSeparationSpace(float ratio)
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 
-void CheckBox::setTheme(CheckboxStyle __checkbox_style)
+void CheckBox::setTheme(CheckboxStyle s_checkbox)
 {
-    m_style = __checkbox_style;
+    m_style = s_checkbox;
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
@@ -113,7 +113,7 @@ void CheckBox::setTheme(CheckboxStyle __checkbox_style)
 void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     // checkbox state update
-    if(details.event_type == W_MouseEventType::Release && details.button == parameters::ACTIVE_MOUSE_BUTTON && checkFlag(m_flags, FLAGS::SELECTED))
+    if(details.event_type == W_MouseEventType::Release && details.button == s_FOCUS_BUTTON && checkFlag(m_flags, FLAGS::SELECTED))
     {
         toggle(m_flags, FLAGS::SET);
         if(m_clickCallback) m_clickCallback(event);

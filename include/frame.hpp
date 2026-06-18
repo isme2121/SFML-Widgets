@@ -106,7 +106,7 @@ private:
     /// @brief Checks for child widgets events first
     ///
     /// If a child widget consumes the event, exits `Widget::captureMouseEvents` early
-    /// while returning `true` if `parameters::STACK_FRAME_WITH_WIDGETS` is disabled which it
+    /// while returning `true` if `s_STACK_CHILD_EVENT` is disabled which it
     /// is by default.
     ///
     ///////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ private:
     /// @brief Checks for child widgets events first
     ///
     /// If a child widget consumes the event, exits `Widget::captureMouseEvents` early
-    /// while returning `true`. `parameters::STACK_FRAME_WITH_WIDGETS` does not currently
+    /// while returning `true`. `s_STACK_CHILD_EVENT` does not currently
     /// affect the result.
     ///
     ///////////////////////////////////////////////////////////////////
@@ -296,6 +296,13 @@ private:
     std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
     sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Frame's default style
+
+    ///////////////////////////////////////////////////////////////////
+    /// Static Variables
+    ///////////////////////////////////////////////////////////////////
+
+    static constexpr bool s_STACK_CHILD_EVENT = false;                  //!< Allows the frame to trigger mouse & key events even after a child widget's callback
+    static constexpr float s_SCROLL_RATIO = 0.05f;                      //!< Frame scrolls by 5% of it's height on each scroll event
 };
 
 template <>

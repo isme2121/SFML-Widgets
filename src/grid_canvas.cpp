@@ -4,7 +4,7 @@
 namespace sfml_widgets // GridCanvas
 {
 GridCanvas::GridCanvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, size_t cell_count, float dead_zone, bool fill_initially) : Widget(window, position, size), 
-m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
+m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * s_MAX_DEADZONE_RATIO)),
 m_gridMapping(get_prime_combination(cell_count))
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -19,7 +19,7 @@ m_gridMapping(get_prime_combination(cell_count))
 }
 
 GridCanvas::GridCanvas(Frame& root, sf::Vector2f position, sf::Vector2u size, size_t cell_count, float dead_zone, bool fill_initially) : Widget(root, position, size), 
-m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO)),
+m_drawTexture(size), m_drawSprite(m_drawTexture.getTexture()), MAX_CELL_COUNT(cell_count), m_deadZone(std::clamp(dead_zone, 0.f, std::min<float>(m_size.x, m_size.y) * s_MAX_DEADZONE_RATIO)),
 m_gridMapping(get_prime_combination(cell_count))
 {
     m_currentBgColorPtr = &m_style.fill_color;
@@ -31,103 +31,6 @@ m_gridMapping(get_prime_combination(cell_count))
     m_cellMap.reserve(MAX_CELL_COUNT);
     if(fill_initially) fill();
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
-}
-
-bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
-{
-    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
-    sf::Vector2f local_view_pixel = m_drawTexture.mapPixelToCoords(local_mouse_position); //!< considers view
-
-    // canvas widget events
-    
-    // update all cells first
-    bool canvas_hovered = checkFlag(m_flags, FLAGS::HOVERED); //!< block cell hovering if canvas not hovered
-    bool transparent_cells = checkFlag(m_flags, FLAGS::AUTOHIDE) & !canvas_hovered; //!< make all cells transparent or not
-    for(Cell& cell : m_cellMap) cell.updateState(local_view_pixel, transparent_cells, canvas_hovered);
-    
-    // update selected indicator if we previously had a selected cell
-    if(m_selectedCell)
-    {
-        if(checkFlag(m_flags, FLAGS::INDICATOR) && !m_selectedCell->isFlag(FLAGS::SELECTED)) setFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
-        else if(!checkFlag(m_flags, FLAGS::INDICATOR) && m_selectedCell->isFlag(FLAGS::SELECTED)) resetFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
-    }
-    return false;
-}
-
-void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
-{
-    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
-
-    // click event
-    if(details.event_type == W_MouseEventType::Press)
-    {
-        if(!checkFlag(m_flags, FLAGS::HOVERED)) return; //!< Not hovering
-
-        /* currently hovering */
-
-        if(m_selectedCell)
-        {
-            // reset previous
-            resetFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
-            m_selectedCell = nullptr;
-        }
-        
-        if(details.button != parameters::ACTIVE_MOUSE_BUTTON) return;
-
-        /* left mouse button was clicked section */
-
-        m_memMousePos = local_mouse_position; //!< for panning
-
-        // check if we clicked on a cell
-        for(Cell& cell : m_cellMap)
-        {
-            if(cell.isFlag(FLAGS::HOVERED))
-            {
-                // first activation stage
-                m_clickedCell = &cell;
-                break;
-            }
-        }
-    }
-
-    // release event (cell selection)
-    else if(details.event_type == W_MouseEventType::Release)
-    {
-        // selecting a cell
-        if(checkFlag(m_flags, FLAGS::HOVERED) && details.button == parameters::ACTIVE_MOUSE_BUTTON)
-        {
-            for(Cell& cell : m_cellMap)
-            {
-                if(cell.isFlag(FLAGS::HOVERED) && m_clickedCell== &cell)
-                {
-                    m_selectedCell = &cell;
-                    details.is_used = true;
-                }
-            }
-        }
-
-        if(!m_selectedCell) m_clickedCell = nullptr; //!< failed to select
-    }
-
-    // zooming event
-    else if(details.event_type == W_MouseEventType::Scroll)
-    {
-        if(checkFlag(m_flags, FLAGS::HOVERED)) 
-        {
-            zoom(details.scroll_delta, local_mouse_position);
-            details.is_used = true;
-        }
-    }
-
-    // moving event
-    else if(const sf::Event::MouseMoved* _moved = event.getIf<sf::Event::MouseMoved>())
-    {
-        if(checkFlag(m_flags, FLAGS::ACTIVE))
-        {
-            pan(local_mouse_position);
-            details.is_used = true;
-        }
-    }
 }
 
 Cell* GridCanvas::at(unsigned int row, unsigned int col)
@@ -191,15 +94,8 @@ void GridCanvas::setActiveCells(std::function<bool(Cell&)> condition)
 
 void GridCanvas::setDeadZone(float surface)
 {
-    m_deadZone = std::clamp(surface, 0.f, std::min<float>(m_size.x, m_size.y) * parameters::MAX_DEADZONE_RATIO);
+    m_deadZone = std::clamp(surface, 0.f, std::min<float>(m_size.x, m_size.y) * s_MAX_DEADZONE_RATIO);
     updateCellSize(); //!< scales with dead zone
-}
-
-void GridCanvas::setTheme(TextureStyle __gridcanvas_style)
-{
-    m_style = __gridcanvas_style;
-    setFlag(m_flags, FLAGS::MODIFIED);
-    for(Cell& cell : m_cellMap) setFlag(cell.m_flags, FLAGS::MODIFIED);
 }
 
 void GridCanvas::setCellStyle(CellColor new_color)
@@ -285,9 +181,113 @@ size_t GridCanvas::getCellsCount() const
     return m_cellMap.size();
 }
 
+void GridCanvas::setTheme(TextureStyle s_gridCanvas)
+{
+    m_style = s_gridCanvas;
+    setFlag(m_flags, FLAGS::MODIFIED);
+    for(Cell& cell : m_cellMap) setFlag(cell.m_flags, FLAGS::MODIFIED);
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
+
+bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
+    sf::Vector2f local_view_pixel = m_drawTexture.mapPixelToCoords(local_mouse_position); //!< considers view
+
+    // canvas widget events
+    
+    // update all cells first
+    bool canvas_hovered = checkFlag(m_flags, FLAGS::HOVERED); //!< block cell hovering if canvas not hovered
+    bool transparent_cells = checkFlag(m_flags, FLAGS::AUTOHIDE) & !canvas_hovered; //!< make all cells transparent or not
+    for(Cell& cell : m_cellMap) cell.updateState(local_view_pixel, transparent_cells, canvas_hovered);
+    
+    // update selected indicator if we previously had a selected cell
+    if(m_selectedCell)
+    {
+        if(checkFlag(m_flags, FLAGS::INDICATOR) && !m_selectedCell->isFlag(FLAGS::SELECTED)) setFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
+        else if(!checkFlag(m_flags, FLAGS::INDICATOR) && m_selectedCell->isFlag(FLAGS::SELECTED)) resetFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
+    }
+    return false;
+}
+
+void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+    sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
+
+    // click event
+    if(details.event_type == W_MouseEventType::Press)
+    {
+        if(!checkFlag(m_flags, FLAGS::HOVERED)) return; //!< Not hovering
+
+        /* currently hovering */
+
+        if(m_selectedCell)
+        {
+            // reset previous
+            resetFlag(m_selectedCell->m_flags, FLAGS::SELECTED);
+            m_selectedCell = nullptr;
+        }
+        
+        if(details.button != s_FOCUS_BUTTON) return;
+
+        /* left mouse button was clicked section */
+
+        m_memMousePos = local_mouse_position; //!< for panning
+
+        // check if we clicked on a cell
+        for(Cell& cell : m_cellMap)
+        {
+            if(cell.isFlag(FLAGS::HOVERED))
+            {
+                // first activation stage
+                m_clickedCell = &cell;
+                break;
+            }
+        }
+    }
+
+    // release event (cell selection)
+    else if(details.event_type == W_MouseEventType::Release)
+    {
+        // selecting a cell
+        if(checkFlag(m_flags, FLAGS::HOVERED) && details.button == s_FOCUS_BUTTON)
+        {
+            for(Cell& cell : m_cellMap)
+            {
+                if(cell.isFlag(FLAGS::HOVERED) && m_clickedCell== &cell)
+                {
+                    m_selectedCell = &cell;
+                    details.is_used = true;
+                }
+            }
+        }
+
+        if(!m_selectedCell) m_clickedCell = nullptr; //!< failed to select
+    }
+
+    // zooming event
+    else if(details.event_type == W_MouseEventType::Scroll)
+    {
+        if(checkFlag(m_flags, FLAGS::HOVERED)) 
+        {
+            zoom(details.scroll_delta, local_mouse_position);
+            details.is_used = true;
+        }
+    }
+
+    // moving event
+    else if(const sf::Event::MouseMoved* _moved = event.getIf<sf::Event::MouseMoved>())
+    {
+        if(checkFlag(m_flags, FLAGS::ACTIVE))
+        {
+            pan(local_mouse_position);
+            details.is_used = true;
+        }
+    }
+}
 
 void GridCanvas::drawWidget()
 {
@@ -432,7 +432,7 @@ void GridCanvas::drawGrid()
     {
         sf::Vertex line[2] = 
         {
-            {{0.f,    m_cellSize.y * col + m_deadZone}, m_style.outline_color},
+            {{0.f, m_cellSize.y * col + m_deadZone}, m_style.outline_color},
             {{m_size.x, m_cellSize.y * col + m_deadZone}, m_style.outline_color}
         };
         m_drawTexture.draw(line, 2, sf::PrimitiveType::Lines);
@@ -448,15 +448,15 @@ void GridCanvas::zoom(float delta, sf::Vector2i local_mouse_position)
     float newZoomLevel = m_zoomLevel * factor;
 
     // limit scrolling
-    if(newZoomLevel > parameters::MAX_ZOOM_LEVEL)
+    if(newZoomLevel > s_MAX_ZOOM_LEVEL)
     {
-        factor     = parameters::MAX_ZOOM_LEVEL / m_zoomLevel;
-        m_zoomLevel = parameters::MAX_ZOOM_LEVEL;
+        factor = s_MAX_ZOOM_LEVEL / m_zoomLevel;
+        m_zoomLevel = s_MAX_ZOOM_LEVEL;
     }
-    else if(newZoomLevel < parameters::MIN_ZOOM_LEVEL)
+    else if(newZoomLevel < s_MIN_ZOOM_LEVEL)
     {
-        factor     = parameters::MIN_ZOOM_LEVEL / m_zoomLevel;
-        m_zoomLevel = parameters::MIN_ZOOM_LEVEL;
+        factor = s_MIN_ZOOM_LEVEL / m_zoomLevel;
+        m_zoomLevel = s_MIN_ZOOM_LEVEL;
     }
     else m_zoomLevel *= factor; // zoom level didn't reach limit
 

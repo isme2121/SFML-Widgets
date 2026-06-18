@@ -115,9 +115,9 @@ const sf::String& ImageFrame::getImagePath() const
     return m_imagePath;
 }
 
-void ImageFrame::setTheme(TextureStyle imageframe_style)
+void ImageFrame::setTheme(TextureStyle s_imageFrame)
 {
-    m_style = imageframe_style;
+    m_style = s_imageFrame;
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 

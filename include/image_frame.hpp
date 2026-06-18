@@ -84,7 +84,7 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(TextureStyle imageframe_style);
+    void setTheme(TextureStyle s_imageFrame);
 
 private:
     ///////////////////////////////////////////////////////////////////

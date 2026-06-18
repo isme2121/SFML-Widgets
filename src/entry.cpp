@@ -33,10 +33,161 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     configure(FLAGS::INDICATOR);
 }
 
+void Entry::setInput(const sf::String& text)
+{
+    if(m_inputFilter)
+    {
+        // filter input
+        sf::String result;
+        std::size_t size = std::min(text.getSize(), m_inputLimit);
+        for(std::size_t idx{0}; idx < size; idx++)
+        {
+            const char32_t& c = text[idx];
+            if(m_inputFilter(c)) result += c;
+        }
+        m_textBuffer = result;
+    }
+    else
+    {
+        // cut string if surpasses limit
+        m_textBuffer = text.substring(0, std::min(text.getSize(), m_inputLimit));
+    }
+
+    m_cursorIndex = m_textBuffer.getSize(); //!< shift to last
+    writeToEntry(); //!< update front end
+
+    // focusWidget(*this, std::nullopt); //!< enables cursor
+}
+
+void Entry::setBackGroundText(const sf::String& bg_text)
+{
+    // limit to 256
+    m_bgText.setString(bg_text.substring(0, std::min(bg_text.getSize(), std::size_t{256})));
+}
+
+void Entry::setCursorIndex(unsigned int idx)
+{
+    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.getSize());
+    shiftToCursor();
+}
+
+void Entry::setPlaceholderChar(const char placeholder_char)
+{
+    if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
+    m_placeholderCharacter = placeholder_char;
+    writeToEntry(); //!< updates front end
+    updateText();   //!< update text center
+}
+
+void Entry::setInputFilter(std::function<bool(char32_t)> func)
+{
+    m_inputFilter = func;
+}
+
+void Entry::setInputLimit(std::size_t max_chars)
+{
+    m_inputLimit = max_chars;
+
+    // remove extra chars
+    if(m_textBuffer.getSize() > m_inputLimit) m_textBuffer = m_textBuffer.substring(0, m_inputLimit);
+    if(m_cursorIndex > m_inputLimit) m_cursorIndex = m_inputLimit;
+    writeToEntry();
+}
+
+
+
+void Entry::setBLinkUpRatio(float ratio)
+{
+    if(ratio < 0.f || ratio > 1.f) return;
+    m_cursorOnDuration = s_BLINK_PERIOD * ratio;
+    m_cursorOffDuration = s_BLINK_PERIOD * (1.f - ratio);
+    if(ratio == 1.f)
+    {
+        // skips comparing the timer and always draws cursor when focused
+        setFlag(m_flags, FLAGS::SET);
+        resetFlag(m_flags, FLAGS::RESET);
+    }
+    else if(ratio == 0.f)
+    {
+        // skips comparing the timer and never draws cursor
+        setFlag(m_flags, FLAGS::RESET);
+        resetFlag(m_flags, FLAGS::SET);
+    }
+    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
+}
+
+void Entry::setTextSize(float ratio)
+{
+    if(ratio < 0.f || ratio > 1.f) return;
+    m_textSizeRatio = ratio;
+    updateText();
+}
+
+void Entry::setTextSize(unsigned int char_size)
+{
+    m_charSize = char_size;
+    m_textSizeRatio = 0.f;
+    updateText();
+}
+
+void Entry::setOffsetRatio(float ratio)
+{
+    if(ratio < 0.f || ratio >= 1.f) return;
+    m_textOffsetRatio = ratio;
+    updateContentWidth();
+    shiftToCursor();
+}
+
+void Entry::setCursorWidth(unsigned int width)
+{
+    m_cursorWidth = width;
+    shiftToCursor();
+}
+
+void Entry::setTextFont(const sf::Font& font)
+{
+    m_text.setFont(font);
+    m_bgText.setFont(font);
+    if(m_font) m_font.reset();
+
+    updateText();
+}
+
+void Entry::setTextFont(const sf::Font&& font)
+{
+    m_font = std::make_unique<const sf::Font>(std::move(font));
+    m_text.setFont(*m_font);
+    m_bgText.setFont(*m_font);
+
+    updateText();
+}
+
+void Entry::clear()
+{
+    m_textBuffer.clear();
+    m_cursorIndex = 0;
+    writeToEntry();
+}
+
+const sf::String& Entry::get() const
+{
+    return m_textBuffer;
+}
+
+void Entry::setTheme(EntryStyle s_entry)
+{
+    m_style = s_entry;
+    setFlag(m_flags, FLAGS::MODIFIED);
+}
+
+///////////////////////////////////////////////////////////////////
+/// Private
+///////////////////////////////////////////////////////////////////
+
 void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     // clicked on entry
-    if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == parameters::ACTIVE_MOUSE_BUTTON)
+    if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == s_FOCUS_BUTTON)
     {
         sf::Vector2f root_view = m_master.mapMousePosition(mouse_position);                         //!< relative to the master
         sf::Vector2f transform_view = this->getInverseTransform().transformPoint(root_view);        //!< considering rotation
@@ -51,7 +202,7 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
     else if(details.event_type == W_MouseEventType::Scroll && checkFlags(m_flags, FLAGS::HOVERED | FLAGS::SCROLL))
     {
         // scrolls through text space
-        m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (parameters::SCROLL_RATIO * m_size.y * 5.f), 0.f, m_maxPanOffset);
+        m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (s_SCROLL_RATIO * m_size.y), 0.f, m_maxPanOffset);
         updateView();
         details.is_used = true;
     }
@@ -173,157 +324,6 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
 
     return event_used;
 }
-
-void Entry::setInput(const sf::String& text)
-{
-    if(m_inputFilter)
-    {
-        // filter input
-        sf::String result;
-        std::size_t size = std::min(text.getSize(), m_inputLimit);
-        for(std::size_t idx{0}; idx < size; idx++)
-        {
-            const char32_t& c = text[idx];
-            if(m_inputFilter(c)) result += c;
-        }
-        m_textBuffer = result;
-    }
-    else
-    {
-        // cut string if surpasses limit
-        m_textBuffer = text.substring(0, std::min(text.getSize(), m_inputLimit));
-    }
-
-    m_cursorIndex = m_textBuffer.getSize(); //!< shift to last
-    writeToEntry(); //!< update front end
-
-    // focusWidget(*this, std::nullopt); //!< enables cursor
-}
-
-void Entry::setBackGroundText(const sf::String& bg_text)
-{
-    // limit to 256
-    m_bgText.setString(bg_text.substring(0, std::min(bg_text.getSize(), std::size_t{256})));
-}
-
-void Entry::setCursorIndex(unsigned int idx)
-{
-    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.getSize());
-    shiftToCursor();
-}
-
-void Entry::setPlaceholderChar(const char placeholder_char)
-{
-    if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
-    m_placeholderCharacter = placeholder_char;
-    writeToEntry(); //!< updates front end
-    updateText();   //!< update text center
-}
-
-void Entry::setInputFilter(std::function<bool(char32_t)> func)
-{
-    m_inputFilter = func;
-}
-
-void Entry::setInputLimit(std::size_t max_chars)
-{
-    m_inputLimit = max_chars;
-
-    // remove extra chars
-    if(m_textBuffer.getSize() > m_inputLimit) m_textBuffer = m_textBuffer.substring(0, m_inputLimit);
-    if(m_cursorIndex > m_inputLimit) m_cursorIndex = m_inputLimit;
-    writeToEntry();
-}
-
-
-
-void Entry::setBLinkUpRatio(float ratio)
-{
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_cursorOnDuration = parameters::BLINK_PERIOD * ratio;
-    m_cursorOffDuration = parameters::BLINK_PERIOD * (1.f - ratio);
-    if(ratio == 1.f)
-    {
-        // skips comparing the timer and always draws cursor when focused
-        setFlag(m_flags, FLAGS::SET);
-        resetFlag(m_flags, FLAGS::RESET);
-    }
-    else if(ratio == 0.f)
-    {
-        // skips comparing the timer and never draws cursor
-        setFlag(m_flags, FLAGS::RESET);
-        resetFlag(m_flags, FLAGS::SET);
-    }
-    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
-}
-
-void Entry::setTextSize(float ratio)
-{
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_textSizeRatio = ratio;
-    updateText();
-}
-
-void Entry::setTextSize(unsigned int char_size)
-{
-    m_charSize = char_size;
-    m_textSizeRatio = 0.f;
-    updateText();
-}
-
-void Entry::setOffsetRatio(float ratio)
-{
-    if(ratio < 0.f || ratio >= 1.f) return;
-    m_textOffsetRatio = ratio;
-    updateContentWidth();
-    shiftToCursor();
-}
-
-void Entry::setCursorWidth(unsigned int width)
-{
-    m_cursorWidth = width;
-    shiftToCursor();
-}
-
-void Entry::setTextFont(const sf::Font& font)
-{
-    m_text.setFont(font);
-    m_bgText.setFont(font);
-    if(m_font) m_font.reset();
-
-    updateText();
-}
-
-void Entry::setTextFont(const sf::Font&& font)
-{
-    m_font = std::make_unique<const sf::Font>(std::move(font));
-    m_text.setFont(*m_font);
-    m_bgText.setFont(*m_font);
-
-    updateText();
-}
-
-void Entry::clear()
-{
-    m_textBuffer.clear();
-    m_cursorIndex = 0;
-    writeToEntry();
-}
-
-const sf::String& Entry::get() const
-{
-    return m_textBuffer;
-}
-
-void Entry::setTheme(EntryStyle s_entry)
-{
-    m_style = s_entry;
-    setFlag(m_flags, FLAGS::MODIFIED);
-}
-
-///////////////////////////////////////////////////////////////////
-/// Private
-///////////////////////////////////////////////////////////////////
 
 void Entry::drawWidget()
 {

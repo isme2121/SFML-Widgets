@@ -187,9 +187,9 @@ void Button::clearImage()
     resetFlag(m_flags, FLAGS::IMAGE);
 }
 
-void Button::setTheme(ButtonStyle button_style)
+void Button::setTheme(ButtonStyle s_button)
 {
-    m_style = button_style;
+    m_style = s_button;
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 

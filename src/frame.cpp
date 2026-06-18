@@ -123,8 +123,9 @@ bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mo
     {
         if((*it_end)->captureMouseEvents(event, mouse_position))
         {
-            if(parameters::STACK_FRAME_WITH_WIDGETS) break;
-            if(!parameters::STACK_MOUSE_CALLBACKS) return true;
+            // child widget enabled s_MouseEventUsed but frame can still use the event if we return false
+            if(s_STACK_CHILD_EVENT) break;
+            if(s_GUARD_EVENT) return true;
         }
         ++it_end;
     }
@@ -146,7 +147,7 @@ bool Frame::preProcessKeyEvents(const sf::Event& event)
     bool event_used = false;
     for(Widget* w : m_childWidgets)
     {
-        if(w->captureKeyEvents(event)) event_used = true; //!< because of AUTOSELECT
+        if(w->captureKeyEvents(event) && !s_STACK_CHILD_EVENT) event_used = true;
     }
     return event_used;
 }
@@ -283,7 +284,7 @@ void Frame::scroll(float delta)
 {
     if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
 
-    m_scrollOffset = std::clamp(m_scrollOffset + delta * (parameters::SCROLL_RATIO * m_size.y), 0.f, m_maxScroll);
+    m_scrollOffset = std::clamp(m_scrollOffset + delta * (s_SCROLL_RATIO* m_size.y), 0.f, m_maxScroll);
     refreshView();
 }
 

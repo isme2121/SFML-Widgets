@@ -94,7 +94,7 @@ public:
     ///
     /// Ratio can range from 0.f to 1.f, 0.f would mean the cursor is never
     /// visible while 1.f keeps it visible at all time, anything in between
-    /// takes a share of `parameters::BLINK_PERIOD`.
+    /// takes a share of `s_BLINK_PERIOD`.
     ///
     /// Cursor can be disabled/enabled with `FLAGS::INDICATOR` bit.
     ///
@@ -179,7 +179,7 @@ public:
     /// would also override parameter style in the future.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTheme(EntryStyle entry_style);
+    void setTheme(EntryStyle s_entry);
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -295,33 +295,37 @@ private:
 
 
     // drawing
-    sf::RenderTexture m_renderTexture;                              //!< Main drawing texture
-    sf::Sprite m_sprite;                                            //!< Texture's sprite
-    std::unique_ptr<const sf::Font> m_font;                         //!< Optional local font
-    sf::Text m_text;                                                //!< Entry text
-    sf::Text m_bgText;                                              //!< Background text, capped at 256 chars
+    sf::RenderTexture m_renderTexture;                                  //!< Main drawing texture
+    sf::Sprite m_sprite;                                                //!< Texture's sprite
+    std::unique_ptr<const sf::Font> m_font;                             //!< Optional local font
+    sf::Text m_text;                                                    //!< Entry text
+    sf::Text m_bgText;                                                  //!< Background text, capped at 256 chars
     
     // data
-    sf::String m_textBuffer;                                        //!< Entry content
-    std::size_t m_cursorIndex = 0;                                  //!< Points to char in string index + 1, so m_textBuffer[0] = index 1
-    std::function<bool(char32_t)> m_inputFilter = nullptr;          //!< Active input filter for entry, this include `set_input` method as well
+    sf::String m_textBuffer;                                            //!< Entry content
+    std::size_t m_cursorIndex = 0;                                      //!< Points to char in string index + 1, so m_textBuffer[0] = index 1
+    std::function<bool(char32_t)> m_inputFilter = nullptr;              //!< Active input filter for entry, this include `set_input` method as well
 
     // parameters
-    std::size_t m_inputLimit = parameters::CHAR_LIMIT;              //!< Max possible number of characters
-    float m_textSizeRatio = 0.5f;                                   //!< Entry determines char size based on it's height
-    float m_textOffsetRatio = 0.1f;                                 //!< Left offset for text
-    unsigned int m_charSize = parameters::CHAR_SIZE;                //!< Entry's char size
-    unsigned int m_cursorWidth = 1;                                 //!< The width of the cursor
-    char m_placeholderCharacter = 0;                                //!< The visual text is replaced by this char, `0` char disables the replacement
-    sf::Time m_cursorOnDuration;                                    //!< Uptime period for cursor
-    sf::Time m_cursorOffDuration;                                   //!< Downtime period for cursor
+    std::size_t m_inputLimit = parameters::CHAR_LIMIT;                  //!< Max possible number of characters
+    float m_textSizeRatio = 0.5f;                                       //!< Entry determines char size based on it's height
+    float m_textOffsetRatio = 0.1f;                                     //!< Left offset for text
+    unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Entry's char size
+    unsigned int m_cursorWidth = 1;                                     //!< The width of the cursor
+    char m_placeholderCharacter = 0;                                    //!< The visual text is replaced by this char, `0` char disables the replacement
+    sf::Time m_cursorOnDuration;                                        //!< Uptime period for cursor
+    sf::Time m_cursorOffDuration;                                       //!< Downtime period for cursor
 
     // funcionality
-    sf::Clock m_blinkTimer;                                         //!< Cursor blinking timer
-    float m_textBoxWidth;                                           //!< Entry's text complete width
-    float m_currentPanOffset = 0.f;                                 //!< Current panned value
-    float m_maxPanOffset = 0.f;                                     //!< Max possible space for panning
-    EntryStyle m_style = Theme::entry_style::ENTRY_STALE_VIOLET;    //!< Entry's default style
+    sf::Clock m_blinkTimer;                                             //!< Cursor blinking timer
+    float m_textBoxWidth;                                               //!< Entry's text complete width
+    float m_currentPanOffset = 0.f;                                     //!< Current panned value
+    float m_maxPanOffset = 0.f;                                         //!< Max possible space for panning
+    EntryStyle m_style = Theme::entry_style::ENTRY_STALE_VIOLET;        //!< Entry's default style
+
+    static constexpr sf::Time s_BLINK_PERIOD = sf::milliseconds(1000);  //!< Blinking indicators period
+    static constexpr float s_SCROLL_RATIO = 0.3f;                       //!< Scrolls by 30% of the entry's width on each scroll event
+
 };
 
 template <>

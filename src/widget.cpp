@@ -60,6 +60,10 @@ void Widget::draw()
         updateState();  //!< updates shaders and coloring
     }
     
+    if(m_restrictEvent && m_restrictEvent->advance()) m_restrictEvent.reset();
+
+    s_mouseEventUsed = false;
+    s_keyEventUsed = false;
     updateFocus();      //!< updates focused widget and triggers focus and unfocus callback
     
     // check if it's hidden
@@ -177,7 +181,7 @@ void Widget::setWidgetRotation(float new_angle)
 bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     // hidden or blocked widgets can't trigger mouse events
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED)) return false;
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || s_GUARD_EVENT && s_mouseEventUsed) return false;
 
     // get mouse position
     if(!mouse_position) *mouse_position = getMousePosition();    
@@ -186,8 +190,12 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     updateMouseState(event, *mouse_position);
 
     // from derived, may consume the event
-    if(preProcessMouseEvents(event, *mouse_position)) return true;
-
+    if(preProcessMouseEvents(event, *mouse_position))
+    {
+        s_mouseEventUsed = true;
+        return s_mouseEventUsed;
+    }
+    
     /* This section contains the default mouse event checkup for widgets */
     // this is passed to post-process with relevant info about the event
     W_MouseEventDetails event_details;
@@ -208,7 +216,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
             // memory for release event
             m_memButton.emplace(clicked->button);
         
-            if(clicked->button == parameters::ACTIVE_MOUSE_BUTTON)
+            if(clicked->button == s_FOCUS_BUTTON)
                 setFlag(m_flags, FLAGS::ACTIVE); //!< widget can now trigger hold event
             
             // assigned callback
@@ -233,7 +241,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         event_details.event_type = W_MouseEventType::Release;
         event_details.button = released_button;
 
-        if(released_button == parameters::ACTIVE_MOUSE_BUTTON)
+        if(released_button == s_FOCUS_BUTTON)
             resetFlag(m_flags, FLAGS::ACTIVE); //!< can no longer trigger hold
 
         // to trigger release event:
@@ -284,7 +292,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     else if(checkFlag(m_flags, FLAGS::ACTIVE))
     {
         event_details.event_type = W_MouseEventType::Hold;
-        event_details.button = parameters::ACTIVE_MOUSE_BUTTON;
+        event_details.button = s_FOCUS_BUTTON;
 
         // assigned callback
         if(m_holdCallBack)
@@ -294,7 +302,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         }
 
         // prevents calling release callback after releasing hold
-        if(checkFlag(m_flags, FLAGS::SELECTED) && parameters::UNSELECT_WHEN_HOLD)
+        if(checkFlag(m_flags, FLAGS::SELECTED) && s_UNSELECT_WHEN_HELD)
         {
             resetFlag(m_flags, FLAGS::SELECTED);
         }
@@ -302,32 +310,33 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
 
     // derived class post-process, can modify details
     postProcessMouseEvents(event_details, event, *mouse_position);
+
+    s_mouseEventUsed = event_details.is_used;
     return event_details.is_used;
 
 }
 
 bool Widget::captureKeyEvents(const sf::Event& event)
 {    
-    // key event will trigger if
-    // 1. widget is neither blocked nor restricted
-    // 2. widget is selected or hovered
-    if(checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) || !checkFlag(m_flags, FLAGS::AUTOSELECT | FLAGS::HOVERED | FLAGS::SELECTED)) return false;
+    // key event won't trigger if:
+    if(s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
+       checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) ||                                        //!< widget is either blocked or restricted
+      !checkFlag(m_flags, FLAGS::HOVERED | FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;      //!< widget is neither hovered, selected, not always selected
     
     // derived class pre-process
     if(preProcessKeyEvents(event)) return true;
 
-    bool event_used = false;
-
     // triggers key callback
-    if(m_binds.checkEvents(event))
+    bool event_used = m_binds.checkEvents(event);
+
+    // check if we wanna restrict the widget after a successful call
+    if(event_used && s_RESTRICT_AFTER_KEYEVENT)
     {
-        // rate limit key events (will remove soon)
-        if(parameters::QUEUE_DELAY != sf::Time::Zero)
+        if(s_RESTRICTION_DURATION != sf::Time::Zero)
         {
+            // now key events cannot trigger for this duration
             setFlag(m_flags, FLAGS::RESTRICTED);
-            addToQueue(parameters::QUEUE_DELAY,
-                       [this](){resetFlag(m_flags, FLAGS::RESTRICTED);}, 
-                       true);
+            m_restrictEvent = std::make_unique<W_QueueEvent>(s_RESTRICTION_DURATION, [this](){resetFlag(m_flags, FLAGS::RESTRICTED);});
         }
         event_used = true;
     }
@@ -570,7 +579,7 @@ void Widget::setCornerRadius(float radius)
     }
     else
     {
-        m_cornerPoints = parameters::CORNER_POINTS;
+        m_cornerPoints = s_CORNER_POINTS;
     }
     updateClipShader();
     update();
@@ -984,7 +993,7 @@ void Widget::focusWidget(Widget& w, std::optional<sf::Event> event) noexcept
     // this is called whenever a widget is pressed with any mouse button
 
     // if a widget is already assigned and parameters block multiple selections then we return
-    if(s_FfoundFocusedWidget && !parameters::STACK_MOUSE_CALLBACKS) return;
+    if(s_FfoundFocusedWidget && s_GUARD_EVENT) return;
 
     s_widgetToFocusPtr = &w;
     s_memFocusEvent.emplace(*event);

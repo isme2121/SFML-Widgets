@@ -454,7 +454,7 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     [[nodiscard]] std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
-                                         sf::Time delay_ms = parameters::HOVER_DURATION,
+                                         sf::Time delay_ms = s_HOVER_DURATION,
                                          unsigned int text_size = parameters::CHAR_SIZE,
                                          ToolTipStyle style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK);
 
@@ -776,7 +776,7 @@ protected:
     FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget, start with MODIFIED for initial style assignment
 
     float m_radius = 0.f;                                                           //!< Corner radius, `0.f` for rectangle shape
-    unsigned int m_cornerPoints = 1;                                                //!< Number of points in each corner, 1 for rectangle shape (automatically updates to `parameters::CORNER_POINTS`)
+    unsigned int m_cornerPoints = 1;                                                //!< Number of points in each corner, 1 for rectangle shape (automatically updates to `Widget::s_CORNER_POINTS`)
     float m_opacity = 1.f;                                                          //!< Transparency ratio of the widget, `1.f` for fully transparent
     std::size_t m_generationToken = constants::KSTALE;                              //!< Used with `m_themePtr` to check if optimal style for widget was modified
 
@@ -785,6 +785,7 @@ protected:
     float* m_currentOutlineThicknessPtr = nullptr;                                  //!< Pointer to current outline color
 
 private:
+    std::unique_ptr<W_QueueEvent> m_restrictEvent;
     std::deque<W_QueueEvent> m_events;                                              //!< Queued events
     std::vector<W_RepeatEvent> m_repeatEvents;                                      //!< Routine events, they run concurrently
 
@@ -792,7 +793,7 @@ private:
 
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_pressEvents;             //!< Stores assigned mouse press events
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_releaseEvents;           //!< Stored assigned mouse release events
-    MouseCallback m_holdCallBack = nullptr;                                         //!< Called while holding `parameters::ACTIVE_MOUSE_BUTTON` on widget
+    MouseCallback m_holdCallBack = nullptr;                                         //!< Called while holding `Widget::s_FOCUS_BUTTON` on widget
     MouseCallback m_scrollCallBack = nullptr;                                       //!< Called when scrolling the mouse wheel while hovering on widget
     MouseCallback m_gainhoverCallBack = nullptr;                                    //!< Called once when the widget is first hovered
     MouseCallback m_losehoverCallBack = nullptr;                                    //!< Called once when the widget is no longer hovered
@@ -823,8 +824,8 @@ private:
     /// widgets can be grouped together to maintain focus as one widget.
     ///
     /// Only one widget can be focused at a time, and by default, only
-    /// one assignment takes place per loop unless if `parameter::STACK_MOUSE_CALLBACKS`
-    /// is set to true then the assignment becomes more unpredictable but it would
+    /// one assignment takes place per loop unless if `Widget::s_GUARD_EVENT`
+    /// is set to false then the assignment becomes more unpredictable but it would
     /// still only call one focus callback.
     ///
     /// This process is done automatically by the widget class.
@@ -866,6 +867,8 @@ private:
     inline static std::vector<Widget*> s_widgets;                                   //!< Reference to every live widget
     inline static sf::Vector2f s_windowSize = {0.f, 0.f};                           //!< Prevents calling resize method multiple times for no purpose
 
+    // variables
+
     inline static Widget* s_focusedWidgetPtr = nullptr;                             //!< Pointer to currently focused widget
     inline static Widget* s_widgetToFocusPtr = nullptr;                             //!< Pointer to the upcoming focused widget, this only exists until focus resource is updated
 
@@ -876,9 +879,25 @@ private:
     inline static bool s_FrequestUnfocus = false;                                   //!< Requests for the focused widget to lose the resource
     inline static bool s_FrequestFocusUpdate = false;                               //!< Requests for a new widget to obtain the resource
 
+    inline static bool s_mouseEventUsed = false;                                    //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
+    inline static bool s_keyEventUsed = false;                                      //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
     inline static bool s_setOriginals = true;                                       //!< Widgets update their original dimensions if set, otherwise skips the process
 
 public:
+    // parameters
+    static constexpr sf::Mouse::Button s_FOCUS_BUTTON = sf::Mouse::Button::Left;    //!< Mouse button that triggers focus and hold events
+    static constexpr sf::Time s_RESTRICTION_DURATION = sf::Time::Zero;              //!< Duration of which a widget that triggered a key event remains limited
+    static constexpr sf::Time s_HOVER_DURATION = sf::milliseconds(500);             //!< Hovering duration before tooltip is drawn
+    static constexpr unsigned int s_CORNER_POINTS = 16;                             //!< Number of vertices for a single rounded corner in a widget
+
+    static constexpr bool s_GUARD_EVENT = true;                                     //!< Blocks multiple event triggers in a single loop
+    static constexpr bool s_RESTRICT_AFTER_KEYEVENT = false;                        //!< Blocks the widget from triggering any key events for `s_RESTRICTION_DURATION` period after using a key event
+    static constexpr bool s_UNSELECT_WHEN_HELD = true;                              //!< Prevents a widget from triggering mouse release callback at the end of a hold event
+
+///////////////////////////////////////////////////////////////////
+/// Widget objects
+///////////////////////////////////////////////////////////////////
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Countdown type for queued events and routines
     ///

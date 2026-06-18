@@ -14,6 +14,8 @@ namespace sfml_widgets
 ///////////////////////////////////////////////////////////////////
 class ToolTip : private sf::Shape
 {
+    friend class Widget;
+
 public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the hovering duration for the tooltip to appear
@@ -163,23 +165,21 @@ private:
     std::size_t getPointCount() const override;
     sf::Vector2f getPoint(std::size_t index) const override;
 
-    sf::RenderWindow& m_window;                             //!< Caller widget's root window
-    sf::Text m_text;                                        //!< Text
-    ToolTipStyle m_style;                                   //!< Theme
-    bool m_needUpdate = true;                               //!< Calls for a shape update when true
+    sf::RenderWindow& m_window;                                                 //!< Caller widget's root window
+    sf::Text m_text;                                                            //!< Text
+    sf::Vector2f m_size;                                                        //!< Shape's dimensions
+    sf::Clock m_timer;                                                          //!< Hovering timer
+    sf::Time m_hoverDuration;                                                   //!< Hover duration to reach before drawing
+    float m_radius = 0.f;                                                       //!< Corner radius
+    std::size_t m_cornerPoints = 1;                                             //!< Number of points per corner
+    unsigned int m_currentLevel = 1;                                            //!< Used when gradually stepping transparency down, up to `s_FRAMES_TO_DRAW`
+    bool m_needUpdate = true;                                                   //!< Calls for a shape update when true
+    ToolTipStyle m_style;                                                       //!< Theme
+    
+    static constexpr sf::Vector2f s_MIN_SIZE = {50.f, 20.f};                    //!< Size when no text is written
+    static constexpr unsigned int s_FRAMES_TO_DRAW = 120;                       //!< Number of frames for tooltip to appear
+    static constexpr unsigned int s_CORNER_POINTS = Widget::s_CORNER_POINTS;    //!< Number of vertices in a single rounded corner
 
-    sf::Vector2f m_size;                                    //!< Shape's dimensions
-    float m_radius = 0.f;                                   //!< Corner radius
-    std::size_t m_cornerPoints = 1;                         //!< Number of points per corner
-
-    sf::Clock m_timer;                                      //!< Hovering timer
-    sf::Time m_hoverDuration = parameters::HOVER_DURATION;  //!< Hover duration to reach before drawing
-
-    unsigned int m_currentLevel = 1;                        //!< Used when gradually stepping transparency down, up to `parameters::N_FADING_FRAMES`
-
-    friend class Widget;
-
-    const sf::Vector2f s_MIN_SIZE = {50.f, 20.f};           //!< Size when no text is written
 };
 }
 #endif
