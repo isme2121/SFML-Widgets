@@ -178,7 +178,7 @@ private:
     
     static constexpr sf::Vector2f s_MIN_SIZE = {50.f, 20.f};                    //!< Size when no text is written
     static constexpr unsigned int s_FRAMES_TO_DRAW = 120;                       //!< Number of frames for tooltip to appear
-    static constexpr unsigned int s_CORNER_POINTS = Widget::s_CORNER_POINTS;    //!< Number of vertices in a single rounded corner
+    static constexpr unsigned int s_CORNER_POINTS = 16;                         //!< Number of vertices in a single rounded corner
 
 };
 }

@@ -25,7 +25,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
+    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_3);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the button on a `Frame` object
@@ -36,7 +36,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
+    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_3);
 
     Button(Button&&) = delete;
     Button& operator=(Button&&) = delete;
@@ -230,12 +230,14 @@ private:
     std::unique_ptr<sf::Sprite> m_imagePtr;                             //!< Image sprite
 
     sf::String m_imagePath;                                             //!< Path for used image
-    float m_charSizeRatio = 0.4f;                                       //!< Button's height occupied by text, prio until it's set to 0.f
+    float m_charSizeRatio = 0.35f;                                      //!< Button's height occupied by text, prio until it's set to 0.f
     unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Manual text size assigned by user, not used until ratio is 0.f
 
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
     ButtonStyle m_style = Theme::button_style::BUTTON_STALE_VIOLET;     //!< Button's default style
+
+    bool m_requirePosUpdate = true;                                     //!< Updates the positions of text and image if set
 
 public:
 

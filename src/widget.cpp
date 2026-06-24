@@ -1172,7 +1172,7 @@ bool Widget::W_RepeatEvent::advance()
 
 namespace sfml_widgets // W_CharHeight
 {
-sf::Text Widget::W_CharHeight::Ag(parameters::font, "Ag");
+sf::Text Widget::W_CharHeight::Ag(parameters::DEFAULT_FONT_1, "Ag");
 
 float Widget::W_CharHeight::getHeight(sf::Font text_font, unsigned int char_size)
 {

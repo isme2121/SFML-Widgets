@@ -1,5 +1,6 @@
 #include <cmath>
 #include "../include/button.hpp"
+#include <iostream>
 
 namespace sfml_widgets // Button
 {
@@ -8,7 +9,7 @@ namespace sfml_widgets // Button
 ///////////////////////////////////////////////////////////////////
 
 Button::Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size),
-m_text(font)
+m_text(font, "", parameters::CHAR_SIZE)
 {   
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -27,7 +28,7 @@ m_text(font)
 }
 
 Button::Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text, const sf::Font& font) : Widget(root, position, size),
-m_text(font)
+m_text(font, "", parameters::CHAR_SIZE)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -56,11 +57,8 @@ void Button::setText(const sf::String& text)
     if(text.isEmpty()) resetFlag(m_flags, FLAGS::TEXT);
     else setFlag(m_flags, FLAGS::TEXT);
     
-    m_text.setString(text);
-
     updateTextSize();
-    updateTextPosition();
-    updateImagePosition(); //!< Fix image position in case TEXT flag state has changed
+    m_requirePosUpdate = true; //!< Fix image position in case TEXT flag state has changed
 }
 
 bool Button::setImage(const sf::String& image_path, const std::string_view& shader_path)
@@ -113,8 +111,7 @@ bool Button::setImage(const sf::String& image_path, const std::string_view& shad
     else m_imagePtr->setTexture(*m_texturePtr, true);
 
     updateClipShader();
-    updateTextPosition();
-    updateImagePosition();
+    m_requirePosUpdate = true;
     setFlag(m_flags, FLAGS::IMAGE);
 
     return true;
@@ -123,12 +120,9 @@ bool Button::setImage(const sf::String& image_path, const std::string_view& shad
 void Button::setTextSide(Button::Side text_side)
 {
     if(m_textPosition == text_side) return;
-    if(m_imagePosition == text_side)
-        m_imagePosition = m_textPosition;
 
     m_textPosition = text_side;
-    updateTextPosition();
-    updateImagePosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::setTextSize(unsigned int char_size)
@@ -136,7 +130,7 @@ void Button::setTextSize(unsigned int char_size)
     m_charSizeRatio = 0.f;
     m_charSize = char_size;
     updateTextSize();
-    updateTextPosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::setTextSize(float ratio)
@@ -144,7 +138,7 @@ void Button::setTextSize(float ratio)
     if(ratio < 0.f || ratio >= 1.f) return;
     m_charSizeRatio = ratio;
     updateTextSize();
-    updateTextPosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::setTextFont(const sf::Font& font)
@@ -154,7 +148,7 @@ void Button::setTextFont(const sf::Font& font)
     if(m_fontPtr) m_fontPtr.reset();
 
     updateTextSize(); //!< auto update size
-    updateTextPosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::setTextFont(const sf::Font&& font)
@@ -163,17 +157,15 @@ void Button::setTextFont(const sf::Font&& font)
     m_text.setFont(*m_fontPtr);
 
     updateTextSize(); //!< auto update size
-    updateTextPosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::setImageSide(Button::Side image_side)
 {
     if(m_imagePosition == image_side) return;
-    if(m_textPosition == image_side)
-        m_textPosition = m_imagePosition;
+
     m_imagePosition = image_side;
-    updateTextPosition();
-    updateImagePosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::clearImage()
@@ -199,6 +191,13 @@ void Button::setTheme(ButtonStyle s_button)
 
 void Button::drawWidget()
 {
+    if(m_requirePosUpdate)
+    {
+        m_requirePosUpdate = false;
+        updateTextPosition();
+        updateImagePosition();
+    }
+
     if(m_imagePtr)
     {
         if(m_clipShaderPtr) m_master.draw(*m_imagePtr, m_clipShaderPtr.get());
@@ -210,8 +209,7 @@ void Button::drawWidget()
 void Button::updatePosition()
 {
     // updates text and image
-    updateTextPosition();
-    updateImagePosition();
+    m_requirePosUpdate = true;
 }
 
 void Button::updateSize()
@@ -219,9 +217,11 @@ void Button::updateSize()
     // all methods that scale with size
     updateClipShader();
     updateTextSize();       //!< if text scales with ratio
-    updateTextPosition();   //!< keep text aligned
     updateImageSize();
-    updateImagePosition();  //!< image position scales with button size
+
+    // keep text aligned
+    // image position scales with size
+    m_requirePosUpdate = true;
 }
 
 void Button::updateRotation()
@@ -229,8 +229,9 @@ void Button::updateRotation()
     m_text.setRotation(this->getRotation());
     if(m_imagePtr) m_imagePtr->setRotation(this->getRotation());
 
-    updateTextPosition();
-    updateImagePosition();
+    // there is no render object that handles text & image transforms
+    // they are handled in their update position methods
+    m_requirePosUpdate = true;
 }
 
 void Button::updateState()
@@ -306,18 +307,12 @@ void Button::updateClipShader()
     m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
     m_clipShaderPtr->setUniform("radius", m_radius);
     m_clipShaderPtr->setUniform("opacity", m_opacity);
-    m_clipShaderPtr->setUniform("side", m_imagePosition == Side::Right ? 1.f : 0.f);
+    m_clipShaderPtr->setUniform("side", m_imagePosition == Side::Right? 2.f : m_imagePosition == Side::Left? 0.f : 1.f);
 }
 
 void Button::updateTextPosition()
 {
     if(!checkFlag(m_flags, FLAGS::TEXT)) return;
-
-    if(m_imagePosition == Side::Center)
-    {
-        m_imagePosition = Side::Left;
-        if(m_textPosition == Side::Left) m_imagePosition = Side::Right;
-    }
 
     sf::FloatRect bounds = m_text.getLocalBounds();
     m_text.setOrigin(bounds.position + bounds.size / 2.f);
@@ -354,7 +349,7 @@ void Button::updateTextSize()
         if(current_height > 0.f)
         {
             float ratio = final_height / current_height;
-            m_charSize = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
+            m_charSize = std::floor<unsigned int>(m_charSize * ratio);
         }
     }
     m_text.setCharacterSize(m_charSize);

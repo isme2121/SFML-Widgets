@@ -19,7 +19,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
+    Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::DEFAULT_FONT_2);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Takes a master object for internal graphics handling and
@@ -31,7 +31,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Entry(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::font);
+    Entry(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::DEFAULT_FONT_2);
 
     Entry(Entry&& other) = delete;
     Entry& operator=(Entry&& other) = delete;

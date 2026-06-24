@@ -1,5 +1,4 @@
 .vscode/
-assets/
 build/
 build-windows/
 test/
@@ -12,3 +11,5 @@ external-include/profile.h
 *.cmake
 testexe
 main
+testexe.exe
+README.md

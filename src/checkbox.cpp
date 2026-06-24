@@ -3,7 +3,8 @@
 
 namespace sfml_widgets // checkbox
 {
-CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size), m_text(font)
+CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size),
+m_text(font, "", parameters::CHAR_SIZE)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -16,7 +17,8 @@ CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u s
     setText(text);
 }
 
-CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size), m_text(font)
+CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size),
+m_text(font, "", parameters::CHAR_SIZE)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -51,7 +53,6 @@ void CheckBox::setText(const sf::String& text)
     if(!text.isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
 
-    m_text.setString(text);
     resetFlag(m_flags, FLAGS::SHORTSKIP);
 }
 

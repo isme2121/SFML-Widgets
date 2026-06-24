@@ -245,7 +245,7 @@ void ImageFrame::writeText()
     if(m_imageTexturePtr) return; //!< we have an image loaded
 
     m_textTexturePtr = std::make_unique<sf::RenderTexture>(sf::Vector2u(m_size));
-    m_noImageTextPtr = std::make_unique<sf::Text>(parameters::font, "\t No\nImage");
+    m_noImageTextPtr = std::make_unique<sf::Text>(parameters::DEFAULT_FONT_2, "\t No\nImage");
 
     // allocate sprite here if needed
     if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(m_textTexturePtr->getTexture());

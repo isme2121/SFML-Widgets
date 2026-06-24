@@ -114,11 +114,8 @@ bool GridCanvas::isTaken(sf::Vector2u coordinates) const
 
 sf::Vector2i GridCanvas::getLocalPixel(sf::Vector2i mouse_position) const
 {
-    sf::Vector2i local =  sf::Vector2i(mouse_position.x - static_cast<int>(m_position.x),
-                                       mouse_position.y - static_cast<int>(m_position.y));
-
-    if(const Frame* root = m_master.getFramePtr()) local = sf::Vector2i(root->mapPixelToCoords(local));
-    return local;
+    sf::Vector2f global_point = m_master.mapMousePosition(mouse_position);
+    return sf::Vector2i(this->getInverseTransform().transformPoint(global_point));
 }
 
 sf::Vector2f GridCanvas::getViewPixel(sf::Vector2i mouse_position) const
@@ -195,7 +192,7 @@ void GridCanvas::setTheme(TextureStyle s_gridCanvas)
 bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
-    sf::Vector2f local_view_pixel = m_drawTexture.mapPixelToCoords(local_mouse_position); //!< considers view
+    sf::Vector2f local_view_pixel = mapLocalToView(local_mouse_position); //!< considers view
 
     // canvas widget events
     
@@ -279,7 +276,7 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
     }
 
     // moving event
-    else if(const sf::Event::MouseMoved* _moved = event.getIf<sf::Event::MouseMoved>())
+    else if(details.event_type == W_MouseEventType::Hold)
     {
         if(checkFlag(m_flags, FLAGS::ACTIVE))
         {

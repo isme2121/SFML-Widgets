@@ -17,7 +17,7 @@ public:
     /// @param initial_state initial state value for checkbox
     ///
     ///////////////////////////////////////////////////////////////////
-    CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font, bool initial_state = false);
+    CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::DEFAULT_FONT_2, bool initial_state = false);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the checkbox on a `Frame` object
@@ -29,7 +29,7 @@ public:
     /// @param initial_state initial state value for checkbox
     ///
     ///////////////////////////////////////////////////////////////////
-    CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::font, bool initial_state = false);
+    CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text = "", const sf::Font& font = parameters::DEFAULT_FONT_2, bool initial_state = false);
 
     CheckBox(CheckBox&& other) = delete;
     CheckBox& operator=(CheckBox&& other) = delete;

@@ -35,7 +35,7 @@ class Cell;
 
 using Sequence = std::vector<Key>;                                          //!< Represents a sequence of key presses
 using SequenceFunction = std::function<void()>;                             //!< Required function structure for key press events
-using MouseCallback = std::function<void(std::optional<sf::Event>)>;  //!< Required function structure for mouse press events
+using MouseCallback = std::function<void(std::optional<sf::Event>)>;        //!< Required function structure for mouse press events
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////         Enums               ///////////////////
@@ -494,15 +494,17 @@ inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKE
 
 
 constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
-constexpr unsigned int CHAR_SIZE = 12;                                      //!< Default character size for text used by widgets
+constexpr unsigned int CHAR_SIZE = 18;                                      //!< Default character size for text used by widgets
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////          Paths              ///////////////////
 ///////////////////////////////////////////////////////////////////
 
-inline const sf::Font font("assets/fonts/default.otf"); //!< temporary font
+inline const sf::Font DEFAULT_FONT_1{"assets/fonts/Inter_Light.ttf"};
+inline const sf::Font DEFAULT_FONT_2{"assets/fonts/Inter_Regular.ttf"};
+inline const sf::Font DEFAULT_FONT_3{"assets/fonts/Inter_SemiBold.ttf"};
 
-// Clip button's image + opacity effect, uniform => texture, size, radius, image_opacity
+// Clip button's image + opacity effect, uniform => texture, size, radius, opacity
 constexpr std::string_view SPRITE_CLIP_COLOR_SHADER_PATH = "assets/shaders/button_clip_opacity.frag";
 // Clip sprite + opacity effect, uniform => texture, size, radius, opacity
 constexpr std::string_view SPRITE_FULLCLIP_OPACITY_SHADER_PATH = "assets/shaders/sprite_clip_opacity.frag";

@@ -20,7 +20,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
+    Label(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_2);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the label with `Frame`
@@ -32,7 +32,7 @@ public:
     /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
-    Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::font);
+    Label(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_2);
 
     Label(Label&& other) = delete;
     Label& operator=(Label&& other) = delete;
