@@ -23,7 +23,7 @@ m_text(font, "", parameters::CHAR_SIZE)
     // requires text and size to be updated
     setText(text);
     // depends on widget size
-    loadClipShader(parameters::SPRITE_CLIP_COLOR_SHADER_PATH);
+    loadClipShader(BUTTON_SHADER_FRAG, W_LoadType::Memory);
 
 }
 
@@ -42,7 +42,7 @@ m_text(font, "", parameters::CHAR_SIZE)
     // requires text and size to be updated
     setText(text);
     // depends on widget size
-    loadClipShader(parameters::SPRITE_CLIP_COLOR_SHADER_PATH);
+    loadClipShader(BUTTON_SHADER_FRAG, W_LoadType::Memory);
 }
 
 Button::~Button()
@@ -61,7 +61,7 @@ void Button::setText(const sf::String& text)
     m_requirePosUpdate = true; //!< Fix image position in case TEXT flag state has changed
 }
 
-bool Button::setImage(const sf::String& image_path, const std::string_view& shader_path)
+bool Button::setImage(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)
 {
     // load from disk
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
@@ -85,7 +85,7 @@ bool Button::setImage(const sf::String& image_path, const std::string_view& shad
     }
 
     // load clip shader
-    if(!shader_path.empty() && !m_clipShaderPtr) loadClipShader(shader_path);
+    if(!shader.empty() && !m_clipShaderPtr) loadClipShader(shader, loading_type);
 
     // texture update
     if(m_texturePtr)

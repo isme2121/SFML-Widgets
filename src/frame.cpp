@@ -15,7 +15,7 @@ m_window(&window), m_texture(size), m_sprite(m_texture.getTexture()), m_contentH
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     toggle(m_flags, FLAGS::SCROLL);
 }
 
@@ -28,7 +28,7 @@ m_window(root.getWindowPtr()), m_texture(size), m_sprite(m_texture.getTexture())
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     toggle(m_flags, FLAGS::SCROLL);
 }
 

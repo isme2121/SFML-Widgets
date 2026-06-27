@@ -23,6 +23,7 @@ protected:
 public:
     enum class W_MouseEventType : int;
     enum class W_CounterType : int;
+    enum class W_LoadType : int;
     struct W_MouseEventDetails;
     struct W_QueueEvent;
     struct W_RepeatEvent;
@@ -202,8 +203,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Loads a shader for sprites
     ///
-    /// Tries to load a fragment shader from disk while replacing the
-    /// existing one even if the process fails.
+    /// Tries to load a fragment shader from disk or from memory while
+    /// replacing the existing one even if the process fails.
     ///
     /// Clip shader is responsible for clipping sprites to match the widget's
     /// shape based on what the widget requires, not needed for widgets that
@@ -212,24 +213,25 @@ public:
     /// @note this process would fail if the hardware does no support shaders or
     /// `NOCLIPSHADER` flag is set
     ///
-    /// @param shader_path fragment file path
-    ///
+    /// @param shader fragment file path or content from memory, takes default shader by default
+    /// @param loading_type appropriate loading type based on shader parameter
     /// @return true if loading was successful, otherwise false.
     ///
     /// @see `resetClipShader`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool loadClipShader(const std::string_view& shader_path = parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    bool loadClipShader(const std::string_view& shader = SPRITE_SHADER_FRAG, W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears the clipping shader from memory
     ///
-    /// @param shader_path shader that replaces the previous one
+    /// @param shader shader that replaces the previous one
+    /// @param loading_type appropriate loading type based on shader parameter
     ///
     /// @see `loadClipShader`
     ///
     ///////////////////////////////////////////////////////////////////    
-    void resetClipShader(const std::string_view& shader_path = "");
+    void resetClipShader(const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::File);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Loads a shader for fill color 
@@ -240,24 +242,26 @@ public:
     /// @note this process would fail if the hardware does no support shaders or
     /// `NOCOLORSHADER` flag is set
     ///
-    /// @param shader_path fragment file path
+    /// @param shader fragment file path or content from memory, takes default shader by default
+    /// @param loading_type appropriate loading type based on shader parameter
     ///
     /// @return true if loading was successful, otherwise false.
     ///
     /// @see `resetColorShader`
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool loadColorShader(const std::string_view& shader_path = parameters::TEXTURE_COLOR_SHADER_PATH);
+    bool loadColorShader(const std::string_view& shader = TEXTURE_SHADER_FRAG, W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears the coloring shader from memory
     ///
-    /// @param shader_path shader that replaces the previous one
+    /// @param shader shader that replaces the previous one
+    /// @param loading_type appropriate loading type based on shader parameter
     ///
     /// @see `loadColorShader`
     ///
     ///////////////////////////////////////////////////////////////////    
-    void resetColorShader(const std::string_view& shader_path = "");
+    void resetColorShader(const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::File);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Loads an image as a fill background
@@ -267,15 +271,15 @@ public:
     /// a proper color shader if wasn't previously loaded.
     ///
     /// @param file_path path to image
-    /// @param shader_path path to .frag file, defaults to parameters shader
-    /// (or pass an empty string to avoid the shader process)
+    /// @param shader fragment file path or content from memory
+    /// @param loading_type appropriate loading type based on shader parameter
     ///
     /// @return true if loading was successful, otherwise false.
     ///
     /// @see `loadColorShader`, `clearBackgroundTexture`, `refreshBackgroundTexture`
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader_path = parameters::TEXTURE_COLOR_SHADER_PATH);
+    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears Background image texture from memory
@@ -929,6 +933,19 @@ public:
     };
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Which loading process should widget use when receiving
+    /// a shader
+    ///
+    /// @see `loadClipShader`, `loadColorShader`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    enum class W_LoadType
+    {
+        File,
+        Memory
+    };
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Used in widget class to pass event information more
     /// efficiently.
     ///
@@ -1022,7 +1039,7 @@ public:
         /// @param char_size text's current character size
         ///
         ///////////////////////////////////////////////////////////////////
-        static float getHeight(sf::Font text_font, unsigned int char_size);
+        static float getHeight(const sf::Font& text_font, unsigned int char_size);
     private:
         static sf::Text Ag; //!< Ag
     };

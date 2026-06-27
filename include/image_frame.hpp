@@ -40,19 +40,19 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates displayed image on the widget
     ///
-    /// Takes the path of the image to display on the frame, can also load
-    /// a shader for the image frame if no empty string was provided, defaults
-    /// to parameters shader.
+    /// Takes a path to the image and loads it from disk or cache,
+    /// can also take a shader for clipping the image (already loaded by default).
     /// 
     /// @param image_path path to image
-    /// @param shader_path path to clipping shader
+    /// @param shader path to shader or the shader content itself, or an empty string
+    /// @param loading_type choose the appropriate loading type based on shader parameter
     ///
     /// @return false if process fails to load the image, otherwise returns true
     ///
     /// @see `clearImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(const sf::String& image_path, const std::string_view& shader_path = parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    bool setImage(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current image data from the widget, does nothing

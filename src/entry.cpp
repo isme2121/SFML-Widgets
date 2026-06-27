@@ -13,7 +13,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     configure(FLAGS::INDICATOR);
 }
@@ -28,7 +28,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     configure(FLAGS::INDICATOR);
 }

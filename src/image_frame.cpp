@@ -10,7 +10,7 @@ ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
     setFlag(m_flags, FLAGS::NOBGIMAGE);
@@ -23,7 +23,7 @@ ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, co
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
     setFlag(m_flags, FLAGS::NOBGIMAGE);
@@ -34,7 +34,7 @@ ImageFrame::~ImageFrame()
     clearImage();
 }
 
-bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& shader_path)
+bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)
 {
     // load from disk or cache
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
@@ -85,7 +85,7 @@ bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& 
     else m_imageSpritePtr->setTexture(*m_imageTexturePtr, true);
 
     // allocate clip shader if provided
-    if(!shader_path.empty() && !m_clipShaderPtr) loadClipShader(shader_path);
+    if(!shader.empty() && !m_clipShaderPtr) loadClipShader(shader, loading_type);
 
     // just for isFlag
     setFlag(m_flags, FLAGS::IMAGE);
@@ -245,7 +245,7 @@ void ImageFrame::writeText()
     if(m_imageTexturePtr) return; //!< we have an image loaded
 
     m_textTexturePtr = std::make_unique<sf::RenderTexture>(sf::Vector2u(m_size));
-    m_noImageTextPtr = std::make_unique<sf::Text>(parameters::DEFAULT_FONT_2, "\t No\nImage");
+    m_noImageTextPtr = std::make_unique<sf::Text>(parameters::INTER_REGULAR_18, "\t No\nImage");
 
     // allocate sprite here if needed
     if(!m_imageSpritePtr) m_imageSpritePtr = std::make_unique<sf::Sprite>(m_textTexturePtr->getTexture());

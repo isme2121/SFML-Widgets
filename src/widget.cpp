@@ -444,48 +444,70 @@ void Widget::unbindShortCut(const std::string& tag)
     m_binds.deleteSequence(tag);
 }
 
-bool Widget::loadClipShader(const std::string_view& shader_path)
+bool Widget::loadClipShader(const std::string_view& shader, W_LoadType loading_type)
 {
     if(!sf::Shader::isAvailable() || checkFlag(m_flags, FLAGS::NOCLIPSHADER)) return false;
 
     m_clipShaderPtr= std::make_unique<sf::Shader>();
-    if(m_clipShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
+    if(loading_type == W_LoadType::File)
     {
-        updateClipShader();
-        return true;
-    };
+        if(m_clipShaderPtr->loadFromFile(shader, sf::Shader::Type::Fragment))
+        {
+            updateClipShader();
+            return true;
+        }
+    }
+    else
+    {
+        if(m_clipShaderPtr->loadFromMemory(shader, sf::Shader::Type::Fragment))
+        {
+            updateClipShader();
+            return true;
+        }
+    }
     m_clipShaderPtr.reset();
     return false;
 }
 
-void Widget::resetClipShader(const std::string_view& shader_path)
+void Widget::resetClipShader(const std::string_view& shader, W_LoadType loading_type)
 {
     m_clipShaderPtr.reset();
-    if(!shader_path.empty()) loadClipShader(shader_path);
+    if(!shader.empty()) loadClipShader(shader, loading_type);
 }
 
-bool Widget::loadColorShader(const std::string_view& shader_path)
+bool Widget::loadColorShader(const std::string_view& shader, W_LoadType loading_type)
 {
     if(!sf::Shader::isAvailable() || checkFlag(m_flags, FLAGS::NOCOLORSHADER)) return false;
     
     // discarding previous shader because a fail in loadFromFile may end up clearing it anyways
     m_bgShaderPtr = std::make_unique<sf::Shader>();
-    if(m_bgShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment))
-    {   
-        updateColorShader();
-        return true;
-    };
+    if(loading_type == W_LoadType::File)
+    {
+        if(m_bgShaderPtr->loadFromFile(shader, sf::Shader::Type::Fragment))
+        {
+            updateColorShader();
+            return true;
+        }
+    }
+    else
+    {
+        if(m_bgShaderPtr->loadFromMemory(shader, sf::Shader::Type::Fragment))
+        {
+            updateColorShader();
+            return true;
+        }
+    }
     m_bgShaderPtr.reset();
     return false;
 }
 
-void Widget::resetColorShader(const std::string_view& shader_path)
+void Widget::resetColorShader(const std::string_view& shader, W_LoadType loading_type)
 {
     m_bgShaderPtr.reset();
-    if(!shader_path.empty()) loadColorShader(shader_path);
+    if(!shader.empty()) loadColorShader(shader, loading_type);
 }
 
-bool Widget::setBackgroundTexture(const std::string& file_path, const std::string_view& shader_path)
+bool Widget::setBackgroundTexture(const std::string& file_path, const std::string_view& shader, W_LoadType loading_type)
 {
     if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
 
@@ -523,7 +545,7 @@ bool Widget::setBackgroundTexture(const std::string& file_path, const std::strin
     }
     
     // loading shader
-    if(!m_bgShaderPtr && !shader_path.empty()) loadColorShader(shader_path);
+    if(!m_bgShaderPtr && !shader.empty()) loadColorShader(shader, loading_type);
 
     // texture update
     m_bgTexturePtr->setSmooth(true);
@@ -546,7 +568,7 @@ void Widget::resetBackgroundTexture()
 
 void Widget::refreshBackgroundTexture()
 {
-    if(!m_bgShaderPtr) return;
+    if(!m_bgTexturePtr) return;
 
     std::optional<sf::Image> resized_image;
     std::optional<const sf::Image*> disk_image = ImageCache::getInstance().getImage(m_bgImagePath, false); //!< does not increment counter
@@ -1172,9 +1194,9 @@ bool Widget::W_RepeatEvent::advance()
 
 namespace sfml_widgets // W_CharHeight
 {
-sf::Text Widget::W_CharHeight::Ag(parameters::DEFAULT_FONT_1, "Ag");
+sf::Text Widget::W_CharHeight::Ag(parameters::INTER_LIGHT_18, "Ag");
 
-float Widget::W_CharHeight::getHeight(sf::Font text_font, unsigned int char_size)
+float Widget::W_CharHeight::getHeight(const sf::Font& text_font, unsigned int char_size)
 {
     Ag.setFont(text_font);
     Ag.setCharacterSize(char_size);

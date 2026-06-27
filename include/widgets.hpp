@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "../external-include/shaders.hpp"
+#include "../external-include/fonts.h"
 
 namespace sfml_widgets
 {
@@ -497,19 +499,12 @@ constexpr std::size_t CHAR_LIMIT = 15;                                      //!<
 constexpr unsigned int CHAR_SIZE = 18;                                      //!< Default character size for text used by widgets
 
 ///////////////////////////////////////////////////////////////////
-///////////////////          Paths              ///////////////////
+///////////////////          Fonts              ///////////////////
 ///////////////////////////////////////////////////////////////////
 
-inline const sf::Font DEFAULT_FONT_1{"assets/fonts/Inter_Light.ttf"};
-inline const sf::Font DEFAULT_FONT_2{"assets/fonts/Inter_Regular.ttf"};
-inline const sf::Font DEFAULT_FONT_3{"assets/fonts/Inter_SemiBold.ttf"};
-
-// Clip button's image + opacity effect, uniform => texture, size, radius, opacity
-constexpr std::string_view SPRITE_CLIP_COLOR_SHADER_PATH = "assets/shaders/button_clip_opacity.frag";
-// Clip sprite + opacity effect, uniform => texture, size, radius, opacity
-constexpr std::string_view SPRITE_FULLCLIP_OPACITY_SHADER_PATH = "assets/shaders/sprite_clip_opacity.frag";
-// Shader for updating a texture's color and opacity based on input if it has texture, uniform => texture, bg_color, opacity, outline_color, has_texture
-constexpr std::string_view TEXTURE_COLOR_SHADER_PATH = "assets/shaders/texture_color.frag";
+inline const sf::Font INTER_LIGHT_18{Inter_Light_ttf, Inter_Light_ttf_len};
+inline const sf::Font INTER_REGULAR_18{Inter_Regular_ttf, Inter_Regular_ttf_len};
+inline const sf::Font INTER_SEMIBOLD_18{Inter_SemiBold_ttf, Inter_SemiBold_ttf_len};
 }
 }
 #endif

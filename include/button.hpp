@@ -25,7 +25,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_3);
+    explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::INTER_SEMIBOLD_18);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the button on a `Frame` object
@@ -36,7 +36,7 @@ public:
     /// @param text text displayed on the button initially
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::DEFAULT_FONT_3);
+    explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::INTER_SEMIBOLD_18);
 
     Button(Button&&) = delete;
     Button& operator=(Button&&) = delete;
@@ -62,18 +62,19 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates displayed image on button widget
     ///
-    /// Takes a string path to the image and loads it from disk or cache.
+    /// Takes a string path to the image and loads it from disk or cache,
+    /// can also take a shader for clipping the image (already loaded by default).
     /// 
     /// @param image_path path to image
-    /// @param shader_path path to clip shader, defaults to parameters shader
-    /// (or pass an empty string to avoid the shader process)
+    /// @param shader path to shader or the shader content itself, or an empty string
+    /// @param loading_type choose the appropriate loading type based on shader parameter
     ///
     /// @return false if process fails to load the image, otherwise returns true
     ///
     /// @see `setImageSide`, `clearImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(const sf::String& image_path, const std::string_view& shader_path = parameters::SPRITE_CLIP_COLOR_SHADER_PATH);
+    bool setImage(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's text

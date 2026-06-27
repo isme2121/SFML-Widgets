@@ -12,7 +12,7 @@ m_gridMapping(get_prime_combination(cell_count))
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     m_cellMap.reserve(MAX_CELL_COUNT);
     if(fill_initially) fill();
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
@@ -27,7 +27,7 @@ m_gridMapping(get_prime_combination(cell_count))
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
-    loadClipShader(parameters::SPRITE_FULLCLIP_OPACITY_SHADER_PATH);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     m_cellMap.reserve(MAX_CELL_COUNT);
     if(fill_initially) fill();
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
@@ -661,7 +661,7 @@ bool Cell::setImage(const std::string& image_path)
     m_bgImagePath = std::move(image_path);
     m_bgTexturePtr->setSmooth(true);
     this->setTexture(m_bgTexturePtr.get(), true);
-    if(!m_imageShaderPtr) loadShader(parameters::TEXTURE_COLOR_SHADER_PATH);
+    if(!m_imageShaderPtr) loadShader(TEXTURE_SHADER_FRAG);
     setFlag(m_flags, FLAGS::IMAGE);
 
     return true;
@@ -684,7 +684,7 @@ void Cell::loadShader(const std::string_view& shader_path)
     if(!sf::Shader::isAvailable()) return;
 
     m_imageShaderPtr = std::make_unique<sf::Shader>();
-    if(m_imageShaderPtr->loadFromFile(shader_path, sf::Shader::Type::Fragment)) return;
+    if(m_imageShaderPtr->loadFromMemory(shader_path, sf::Shader::Type::Fragment)) return;
     m_imageShaderPtr.reset();
 }
 

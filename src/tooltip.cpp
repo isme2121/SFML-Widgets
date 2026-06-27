@@ -4,7 +4,7 @@
 namespace sfml_widgets
 {
 ToolTip::ToolTip(sf::RenderWindow& window, sf::Vector2f position, sf::Time ms_delay, ToolTipStyle style) : m_window(window),
-m_text(parameters::DEFAULT_FONT_2, "", parameters::CHAR_SIZE), m_hoverDuration(ms_delay)
+m_text(parameters::INTER_REGULAR_18, "", parameters::CHAR_SIZE), m_hoverDuration(ms_delay)
 {
     setBoxPosition(position);
     setTheme(style);
