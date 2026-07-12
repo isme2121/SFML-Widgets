@@ -60,7 +60,7 @@ public:
     void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates displayed image on button widget
+    /// @brief Updates displayed icon on button widget
     ///
     /// Takes a string path to the image and loads it from disk or cache,
     /// can also take a shader for clipping the image (already loaded by default).
@@ -71,10 +71,12 @@ public:
     ///
     /// @return false if process fails to load the image, otherwise returns true
     ///
-    /// @see `setImageSide`, `clearImage`
+    /// @see `setIconSide`, `clearIcon`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+    bool setIcon(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+
+    void setTextLimit(unsigned int char_limit);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's text
@@ -125,21 +127,31 @@ public:
     void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Sets the center position of the button's image
+    /// @brief Sets the center position of the button's icon
     ///
     /// Position can be either `Button::Left`, `Button::Center`, or `Button::Right`
     /// and cannot overlap with text position.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setImageSide(Side image_side);
+    void setIconSide(Side icon_side);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the base size of the icon image
+    ///
+    /// Ratio is relative to button's width and is set to `0.33f` by default.
+    ///
+    /// @param ratio size ratio between `0.1f` and `0.33f`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setIconSizeRatio(float ratio);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears loaded image from widget
     ///
-    /// @see `setImage`
+    /// @see `setIcon`
     ///
     ///////////////////////////////////////////////////////////////////
-    void clearImage();
+    void clearIcon();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -150,6 +162,12 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     void setTheme(ButtonStyle s_button);
+
+    const sf::String& getText() const;
+
+    std::optional<sf::Image> getIcon();
+
+    const sf::String& getIconPath() const;
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -231,15 +249,17 @@ private:
     std::unique_ptr<sf::Sprite> m_imagePtr;                             //!< Image sprite
 
     sf::String m_imagePath;                                             //!< Path for used image
+    float m_imageSizeRatio = 0.33f;
     float m_charSizeRatio = 0.35f;                                      //!< Button's height occupied by text, prio until it's set to 0.f
     unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Manual text size assigned by user, not used until ratio is 0.f
-
+    unsigned int m_charLimit = parameters::CHAR_LIMIT;
     Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
     Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
     ButtonStyle m_style = Theme::button_style::BUTTON_STALE_VIOLET;     //!< Button's default style
 
     bool m_requirePosUpdate = true;                                     //!< Updates the positions of text and image if set
 
+    static constexpr unsigned int s_MAX_CHAR_COUNT{30};
 public:
 
 enum class Side : int

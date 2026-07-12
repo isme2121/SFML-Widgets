@@ -19,6 +19,30 @@ public:
     ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `sf::RenderWindow`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param image `sf::Image` object reference
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path = "");
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `sf::RenderWindow`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param ref_texture shared pointer to a read only `sf::Texture` object
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ref, const std::string& image_path = "");
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `Frame`
     ///
     /// @param root window to draw on
@@ -28,6 +52,30 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `Frame`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param image `sf::Image` object reference
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path = "");
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs the image frame with `Frame`
+    ///
+    /// @param root window to draw on
+    /// @param position frame's initial position
+    /// @param size frame's initial size
+    /// @param ref_texture shared pointer to a read only `sf::Texture` object
+    /// @param image_path path to the displayed image
+    ///
+    ///////////////////////////////////////////////////////////////////
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const std::string& image_path = "");
 
     ImageFrame(ImageFrame&& other) = delete;
     ImageFrame& operator=(ImageFrame&& other) = delete;
@@ -55,6 +103,42 @@ public:
     bool setImage(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Updates displayed image on the widget
+    ///
+    /// Takes a reference to an existing image and creates a resized copy for the widget,
+    /// can also take a shader for clipping the image (already loaded by default).
+    /// 
+    /// @param image `sf::Image` object reference
+    /// @param ref_path string path for reference
+    /// @param shader path to shader or the shader content itself, or an empty string
+    /// @param loading_type choose the appropriate loading type based on shader parameter
+    ///
+    /// @return false if process fails to load the image, otherwise returns true
+    ///
+    /// @see `clearImage`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const sf::Image& image, const sf::String& ref_path = "", const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates displayed image on the widget
+    ///
+    /// Takes a reference to a pre-loaded texture, the texture must remain valid
+    /// as long as an image frame is using it.
+    /// 
+    /// @param ref_texture shared pointer to a read only `sf::Texture` object
+    /// @param ref_path string path for reference
+    /// @param shader path to shader or the shader content itself, or an empty string
+    /// @param loading_type choose the appropriate loading type based on shader parameter
+    ///
+    /// @return false if process fails to load the image, otherwise returns true
+    ///
+    /// @see `clearImage`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& ref_path = "", const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current image data from the widget, does nothing
     /// if no image is loaded
     ///
@@ -64,17 +148,27 @@ public:
     void clearImage();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief creates a copy image of the current texture and returns it
+    /// @brief Creates a copy image of the current texture and returns it
     /// if available
     ///
     ///////////////////////////////////////////////////////////////////
     std::optional<const sf::Image> getImage() const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief returns the current loaded image's path
+    /// @brief Returns the current loaded image's path
     ///
     ///////////////////////////////////////////////////////////////////
     const sf::String& getImagePath() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the original image dimensions
+    ///
+    /// This may not be related to the widget's current size as it creates
+    /// a resized copy to fit into the image frame, but it keeps a reference
+    /// to the loaded image's original size.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const sf::Vector2u& getOriginalImageSize() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -133,6 +227,24 @@ private:
     void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Constructor process for image frame
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void initWidget(FLAGS initial_flags);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears weak reference to external texture
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void resetExternal();
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears "No Image" text from widget
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void resetText();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Writes "No Image" text on widget box if no image is loaded
     ///
     ///////////////////////////////////////////////////////////////////
@@ -151,13 +263,17 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateImageSize();
 
+    std::mutex m_guard;
     std::unique_ptr<sf::RenderTexture> m_textTexturePtr;                //!< Text texture
-    std::unique_ptr<sf::Sprite> m_imageSpritePtr;                       //!< Sprite to display the texture
+    std::unique_ptr<sf::Sprite> m_spritePtr;                            //!< Sprite to display the texture
 
     std::unique_ptr<sf::Texture> m_imageTexturePtr;                     //!< Image texture
     std::unique_ptr<sf::Text> m_noImageTextPtr;                         //!< Text displayed when no image is selected
 
-    sf::String m_imagePath;                                             //!< Path to currently loaded image
+    std::weak_ptr<const sf::Texture> m_extImagePtr;                     //!< Weak pointer to an external read only texture
+
+    sf::String m_imagePath = "";                                        //!< Path to currently loaded image
+    sf::Vector2u m_originalImageSize = {0, 0};
     TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Image frame's default style
 };
 

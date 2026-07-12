@@ -90,7 +90,7 @@ enum class FLAGS : std::int32_t
     BLOCKED = 1 << 18,              //!< Configured flag: `widget is non-interactive`
     TRANSPARENT = 1 << 19,          //!< Configured flag: `widget is always transparent`
     RESIZE = 1 << 20,               //!< Configured Flag: `widget can automatically resize with the window`
-    ALWAYSSELECTED = 1 << 21,           //!< Configured flag: `widget is always selected for keyboard events`
+    ALWAYSSELECTED = 1 << 21,       //!< Configured flag: `widget is always selected for keyboard events`
     AUTOHIDE = 1 << 22,             //!< Configured flag: `widget is hidden when not hovered`
     AUTOTRANSPARENT = 1 << 23,      //!< Configured flag: `widget is transparent when not hovered`
     NOBGIMAGE = 1 << 24,            //!< Configured Flag: `widget cannot select a background image`
@@ -433,8 +433,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool contains(const Widget* w) const;
 
-    bool groupFocusCallback = false;        //!< Focusing on a group of widgets triggers their focus callbacks all at once
-    bool groupFocuslossCallback = true;     //!< Losing focus on a group of widget triggers their unfocus callbacks all at once
+    bool groupFocusCallback = false;        //!< Focusing on a group of widgets triggers their focus callbacks all at once, `false` by default
+    bool groupFocuslossCallback = true;     //!< Losing focus on a group of widget triggers their unfocus callbacks all at once, `true` by default
 
 private:
     ///////////////////////////////////////////////////////////////////

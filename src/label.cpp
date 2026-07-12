@@ -158,7 +158,7 @@ void Label::updateState()
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;
     toggle(m_flags, FLAGS::MODIFIED);
 
-    if(checkFlag(m_flags, FLAGS::BLOCKED))
+    if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
     {
         m_opacity = 0.5f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
@@ -166,7 +166,7 @@ void Label::updateState()
         m_currentOutlineThicknessPtr = &m_style.text_outline_blocked_thickness;
         m_text.setFillColor(m_style.text_blocked_color);
     }
-    else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
@@ -174,7 +174,7 @@ void Label::updateState()
         m_currentOutlineThicknessPtr = &m_style.text_outline_transparent_thickness;
         m_text.setFillColor(m_style.text_transparent_color);
     }
-    else if(checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
+    else if(!m_stale && checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
     {
         m_opacity = 0.1f;
         m_currentBgColorPtr = &m_style.fill_active_color;
@@ -182,7 +182,7 @@ void Label::updateState()
         m_currentOutlineThicknessPtr = &m_style.text_outline_active_thickness;
         m_text.setFillColor(m_style.text_active_color);
     }
-    else if(checkFlag(m_flags, FLAGS::HOVERED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
     {
         m_opacity = 0.9f;
         m_currentBgColorPtr = &m_style.fill_hover_color;

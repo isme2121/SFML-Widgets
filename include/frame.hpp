@@ -76,6 +76,25 @@ public:
     void setSeparators(SeparatorType sep_type, float length_ratio, float sep_dist);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief scroll event
+    ///
+    /// @param delta scroll value and direction based on sign
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void scroll(float delta);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates scrolling speed for frame
+    ///
+    /// Ratio is set to `0.05f` by default, which allows the frame to
+    /// scroll by `5%` of it's height on each call.
+    ///
+    /// @param ratio scrolling ratio from `0.01f` to `1.f`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setScrollSpeed(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
     ///
     /// Assigned style overrides the current style even if the widget is assigned
@@ -177,10 +196,10 @@ private:
     void updateTheme() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief scroll event
+    /// @brief Checks whether a child widget is currently visible
     ///
     ///////////////////////////////////////////////////////////////////
-    void scroll(float delta);
+    bool isVisible(const Widget* w);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Inforces grid ordering
@@ -200,8 +219,6 @@ private:
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the drawn content of the frame
-    ///
-    /// Should probably stick to `Widget::draw` instead.
     ///
     /// @warning this method is called within `drawWidget` override and it's
     /// responsible for concluding the drawing of the frame and it's child widgets
@@ -289,6 +306,7 @@ private:
     SeparatorType m_separatorType = SeparatorType::NoSeparator;         //!< Separator line between child widgets
     float m_separatorRatio = 0.f;                                       //!< Separator's length based on the frame itself
     float m_separatorDistance = 0.f;                                    //!< Required distance in pixels between child widgets to draw a separator
+    float m_scrollSpeedRatio = 0.05f;                                   //!< Frame scrolls by 5% of it's height on each scroll event
 
     sf::RenderWindow* m_window;                                         //!< Root window
     sf::RenderTexture m_texture;                                        //!< Drawing ground for widgets
@@ -302,7 +320,6 @@ private:
     ///////////////////////////////////////////////////////////////////
 
     static constexpr bool s_STACK_CHILD_EVENT = false;                  //!< Allows the frame to trigger mouse & key events even after a child widget's callback
-    static constexpr float s_SCROLL_RATIO = 0.05f;                      //!< Frame scrolls by 5% of it's height on each scroll event
 };
 
 template <>

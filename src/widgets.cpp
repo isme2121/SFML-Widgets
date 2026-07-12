@@ -65,26 +65,43 @@ bool checkFlags(const FLAGS& self, FLAGS bits)
 
 namespace sfml_widgets // resize_image
 {
-    std::optional<sf::Image> resize_image(const sf::Image source, sf::Vector2u targetSize)
+    std::optional<sf::Image> resize_image(const sf::Image source, sf::Vector2u target_size)
     {
         const sf::Vector2u current_size = source.getSize();
-        const std::uint8_t* sourcePtr = source.getPixelsPtr();
-        std::uint8_t result_data[targetSize.x * targetSize.y * 4];
+        const std::uint8_t* source_data = source.getPixelsPtr();
+        
+        constexpr std::size_t MAX_STACK_SIZE = 256 * 256 * 4;
+        std::size_t output_size = target_size.x * target_size.y * 4;
 
+        std::uint8_t stack_buffer[MAX_STACK_SIZE];
+        std::vector<std::uint8_t> heap_buffer;
+
+        std::uint8_t* output = nullptr;
+
+        if(output_size < MAX_STACK_SIZE)
+        {
+            output = stack_buffer;
+        }
+        else
+        {
+            heap_buffer.reserve(output_size);
+            output = heap_buffer.data();
+        }
+    
         stbir_resize_uint8_linear
         (
-            sourcePtr,
+            source_data,
             static_cast<int>(current_size.x),
             static_cast<int>(current_size.y),
             0,                       // input stride in bytes (0 = tightly packed)
-            result_data,
-            static_cast<int>(targetSize.x),
-            static_cast<int>(targetSize.y),
+            output,
+            static_cast<int>(target_size.x),
+            static_cast<int>(target_size.y),
             0,                       // output stride in bytes (0 = tightly packed)
             STBIR_RGBA
         );
 
-        sf::Image result(targetSize, result_data);
+        sf::Image result(target_size, output);
         return result;
     }
 }

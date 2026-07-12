@@ -309,7 +309,7 @@ private:
     // parameters
     std::size_t m_inputLimit = parameters::CHAR_LIMIT;                  //!< Max possible number of characters
     float m_textSizeRatio = 0.5f;                                       //!< Entry determines char size based on it's height
-    float m_textOffsetRatio = 0.1f;                                     //!< Left offset for text
+    float m_textOffsetRatio = 0.05f;                                    //!< Left offset for text
     unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Entry's char size
     unsigned int m_cursorWidth = 1;                                     //!< The width of the cursor
     char m_placeholderCharacter = 0;                                    //!< The visual text is replaced by this char, `0` char disables the replacement

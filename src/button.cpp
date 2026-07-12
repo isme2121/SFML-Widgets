@@ -47,12 +47,12 @@ m_text(font, "", parameters::CHAR_SIZE)
 
 Button::~Button()
 {
-    clearImage();
+    clearIcon();
 }
 
 void Button::setText(const sf::String& text)
 {
-    m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
+    m_text.setString(text.substring(0, std::min(m_charLimit, static_cast<unsigned int>(text.getSize()))));
 
     if(text.isEmpty()) resetFlag(m_flags, FLAGS::TEXT);
     else setFlag(m_flags, FLAGS::TEXT);
@@ -61,7 +61,13 @@ void Button::setText(const sf::String& text)
     m_requirePosUpdate = true; //!< Fix image position in case TEXT flag state has changed
 }
 
-bool Button::setImage(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)
+void Button::setTextLimit(unsigned int char_limit)
+{
+    if(char_limit > s_MAX_CHAR_COUNT) return;
+    m_charLimit = char_limit;
+}
+
+bool Button::setIcon(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)
 {
     // load from disk
     ImageCache& global_image_buffer = ImageCache::getInstance(); 
@@ -69,7 +75,10 @@ bool Button::setImage(const sf::String& image_path, const std::string_view& shad
     if(!disk_image) return false;
 
     // attempt to make a resized copy
-    std::optional<sf::Image> resized_image = resize_image(**disk_image, sf::Vector2u(m_size.x / 3, m_size.y)); //!< image takes a third of the button's width
+    std::optional<sf::Image> resized_image = resize_image(
+        **disk_image,
+        sf::Vector2u{static_cast<unsigned int>(m_size.x * m_imageSizeRatio), std::min<unsigned int>(m_size.x * m_imageSizeRatio, m_size.y)});
+
     if(!resized_image)
     {
         global_image_buffer.decrementRefCounter(image_path);
@@ -160,15 +169,24 @@ void Button::setTextFont(const sf::Font&& font)
     m_requirePosUpdate = true;
 }
 
-void Button::setImageSide(Button::Side image_side)
+void Button::setIconSide(Button::Side image_side)
 {
     if(m_imagePosition == image_side) return;
 
     m_imagePosition = image_side;
     m_requirePosUpdate = true;
+    updateClipShader();
 }
 
-void Button::clearImage()
+void Button::setIconSizeRatio(float ratio)
+{
+    if(ratio < 0.1f || ratio > 0.33f) return;
+    m_imageSizeRatio = ratio;
+    updateImageSize();
+    updateClipShader();
+}
+
+void Button::clearIcon()
 {
     if(!m_texturePtr) return;
 
@@ -183,6 +201,22 @@ void Button::setTheme(ButtonStyle s_button)
 {
     m_style = s_button;
     setFlag(m_flags, FLAGS::MODIFIED);
+}
+
+const sf::String& Button::getText() const
+{
+    return m_text.getString();
+}
+
+std::optional<sf::Image> Button::getIcon()
+{
+    if(m_texturePtr) return m_texturePtr->copyToImage();
+    return std::nullopt;
+}
+
+const sf::String& Button::getIconPath() const
+{
+    return m_imagePath;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -239,7 +273,7 @@ void Button::updateState()
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;
     toggle(m_flags, FLAGS::MODIFIED);
 
-    if(checkFlag(m_flags, FLAGS::BLOCKED))
+    if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
     {
         m_opacity = 0.4f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
@@ -247,7 +281,7 @@ void Button::updateState()
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
         if(checkFlag(m_flags, FLAGS::TEXT)) m_text.setFillColor(m_style.text_blocked_color);
     }
-    else if(checkFlag(m_flags, FLAGS::ALPHAREDUCED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
@@ -255,7 +289,7 @@ void Button::updateState()
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;
         if(checkFlag(m_flags, FLAGS::TEXT)) m_text.setFillColor(m_style.text_transparent_color);
     }
-    else if(checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
+    else if(!m_stale && checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
     {
         m_opacity = 0.8f;
         m_currentBgColorPtr = &m_style.fill_active_color;
@@ -263,7 +297,7 @@ void Button::updateState()
         m_currentOutlineThicknessPtr = &m_style.outline_active_thickness;
         if(checkFlag(m_flags, FLAGS::TEXT)) m_text.setFillColor(m_style.text_active_color);
     }
-    else if(checkFlag(m_flags, FLAGS::HOVERED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
     {
         m_opacity = 0.9f;
         m_currentBgColorPtr = &m_style.fill_hover_color;
@@ -386,7 +420,12 @@ void Button::updateImagePosition()
 bool Button::updateImageSize()
 {
     if(!m_texturePtr || !m_imagePtr) return false;
-    sf::Vector2u new_image_size{static_cast<unsigned int>(m_size.x) / 3, static_cast<unsigned int>(m_size.y)}; //!< image takes a third of the button's width
+    sf::Vector2u new_image_size
+    {
+        static_cast<unsigned int>(m_size.x * m_imageSizeRatio),
+        std::min<unsigned int>(m_size.x * m_imageSizeRatio, m_size.y)
+    };
+
     std::optional<sf::Image> resized_image;
 
     // obtains original image from cache

@@ -139,8 +139,7 @@ void Widget::setWidgetPosition(sf::Vector2f new_position)
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
-        root->updateGrid();
-        root->updateFrameHeight();
+        setFlag(root->m_flags, FLAGS::SET);
     }
 }
 
@@ -149,7 +148,7 @@ void Widget::setWidgetSize(sf::Vector2f new_size)
     if(new_size.x < 0.f || new_size.y < 0.f) return;
     m_size = new_size;
 
-    // from derived, called first because it might modify m_position
+    // from derived, called first because it might modify m_size
     updateSize();
 
     // update originals
@@ -164,11 +163,9 @@ void Widget::setWidgetSize(sf::Vector2f new_size)
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
-        root->updateGrid();
-        root->updateFrameHeight();
+        setFlag(root->m_flags, FLAGS::SET);
     }
 
-    // can be called here because shape's overrides are already implemented
     update();
 }
 
@@ -545,7 +542,7 @@ bool Widget::setBackgroundTexture(const std::string& file_path, const std::strin
     }
     
     // loading shader
-    if(!m_bgShaderPtr && !shader.empty()) loadColorShader(shader, loading_type);
+    if(!shader.empty()) loadColorShader(shader, loading_type);
 
     // texture update
     m_bgTexturePtr->setSmooth(true);
@@ -605,6 +602,11 @@ void Widget::setCornerRadius(float radius)
     }
     updateClipShader();
     update();
+}
+
+void Widget::setStale(bool is_stale)
+{
+    m_stale = is_stale;
 }
 
 void Widget::rotateWidget(float angle)
@@ -857,7 +859,12 @@ bool Widget::isHovered(sf::Vector2i mouse_position) const
 {
     sf::Vector2f world = m_master.mapMousePosition(mouse_position);         //!< coordinates relative to widget's root view
     sf::Vector2f local = this->getInverseTransform().transformPoint(world); //!< shift coords in case widget is rotated
-    return this->getLocalBounds().contains(local);                          //!< local coords are relative to local widget surface 
+
+    bool root_hovered = true;
+    if(Frame* root = m_master.getFramePtr())
+        root_hovered = root->isFlag(FLAGS::HOVERED);
+
+    return this->getLocalBounds().contains(local) && root_hovered;          //!< local coords are relative to local widget surface 
 }
 
 void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_position)
@@ -1214,6 +1221,10 @@ Widget::ImageCache& Widget::ImageCache::getInstance()
 
 std::optional<const sf::Image*> Widget::ImageCache::getImage(const std::string& image_path, bool increment_ref)
 {
+    if(image_path.empty()) return std::nullopt;
+
+    std::lock_guard<std::mutex> lock(m_guard);
+
     std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
     if(it != m_cachedImages.end())
     {
@@ -1232,6 +1243,10 @@ std::optional<const sf::Image*> Widget::ImageCache::getImage(const std::string& 
 
 void Widget::ImageCache::decrementRefCounter(const std::string& image_path)
 {
+    if(image_path.empty()) return;
+
+    std::lock_guard<std::mutex> lock(m_guard);
+
     std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
     if(it != m_cachedImages.end())
     {

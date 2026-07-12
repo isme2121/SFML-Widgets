@@ -63,8 +63,7 @@ void Frame::setGrid(sf::Vector2u grid_mapping)
     // check if non of the grids is 0
     if(m_gridMapping.x * m_gridMapping.y) 
     {
-        setFlag(m_flags, FLAGS::GRID);
-        updateGrid();
+        setFlag(m_flags, FLAGS::GRID | FLAGS::SET);
         return;
     }
     resetFlag(m_flags, FLAGS::GRID);
@@ -81,6 +80,20 @@ void Frame::setSeparators(SeparatorType type, float length_ratio, float sep_dist
     m_separatorRatio = std::clamp(length_ratio, 0.f, 1.f);
     m_separatorDistance = sep_distance;
     setFlag(m_flags, FLAGS::SEPARATORS);
+}
+
+void Frame::scroll(float delta)
+{
+    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
+
+    m_scrollOffset = std::clamp(m_scrollOffset + (-delta) * (m_scrollSpeedRatio * m_size.y), 0.f, m_maxScroll);
+    refreshView();
+}
+
+void Frame::setScrollSpeed(float ratio)
+{
+    if(ratio < 0.01f || ratio > 1.f) return;
+    m_scrollSpeedRatio = ratio;
 }
 
 void Frame::setTheme(TextureStyle s_frame)
@@ -121,11 +134,14 @@ bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mo
     std::vector<Widget*>::const_reverse_iterator it_begin = m_childWidgets.crend();
     while(it_end != it_begin)
     {
-        if((*it_end)->captureMouseEvents(event, mouse_position))
+        if(isVisible(*it_end))
         {
-            // child widget enabled s_MouseEventUsed but frame can still use the event if we return false
-            if(s_STACK_CHILD_EVENT) break;
-            if(s_GUARD_EVENT) return true;
+            if((*it_end)->captureMouseEvents(event, mouse_position))
+            {
+                // child widget enabled s_MouseEventUsed but frame can still use the event if we return false
+                if(s_STACK_CHILD_EVENT) break;
+                if(s_GUARD_EVENT) return true;
+            }
         }
         ++it_end;
     }
@@ -161,8 +177,20 @@ void Frame::drawWidget()
     * if LONGSKIP is reset --> there are no child widgets, and base class has already
     * called the necessary methods before this section is processed
     */
+   if(checkFlag(m_flags, FLAGS::SET))
+   {
+        updateGrid();
+        updateFrameHeight();
+        resetFlag(m_flags, FLAGS::SET);
+   }
+
     if(checkFlag(m_flags, FLAGS::LONGSKIP))
-        for(Widget* w : m_childWidgets) w->draw();
+    {
+        for(Widget* w : m_childWidgets)
+        {
+            if(isVisible(w)) w->draw();
+        }
+    }
 
     display();
 }
@@ -181,20 +209,6 @@ void Frame::updatePosition()
     like the base widget
     */
     m_sprite.setPosition(m_position + m_size / 2.f);
-
-    bool grid_is_active = false; //!< memory for GRID flag
-    if(checkFlag(m_flags, FLAGS::GRID))
-    {
-        grid_is_active = true;
-        toggle(m_flags, FLAGS::GRID); //!< disable to prevent updating grid for every widget
-    }
-
-    setFlag(m_flags, FLAGS::SHORTSKIP); //!< prevent widgets from updating frame height on each iteration
-    for(Widget* w : m_childWidgets) w->setWidgetPosition(w->m_position);
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
-
-    if(grid_is_active) toggle(m_flags, FLAGS::GRID);
-
 }
 
 void Frame::updateSize()
@@ -206,9 +220,8 @@ void Frame::updateSize()
     m_sprite.setTexture(m_texture.getTexture(), true);
     m_sprite.setOrigin(m_size / 2.f);
 
-    // update widgets positions if we have grid enabled
-    if(checkFlag(m_flags, FLAGS::GRID)) updateGrid();
-    else updateFrameHeight();     //!< update invisible space (updateGrid does it anyways)
+    // update grid & max view height
+    setFlag(m_flags, FLAGS::SET);
 
     // shader scales with size
     updateClipShader();
@@ -226,28 +239,28 @@ void Frame::updateState()
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;
     toggle(m_flags, FLAGS::MODIFIED);
 
-    if(checkFlag(m_flags, FLAGS::BLOCKED))
+    if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
     {
         m_opacity = 0.5f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
     }
-    else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;
     }
-    else if(checkFlag(m_flags, FLAGS::ACTIVE))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ACTIVE))
     {
         m_opacity = 1.f;
         m_currentBgColorPtr = &m_style.fill_active_color;
         m_currentOutlineColorPtr = &m_style.outline_active_color;
         m_currentOutlineThicknessPtr = &m_style.outline_active_thickness;
     }
-    else if(checkFlag(m_flags, FLAGS::HOVERED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
     {
         m_opacity = 0.9f;
         m_currentBgColorPtr = &m_style.fill_hover_color;
@@ -280,12 +293,15 @@ void Frame::updateTheme()
     }
 }
 
-void Frame::scroll(float delta)
+bool Frame::isVisible(const Widget* w)
 {
-    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
+    sf::FloatRect view_bounds
+    {
+        sf::Vector2f{0.f, m_scrollOffset},
+        m_size
+    };
+    return view_bounds.findIntersection(w->getBounds()).has_value();
 
-    m_scrollOffset = std::clamp(m_scrollOffset + delta * (s_SCROLL_RATIO* m_size.y), 0.f, m_maxScroll);
-    refreshView();
 }
 
 void Frame::updateGrid()
@@ -312,9 +328,6 @@ void Frame::updateGrid()
         return false; // sort by index if coords match
     });
 
-    resetFlag(m_flags, FLAGS::GRID);            //!< Prevent infinite recursion
-    setFlag(m_flags, FLAGS::SHORTSKIP);         //!< Prevent extra height operations
-
     const float width_difference = m_size.x / static_cast<float>(m_gridMapping.x);
     const float height_difference = m_size.y / static_cast<float>(m_gridMapping.y);
     std::size_t size = sorted_by_position.size();
@@ -333,8 +346,6 @@ void Frame::updateGrid()
 
         w->setWidgetPosition({x, y});
     }
-    toggle(m_flags, FLAGS::GRID | FLAGS::SHORTSKIP);
-    updateFrameHeight();
 }
 
 void Frame::drawSeparators()
@@ -449,9 +460,15 @@ void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
 void Frame::addWidget(Widget& w)
 {
     m_childWidgets.emplace_back(&w);
-    updateGrid();
-    updateFrameHeight();
-    setFlag(m_flags, FLAGS::LONGSKIP); //!< skip initial drawing part (child widget handles it)
+    setFlag(m_flags, FLAGS::LONGSKIP | FLAGS::SET); //!< skip initial drawing part (child widget handles it) and call for view update
+
+    /*
+    * At this point, w only ran it's Widget constructor so the V table
+    * is not mapped yet therefore any virtual method call will crash the program.
+    * 
+    * Removed updateGrid from here because it called setWidgetPosition which
+    * internally calls the virtual updatePosition.
+    */
 }
 
 void Frame::removeWidget(Widget& w)
@@ -460,8 +477,8 @@ void Frame::removeWidget(Widget& w)
     if(it != m_childWidgets.end()) 
     {
         m_childWidgets.erase(it);
-        updateGrid();
-        updateFrameHeight();
+        setFlag(m_flags, FLAGS::SET); //!< call for view update
+        
         if(m_childWidgets.empty()) resetFlag(m_flags, FLAGS::LONGSKIP); //!< not skipping essential updates as no child widget handles it
     }
 }

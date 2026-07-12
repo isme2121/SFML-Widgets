@@ -339,28 +339,28 @@ void GridCanvas::updateState()
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;
     toggle(m_flags, FLAGS::MODIFIED);
 
-    if(checkFlag(m_flags, FLAGS::BLOCKED))
+    if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
     {
         m_opacity = 0.3f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
     }
-    else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
         m_opacity = 0.1f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
         m_currentOutlineColorPtr = &m_style.outline_transparent_color;
         m_currentOutlineThicknessPtr = &m_style.outline_transparent_thickness;
     }
-    else if(checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
+    else if(!m_stale && checkFlag(m_flags, (FLAGS::RESTRICTED | FLAGS::ACTIVE)))
     {
         m_opacity = 0.8f;
         m_currentBgColorPtr = &m_style.fill_active_color;
         m_currentOutlineColorPtr = &m_style.outline_active_color;
         m_currentOutlineThicknessPtr = &m_style.outline_active_thickness;
     }
-    else if(checkFlag(m_flags, FLAGS::HOVERED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
     {
         m_opacity = 0.9f;
         m_currentBgColorPtr = &m_style.fill_hover_color;

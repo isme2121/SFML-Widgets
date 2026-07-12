@@ -76,7 +76,6 @@ void Entry::setPlaceholderChar(const char placeholder_char)
     if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
     m_placeholderCharacter = placeholder_char;
     writeToEntry(); //!< updates front end
-    updateText();   //!< update text center
 }
 
 void Entry::setInputFilter(std::function<bool(char32_t)> func)
@@ -134,6 +133,8 @@ void Entry::setOffsetRatio(float ratio)
 {
     if(ratio < 0.f || ratio >= 1.f) return;
     m_textOffsetRatio = ratio;
+
+    updateText();
     updateContentWidth();
     shiftToCursor();
 }
@@ -201,6 +202,7 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
     // scrolling while hovered
     else if(details.event_type == W_MouseEventType::Scroll && checkFlags(m_flags, FLAGS::HOVERED | FLAGS::SCROLL))
     {
+        updateContentWidth();
         // scrolls through text space
         m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (s_SCROLL_RATIO * m_size.y), 0.f, m_maxPanOffset);
         updateView();
@@ -225,7 +227,6 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
             m_textBuffer.insert(m_cursorIndex, input_char->unicode);
             ++m_cursorIndex;
 
-            updateText();           //!< update size and position of text
             writeToEntry();         //!< updates front end
             updateContentWidth();   //!< update scroll range
             shiftToCursor();        //!< follow cursor
@@ -276,7 +277,6 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                     m_textBuffer.insert(m_cursorIndex, pasted_str);
                     m_cursorIndex += pasted_str.getSize();
                     writeToEntry();
-                    updateText();
                     event_used = true;
                 }
                 break;
@@ -287,7 +287,6 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                     m_textBuffer.erase(0, m_cursorIndex);
                     m_cursorIndex = 0;
                     writeToEntry();
-                    updateText();
                     event_used = true;
                 }
                 else if(m_cursorIndex > 0)
@@ -295,7 +294,6 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                     m_textBuffer.erase(m_cursorIndex - 1, 1);
                     --m_cursorIndex;
                     writeToEntry();
-                    updateText();
                     event_used = true;
                 }
                 break;
@@ -383,7 +381,7 @@ void Entry::updateState()
     if(!checkFlag(m_flags, FLAGS::MODIFIED)) return;
     toggle(m_flags, FLAGS::MODIFIED);
 
-    if(checkFlag(m_flags, FLAGS::BLOCKED))
+    if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
     {
         m_opacity = 0.4f;
         m_currentBgColorPtr = &m_style.fill_blocked_color;
@@ -392,7 +390,7 @@ void Entry::updateState()
         m_text.setFillColor(m_style.text_blocked_color);
         m_bgText.setFillColor(m_style.bg_text_blocked_color);
     }
-    else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;
@@ -401,7 +399,7 @@ void Entry::updateState()
         m_text.setFillColor(m_style.text_transparent_color);    
         m_bgText.setFillColor(m_style.bg_text_transparent_color);
     }
-    else if(checkFlag(m_flags, FLAGS::ACTIVE))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ACTIVE))
     {
         m_opacity = 0.8f;
         m_currentBgColorPtr = &m_style.fill_active_color;
@@ -410,7 +408,7 @@ void Entry::updateState()
         m_text.setFillColor(m_style.text_active_color);
         m_bgText.setFillColor(m_style.bg_text_active_color);
     }
-    else if(checkFlag(m_flags, FLAGS::HOVERED))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
     {
         m_opacity = 0.9f;
         m_currentBgColorPtr = &m_style.fill_hover_color;
@@ -478,9 +476,12 @@ void Entry::drawCursorLine()
     }
     if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return;
     
+    // default cursor height takes 80% of entry height
+    float height_ratio = m_textSizeRatio == 0.f? 0.8f : m_textSizeRatio;
+
     float x0 = getCursorCoordinate();
-    float y0 = m_size.y * ((1.f - m_textSizeRatio) / 2.f);
-    float y1 = m_size.y * (m_textSizeRatio + (1.f - m_textSizeRatio) / 2.f);
+    float y0 = m_size.y * ((1.f - height_ratio) / 2.f);
+    float y1 = m_size.y * (height_ratio + (1.f - height_ratio) / 2.f);
 
     if(m_cursorWidth == 1)
     {
@@ -537,18 +538,15 @@ void Entry::updateText()
     {
         // estimated maximum possible height
         float current_height = W_CharHeight::getHeight(m_text.getFont(), m_text.getCharacterSize());
-        if(current_height > 0.f)
-        {
-            float ratio = final_height / current_height;
-            m_charSize = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
-        }
+        float ratio = final_height / current_height;
+        m_charSize = static_cast<unsigned int>(m_text.getCharacterSize() * ratio);
     }
     // line up text vertically
     float line_spacing = m_text.getFont().getLineSpacing(m_charSize);
     float y_offset = (m_size.y - line_spacing) / 2.f;
 
-    m_text.setPosition({m_textOffsetRatio * m_size.y, y_offset});
-    m_bgText.setPosition({m_textOffsetRatio * m_size.y, y_offset});
+    m_text.setPosition({m_textOffsetRatio * m_size.x, y_offset});
+    m_bgText.setPosition({m_textOffsetRatio * m_size.x, y_offset});
 
     m_text.setCharacterSize(m_charSize);
     m_bgText.setCharacterSize(m_charSize);

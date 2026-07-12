@@ -159,21 +159,21 @@ void CheckBox::updateState()
 
         m_currentBgColorPtr = &m_style.fill_on_color;
 
-        if(checkFlag(m_flags, FLAGS::BLOCKED))
+        if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
         {
             m_opacity = 0.4f;
             m_currentBgColorPtr->a = m_style.fill_blocked_color.a;
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
-        else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
         {
             m_opacity = 0.2f;
             m_currentBgColorPtr->a = m_style.fill_trasnparent_color.a;
             m_currentOutlineColorPtr = &m_style.outline_transparent_color;
             m_currentTextColorPtr = & m_style.text_transparent_color;
         }
-        else if(checkFlag(m_flags, FLAGS::HOVERED))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
         {
             m_opacity = 0.9f;
             m_currentBgColorPtr->a = m_style.fill_hover_color.a;
@@ -191,21 +191,21 @@ void CheckBox::updateState()
     {
         if(m_bgTexturePtr) this->setTexture(nullptr);
 
-        if(checkFlag(m_flags, FLAGS::BLOCKED))
+        if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
         {
             m_opacity = 0.4f;
             m_currentBgColorPtr = &m_style.fill_blocked_color;
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
-        else if(checkFlag(m_flags, FLAGS::TRANSPARENT))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
         {
             m_opacity = 0.2f;
             m_currentBgColorPtr = &m_style.fill_trasnparent_color;
             m_currentOutlineColorPtr = &m_style.outline_transparent_color;
             m_currentTextColorPtr = &m_style.text_transparent_color;
         }
-        else if(checkFlag(m_flags, FLAGS::HOVERED))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::HOVERED))
         {
             m_opacity = 0.9f;
             m_currentBgColorPtr = &m_style.fill_hover_color;

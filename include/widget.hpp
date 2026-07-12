@@ -1,5 +1,6 @@
 #pragma once
 #include <deque>
+#include <mutex>
 #include "widget_themes.hpp"
 #include "tooltip.hpp"
 
@@ -310,6 +311,14 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setCornerRadius(float radius);
     
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Blocks visual updates of the widget while active
+    ///
+    /// @param is_stale stale value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setStale(bool is_stale);
+
     ///////////////////////////////////////////////////////////////////
     /// @brief similar to `sf::Transformable::rotate` where it adds to the
     /// current rotation angle of the widget
@@ -778,6 +787,7 @@ protected:
     
     CaptureSequence m_binds;                                                        //!< Stores keyboard sequences and triggers keyboard events
     FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget, start with MODIFIED for initial style assignment
+    bool m_stale = false;                                                           //!< Blocks visual updates for widget while set
 
     float m_radius = 0.f;                                                           //!< Corner radius, `0.f` for rectangle shape
     unsigned int m_cornerPoints = 1;                                                //!< Number of points in each corner, 1 for rectangle shape (automatically updates to `Widget::s_CORNER_POINTS`)
@@ -1091,6 +1101,7 @@ private:
         std::size_t ref_count;
     };
 
+    std::mutex m_guard;
     std::unordered_map<std::string, ImageReferenceCounter> m_cachedImages;
 };
 };

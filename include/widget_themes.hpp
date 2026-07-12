@@ -529,6 +529,222 @@ constexpr ButtonStyle BUTTON_MIDNIGHT_ROSE =
     1.0f,                   // blocked_outline_thickness
     2.0f                    // transparent_outline_thickness
 };
+
+constexpr ButtonStyle BUTTON_EMERALD_FOREST =
+{
+    {24, 32, 26},
+    {47, 54, 49},
+    {36, 97, 64},
+    {18, 24, 20},
+    {24, 32, 26, 80},
+
+    {206, 218, 211},
+    {166, 201, 182},
+    {228, 235, 231},
+    {103, 118, 108},
+    {206, 218, 211, 120},
+
+    {38, 109, 71},
+    {71, 131, 99},
+    {103, 153, 126},
+    {17, 49, 32},
+    {38, 109, 71, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_GOLDEN_AMBER =
+{
+    {34, 28, 18},
+    {56, 51, 42},
+    {128, 95, 30},
+    {26, 21, 14},
+    {34, 28, 18, 80},
+
+    {223, 217, 205},
+    {218, 200, 164},
+    {237, 234, 228},
+    {123, 115, 100},
+    {223, 217, 205, 120},
+
+    {145, 107, 32},
+    {162, 129, 65},
+    {178, 151, 99},
+    {65, 48, 14},
+    {145, 107, 32, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_CRIMSON_ASH =
+{
+    {32, 20, 20},
+    {54, 44, 44},
+    {122, 39, 41},
+    {24, 15, 15},
+    {32, 20, 20, 80},
+
+    {222, 207, 207},
+    {215, 169, 170},
+    {237, 229, 229},
+    {121, 102, 102},
+    {222, 207, 207, 120},
+
+    {138, 43, 45},
+    {156, 75, 76},
+    {173, 107, 108},
+    {62, 19, 20},
+    {138, 43, 45, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_STEEL_GRAPHITE =
+{
+    {24, 26, 30},
+    {47, 49, 52},
+    {69, 80, 96},
+    {18, 20, 22},
+    {24, 26, 30, 80},
+
+    {212, 215, 217},
+    {185, 192, 200},
+    {231, 233, 234},
+    {122, 124, 127},
+    {212, 215, 217, 120},
+
+    {77, 90, 108},
+    {104, 115, 130},
+    {130, 140, 152},
+    {35, 40, 49},
+    {77, 90, 108, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_LAVENDER_DUSK =
+{
+    {28, 24, 34},
+    {51, 47, 56},
+    {98, 80, 123},
+    {21, 18, 26},
+    {28, 24, 34, 80},
+
+    {218, 214, 222},
+    {202, 192, 215},
+    {235, 232, 237},
+    {131, 127, 137},
+    {218, 214, 222, 120},
+
+    {111, 90, 139},
+    {133, 115, 156},
+    {154, 140, 174},
+    {50, 40, 63},
+    {111, 90, 139, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_SKY_AZURE =
+{
+    {18, 24, 34},
+    {42, 47, 56},
+    {41, 85, 139},
+    {14, 18, 26},
+    {18, 24, 34, 80},
+
+    {207, 215, 225},
+    {170, 195, 225},
+    {229, 233, 238},
+    {117, 127, 139},
+    {207, 215, 225, 120},
+
+    {45, 96, 158},
+    {76, 120, 173},
+    {108, 144, 187},
+    {20, 43, 71},
+    {45, 96, 158, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr ButtonStyle BUTTON_ARCTIC_FROST =
+{
+    {246, 248, 250},
+    {229, 231, 232},
+    {209, 225, 241},
+    {231, 233, 235},
+    {246, 248, 250, 15},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 30},
+
+    {212, 213, 215},
+    {197, 198, 200},
+    {144, 186, 225},
+    {212, 213, 215},
+    {212, 213, 215, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr ButtonStyle BUTTON_SANDSTONE_DUNE =
+{
+    {250, 244, 235},
+    {232, 227, 219},
+    {240, 217, 202},
+    {235, 229, 221},
+    {250, 244, 235, 15},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 30},
+
+    {215, 210, 202},
+    {200, 195, 188},
+    {222, 170, 144},
+    {215, 210, 202},
+    {215, 210, 202, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
 }
 
 namespace texture_style
@@ -746,6 +962,174 @@ constexpr TextureStyle STYLE_MIDNIGHT_ROSE =
     1.0f,                   // blocked_outline_thickness
     2.0f                    // transparent_outline_thickness
 };
+
+constexpr TextureStyle TEXTURE_EMERALD_FOREST =
+{
+    {24, 32, 26},
+    {47, 54, 49},
+    {36, 97, 64},
+    {18, 24, 20},
+    {24, 32, 26, 80},
+
+    {38, 109, 71},
+    {71, 131, 99},
+    {103, 153, 126},
+    {17, 49, 32},
+    {38, 109, 71, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_GOLDEN_AMBER =
+{
+    {34, 28, 18},
+    {56, 51, 42},
+    {128, 95, 30},
+    {26, 21, 14},
+    {34, 28, 18, 80},
+
+    {145, 107, 32},
+    {162, 129, 65},
+    {178, 151, 99},
+    {65, 48, 14},
+    {145, 107, 32, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_CRIMSON_ASH =
+{
+    {32, 20, 20},
+    {54, 44, 44},
+    {122, 39, 41},
+    {24, 15, 15},
+    {32, 20, 20, 80},
+
+    {138, 43, 45},
+    {156, 75, 76},
+    {173, 107, 108},
+    {62, 19, 20},
+    {138, 43, 45, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_STEEL_GRAPHITE =
+{
+    {24, 26, 30},
+    {47, 49, 52},
+    {69, 80, 96},
+    {18, 20, 22},
+    {24, 26, 30, 80},
+
+    {77, 90, 108},
+    {104, 115, 130},
+    {130, 140, 152},
+    {35, 40, 49},
+    {77, 90, 108, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_LAVENDER_DUSK =
+{
+    {28, 24, 34},
+    {51, 47, 56},
+    {98, 80, 123},
+    {21, 18, 26},
+    {28, 24, 34, 80},
+
+    {111, 90, 139},
+    {133, 115, 156},
+    {154, 140, 174},
+    {50, 40, 63},
+    {111, 90, 139, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_SKY_AZURE =
+{
+    {18, 24, 34},
+    {42, 47, 56},
+    {41, 85, 139},
+    {14, 18, 26},
+    {18, 24, 34, 80},
+
+    {45, 96, 158},
+    {76, 120, 173},
+    {108, 144, 187},
+    {20, 43, 71},
+    {45, 96, 158, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr TextureStyle TEXTURE_ARCTIC_FROST =
+{
+    {246, 248, 250},
+    {229, 231, 232},
+    {209, 225, 241},
+    {231, 233, 235},
+    {246, 248, 250, 15},
+
+    {212, 213, 215},
+    {197, 198, 200},
+    {144, 186, 225},
+    {212, 213, 215},
+    {212, 213, 215, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr TextureStyle TEXTURE_SANDSTONE_DUNE =
+{
+    {250, 244, 235},
+    {232, 227, 219},
+    {240, 217, 202},
+    {235, 229, 221},
+    {250, 244, 235, 15},
+
+    {215, 210, 202},
+    {200, 195, 188},
+    {222, 170, 144},
+    {215, 210, 202},
+    {215, 210, 202, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
 }
 
 namespace checkbox_style
@@ -875,6 +1259,175 @@ constexpr CheckboxStyle CHECKBOX_MIDNIGHT_ROSE =
 
     2.0f,                   // outline_thickness
 };
+
+constexpr CheckboxStyle CHECKBOX_EMERALD_FOREST =
+{
+    {43, 132, 85},           // fill_on_color
+    {24, 32, 26},           // fill_off_color
+    {47, 54, 49},           // fill_hover_color
+    {18, 24, 20},           // fill_blocked_color
+    {24, 32, 26, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {206, 218, 211},           // text_color
+    {166, 201, 182},           // text_hover_color
+    {103, 118, 108},           // text_blocked_color
+    {206, 218, 211, 120},           // text_transparent_color
+
+    {38, 109, 71},           // outline_color
+    {71, 131, 99},           // outline_hover_color
+    {17, 49, 32},           // outline_blocked_color
+    {38, 109, 71, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_GOLDEN_AMBER =
+{
+    {179, 132, 37},           // fill_on_color
+    {34, 28, 18},           // fill_off_color
+    {56, 51, 42},           // fill_hover_color
+    {26, 21, 14},           // fill_blocked_color
+    {34, 28, 18, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {223, 217, 205},           // text_color
+    {218, 200, 164},           // text_hover_color
+    {123, 115, 100},           // text_blocked_color
+    {223, 217, 205, 120},           // text_transparent_color
+
+    {145, 107, 32},           // outline_color
+    {162, 129, 65},           // outline_hover_color
+    {65, 48, 14},           // outline_blocked_color
+    {145, 107, 32, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_CRIMSON_ASH =
+{
+    {171, 50, 52},           // fill_on_color
+    {32, 20, 20},           // fill_off_color
+    {54, 44, 44},           // fill_hover_color
+    {24, 15, 15},           // fill_blocked_color
+    {32, 20, 20, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {222, 207, 207},           // text_color
+    {215, 169, 170},           // text_hover_color
+    {121, 102, 102},           // text_blocked_color
+    {222, 207, 207, 120},           // text_transparent_color
+
+    {138, 43, 45},           // outline_color
+    {156, 75, 76},           // outline_hover_color
+    {62, 19, 20},           // outline_blocked_color
+    {138, 43, 45, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_STEEL_GRAPHITE =
+{
+    {93, 110, 132},           // fill_on_color
+    {24, 26, 30},           // fill_off_color
+    {47, 49, 52},           // fill_hover_color
+    {18, 20, 22},           // fill_blocked_color
+    {24, 26, 30, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {212, 215, 217},           // text_color
+    {185, 192, 200},           // text_hover_color
+    {122, 124, 127},           // text_blocked_color
+    {212, 215, 217, 120},           // text_transparent_color
+
+    {77, 90, 108},           // outline_color
+    {104, 115, 130},           // outline_hover_color
+    {35, 40, 49},           // outline_blocked_color
+    {77, 90, 108, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_LAVENDER_DUSK =
+{
+    {136, 110, 171},           // fill_on_color
+    {28, 24, 34},           // fill_off_color
+    {51, 47, 56},           // fill_hover_color
+    {21, 18, 26},           // fill_blocked_color
+    {28, 24, 34, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {218, 214, 222},           // text_color
+    {202, 192, 215},           // text_hover_color
+    {131, 127, 137},           // text_blocked_color
+    {218, 214, 222, 120},           // text_transparent_color
+
+    {111, 90, 139},           // outline_color
+    {133, 115, 156},           // outline_hover_color
+    {50, 40, 63},           // outline_blocked_color
+    {111, 90, 139, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_SKY_AZURE =
+{
+    {54, 118, 196},           // fill_on_color
+    {18, 24, 34},           // fill_off_color
+    {42, 47, 56},           // fill_hover_color
+    {14, 18, 26},           // fill_blocked_color
+    {18, 24, 34, 80},           // fill_trasnparent_color (sic — matches real field name)
+
+    {207, 215, 225},           // text_color
+    {170, 195, 225},           // text_hover_color
+    {117, 127, 139},           // text_blocked_color
+    {207, 215, 225, 120},           // text_transparent_color
+
+    {45, 96, 158},           // outline_color
+    {76, 120, 173},           // outline_hover_color
+    {20, 43, 71},           // outline_blocked_color
+    {45, 96, 158, 120},           // outline_transparent_color
+
+    2.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_ARCTIC_FROST =
+{
+    {181, 208, 234},           // fill_on_color
+    {246, 248, 250},           // fill_off_color
+    {229, 231, 232},           // fill_hover_color
+    {231, 233, 235},           // fill_blocked_color
+    {246, 248, 250, 15},           // fill_trasnparent_color (sic — matches real field name)
+
+    {30, 30, 35},           // text_color
+    {30, 30, 35},           // text_hover_color
+    {168, 168, 172},           // text_blocked_color
+    {30, 30, 35, 30},           // text_transparent_color
+
+    {212, 213, 215},           // outline_color
+    {197, 198, 200},           // outline_hover_color
+    {212, 213, 215},           // outline_blocked_color
+    {212, 213, 215, 70},           // outline_transparent_color
+
+    0.0f                    // outline_thickness
+};
+
+constexpr CheckboxStyle CHECKBOX_SANDSTONE_DUNE =
+{
+    {232, 197, 177},           // fill_on_color
+    {250, 244, 235},           // fill_off_color
+    {232, 227, 219},           // fill_hover_color
+    {235, 229, 221},           // fill_blocked_color
+    {250, 244, 235, 15},           // fill_trasnparent_color (sic — matches real field name)
+
+    {30, 30, 35},           // text_color
+    {30, 30, 35},           // text_hover_color
+    {168, 168, 172},           // text_blocked_color
+    {30, 30, 35, 30},           // text_transparent_color
+
+    {215, 210, 202},           // outline_color
+    {200, 195, 188},           // outline_hover_color
+    {215, 210, 202},           // outline_blocked_color
+    {215, 210, 202, 70},           // outline_transparent_color
+
+    0.0f                    // outline_thickness
+};
+
 }
 
 namespace entry_style
@@ -1077,6 +1630,270 @@ constexpr EntryStyle ENTRY_MIDNIGHT_ROSE =
     1.0f,                   // outline_blocked_thickness
     1.0f                    // outline_transparent_thickness
 };
+
+constexpr EntryStyle ENTRY_EMERALD_FOREST =
+{
+    {24, 32, 26},
+    {47, 54, 49},
+    {36, 97, 64},
+    {18, 24, 20},
+    {24, 32, 26, 80},
+
+    {206, 218, 211},
+    {166, 201, 182},
+    {228, 235, 231},
+    {103, 118, 108},
+    {206, 218, 211, 120},
+
+    {136, 140, 137},
+    {121, 135, 127},
+    {161, 163, 162},
+    {82, 94, 86},
+    {136, 140, 137, 120},
+
+    {38, 109, 71},
+    {71, 131, 99},
+    {103, 153, 126},
+    {17, 49, 32},
+    {38, 109, 71, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_GOLDEN_AMBER =
+{
+    {34, 28, 18},
+    {56, 51, 42},
+    {128, 95, 30},
+    {26, 21, 14},
+    {34, 28, 18, 80},
+
+    {223, 217, 205},
+    {218, 200, 164},
+    {237, 234, 228},
+    {123, 115, 100},
+    {223, 217, 205, 120},
+
+    {142, 140, 136},
+    {145, 138, 124},
+    {165, 164, 162},
+    {98, 92, 80},
+    {142, 140, 136, 120},
+
+    {145, 107, 32},
+    {162, 129, 65},
+    {178, 151, 99},
+    {65, 48, 14},
+    {145, 107, 32, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_CRIMSON_ASH =
+{
+    {32, 20, 20},
+    {54, 44, 44},
+    {122, 39, 41},
+    {24, 15, 15},
+    {32, 20, 20, 80},
+
+    {222, 207, 207},
+    {215, 169, 170},
+    {237, 229, 229},
+    {121, 102, 102},
+    {222, 207, 207, 120},
+
+    {141, 136, 136},
+    {141, 123, 124},
+    {164, 161, 161},
+    {97, 82, 82},
+    {141, 136, 136, 120},
+
+    {138, 43, 45},
+    {156, 75, 76},
+    {173, 107, 108},
+    {62, 19, 20},
+    {138, 43, 45, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_STEEL_GRAPHITE =
+{
+    {24, 26, 30},
+    {47, 49, 52},
+    {69, 80, 96},
+    {18, 20, 22},
+    {24, 26, 30, 80},
+
+    {212, 215, 217},
+    {185, 192, 200},
+    {231, 233, 234},
+    {122, 124, 127},
+    {212, 215, 217, 120},
+
+    {139, 140, 140},
+    {132, 134, 138},
+    {162, 163, 164},
+    {98, 99, 102},
+    {139, 140, 140, 120},
+
+    {77, 90, 108},
+    {104, 115, 130},
+    {130, 140, 152},
+    {35, 40, 49},
+    {77, 90, 108, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_LAVENDER_DUSK =
+{
+    {28, 24, 34},
+    {51, 47, 56},
+    {98, 80, 123},
+    {21, 18, 26},
+    {28, 24, 34, 80},
+
+    {218, 214, 222},
+    {202, 192, 215},
+    {235, 232, 237},
+    {131, 127, 137},
+    {218, 214, 222, 120},
+
+    {142, 140, 143},
+    {141, 137, 146},
+    {164, 163, 165},
+    {105, 102, 110},
+    {142, 140, 143, 120},
+
+    {111, 90, 139},
+    {133, 115, 156},
+    {154, 140, 174},
+    {50, 40, 63},
+    {111, 90, 139, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_SKY_AZURE =
+{
+    {18, 24, 34},
+    {42, 47, 56},
+    {41, 85, 139},
+    {14, 18, 26},
+    {18, 24, 34, 80},
+
+    {207, 215, 225},
+    {170, 195, 225},
+    {229, 233, 238},
+    {117, 127, 139},
+    {207, 215, 225, 120},
+
+    {138, 140, 143},
+    {127, 137, 149},
+    {162, 163, 165},
+    {94, 102, 111},
+    {138, 140, 143, 120},
+
+    {45, 96, 158},
+    {76, 120, 173},
+    {108, 144, 187},
+    {20, 43, 71},
+    {45, 96, 158, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f
+};
+
+constexpr EntryStyle ENTRY_ARCTIC_FROST =
+{
+    {246, 248, 250},
+    {229, 231, 232},
+    {209, 225, 241},
+    {231, 233, 235},
+    {246, 248, 250, 15},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 30},
+
+    {150, 150, 155},
+    {150, 150, 155},
+    {150, 150, 155},
+    {190, 190, 192},
+    {150, 150, 155, 30},
+
+    {212, 213, 215},
+    {197, 198, 200},
+    {144, 186, 225},
+    {212, 213, 215},
+    {212, 213, 215, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr EntryStyle ENTRY_SANDSTONE_DUNE =
+{
+    {250, 244, 235},
+    {232, 227, 219},
+    {240, 217, 202},
+    {235, 229, 221},
+    {250, 244, 235, 15},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 30},
+
+    {150, 150, 155},
+    {150, 150, 155},
+    {150, 150, 155},
+    {190, 190, 192},
+    {150, 150, 155, 30},
+
+    {215, 210, 202},
+    {200, 195, 188},
+    {222, 170, 144},
+    {215, 210, 202},
+    {215, 210, 202, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
 }
 
 namespace label_style
@@ -1242,6 +2059,222 @@ constexpr LabelStyle LABEL_MIDNIGHT_ROSE =
     0.f,                    // text_outline_blocked_thickness
     0.f                     // text_outline_transparent_thickness
 };
+
+constexpr LabelStyle LABEL_EMERALD_FOREST =
+{
+    {0, 0, 0, 0},
+    {36, 97, 64, 22},
+    {36, 97, 64, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {206, 218, 211},
+    {166, 201, 182},
+    {228, 235, 231},
+    {103, 118, 108},
+    {206, 218, 211, 25},
+
+    {38, 109, 71, 210},
+    {38, 109, 71, 210},
+    {38, 109, 71, 210},
+    {27, 76, 50, 130},
+    {38, 109, 71, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_GOLDEN_AMBER =
+{
+    {0, 0, 0, 0},
+    {128, 95, 30, 22},
+    {128, 95, 30, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {223, 217, 205},
+    {218, 200, 164},
+    {237, 234, 228},
+    {123, 115, 100},
+    {223, 217, 205, 25},
+
+    {145, 107, 32, 210},
+    {145, 107, 32, 210},
+    {145, 107, 32, 210},
+    {102, 75, 22, 130},
+    {145, 107, 32, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_CRIMSON_ASH =
+{
+    {0, 0, 0, 0},
+    {122, 39, 41, 22},
+    {122, 39, 41, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {222, 207, 207},
+    {215, 169, 170},
+    {237, 229, 229},
+    {121, 102, 102},
+    {222, 207, 207, 25},
+
+    {138, 43, 45, 210},
+    {138, 43, 45, 210},
+    {138, 43, 45, 210},
+    {97, 30, 31, 130},
+    {138, 43, 45, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_STEEL_GRAPHITE =
+{
+    {0, 0, 0, 0},
+    {69, 80, 96, 22},
+    {69, 80, 96, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {212, 215, 217},
+    {185, 192, 200},
+    {231, 233, 234},
+    {122, 124, 127},
+    {212, 215, 217, 25},
+
+    {77, 90, 108, 210},
+    {77, 90, 108, 210},
+    {77, 90, 108, 210},
+    {54, 63, 76, 130},
+    {77, 90, 108, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_LAVENDER_DUSK =
+{
+    {0, 0, 0, 0},
+    {98, 80, 123, 22},
+    {98, 80, 123, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {218, 214, 222},
+    {202, 192, 215},
+    {235, 232, 237},
+    {131, 127, 137},
+    {218, 214, 222, 25},
+
+    {111, 90, 139, 210},
+    {111, 90, 139, 210},
+    {111, 90, 139, 210},
+    {78, 63, 97, 130},
+    {111, 90, 139, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_SKY_AZURE =
+{
+    {0, 0, 0, 0},
+    {41, 85, 139, 22},
+    {41, 85, 139, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {207, 215, 225},
+    {170, 195, 225},
+    {229, 233, 238},
+    {117, 127, 139},
+    {207, 215, 225, 25},
+
+    {45, 96, 158, 210},
+    {45, 96, 158, 210},
+    {45, 96, 158, 210},
+    {31, 67, 111, 130},
+    {45, 96, 158, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_ARCTIC_FROST =
+{
+    {0, 0, 0, 0},
+    {209, 225, 241, 22},
+    {209, 225, 241, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 25},
+
+    {212, 213, 215, 210},
+    {212, 213, 215, 210},
+    {212, 213, 215, 210},
+    {148, 149, 150, 130},
+    {212, 213, 215, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+constexpr LabelStyle LABEL_SANDSTONE_DUNE =
+{
+    {0, 0, 0, 0},
+    {240, 217, 202, 22},
+    {240, 217, 202, 38},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0},
+
+    {30, 30, 35},
+    {30, 30, 35},
+    {30, 30, 35},
+    {168, 168, 172},
+    {30, 30, 35, 25},
+
+    {215, 210, 202, 210},
+    {215, 210, 202, 210},
+    {215, 210, 202, 210},
+    {150, 147, 141, 130},
+    {215, 210, 202, 0},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
 };
 
 namespace tooltip_style
@@ -1266,6 +2299,86 @@ constexpr ToolTipStyle TOOLTIP_DEFAULT_LIGHT =
     {30, 30, 35},           // text_color
     {218, 215, 208},        // text_outline_color
     0.0f                    // text_outline_thickness
+};
+
+constexpr ToolTipStyle TOOLTIP_EMERALD_FOREST =
+{
+    {22, 29, 23},
+    {38, 109, 71},
+    1.5f,
+    {206, 218, 211},
+    {7, 10, 8},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_GOLDEN_AMBER =
+{
+    {31, 25, 16},
+    {145, 107, 32},
+    1.5f,
+    {223, 217, 205},
+    {10, 8, 5},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_CRIMSON_ASH =
+{
+    {29, 18, 18},
+    {138, 43, 45},
+    1.5f,
+    {222, 207, 207},
+    {10, 6, 6},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_STEEL_GRAPHITE =
+{
+    {22, 23, 27},
+    {77, 90, 108},
+    1.5f,
+    {212, 215, 217},
+    {7, 8, 9},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_LAVENDER_DUSK =
+{
+    {25, 22, 31},
+    {111, 90, 139},
+    1.5f,
+    {218, 214, 222},
+    {8, 7, 10},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_SKY_AZURE =
+{
+    {16, 22, 31},
+    {45, 96, 158},
+    1.5f,
+    {207, 215, 225},
+    {5, 7, 10},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_ARCTIC_FROST =
+{
+    {246, 248, 250},
+    {212, 213, 215},
+    1.5f,
+    {30, 30, 35},
+    {249, 250, 252},
+    0.0f
+};
+
+constexpr ToolTipStyle TOOLTIP_SANDSTONE_DUNE =
+{
+    {250, 244, 235},
+    {215, 210, 202},
+    1.5f,
+    {30, 30, 35},
+    {252, 247, 241},
+    0.0f
 };
 }
 
@@ -1303,6 +2416,14 @@ inline static std::shared_ptr<WidgetTheme> stale_violet_theme = WidgetTheme::mak
 inline static std::shared_ptr<WidgetTheme> carbon_cyan_theme = WidgetTheme::make_theme(button_style::BUTTON_CARBON_CYAN, texture_style::STYLE_CARBON_CYAN, checkbox_style::CHECKBOX_CARBON_CYAN, entry_style::ENTRY_CARBON_CYAN, label_style::LABEL_CARBON_CYAN);
 inline static std::shared_ptr<WidgetTheme> midnight_rose_theme = WidgetTheme::make_theme(button_style::BUTTON_MIDNIGHT_ROSE, texture_style::STYLE_MIDNIGHT_ROSE, checkbox_style::CHECKBOX_MIDNIGHT_ROSE, entry_style::ENTRY_MIDNIGHT_ROSE, label_style::LABEL_MIDNIGHT_ROSE);
 inline static std::shared_ptr<WidgetTheme> obsidian_ember_theme = WidgetTheme::make_theme(button_style::BUTTON_OBSIDIAN_EMBER, texture_style::STYLE_OBSIDIAN_EMBER, checkbox_style::CHECKBOX_OBSIDIAN_EMBER, entry_style::ENTRY_OBSIDIAN_EMBER, label_style::LABEL_OBSIDIAN_EMBER);
+inline static std::shared_ptr<WidgetTheme> emerald_forest_theme = WidgetTheme::make_theme(button_style::BUTTON_EMERALD_FOREST, texture_style::TEXTURE_EMERALD_FOREST, checkbox_style::CHECKBOX_EMERALD_FOREST, entry_style::ENTRY_EMERALD_FOREST, label_style::LABEL_EMERALD_FOREST);
+inline static std::shared_ptr<WidgetTheme> golden_amber_theme = WidgetTheme::make_theme(button_style::BUTTON_GOLDEN_AMBER, texture_style::TEXTURE_GOLDEN_AMBER, checkbox_style::CHECKBOX_GOLDEN_AMBER, entry_style::ENTRY_GOLDEN_AMBER, label_style::LABEL_GOLDEN_AMBER);
+inline static std::shared_ptr<WidgetTheme> crimson_ash_theme = WidgetTheme::make_theme(button_style::BUTTON_CRIMSON_ASH, texture_style::TEXTURE_CRIMSON_ASH, checkbox_style::CHECKBOX_CRIMSON_ASH, entry_style::ENTRY_CRIMSON_ASH, label_style::LABEL_CRIMSON_ASH);
+inline static std::shared_ptr<WidgetTheme> steel_graphite_theme = WidgetTheme::make_theme(button_style::BUTTON_STEEL_GRAPHITE, texture_style::TEXTURE_STEEL_GRAPHITE, checkbox_style::CHECKBOX_STEEL_GRAPHITE, entry_style::ENTRY_STEEL_GRAPHITE, label_style::LABEL_STEEL_GRAPHITE);
+inline static std::shared_ptr<WidgetTheme> lavender_dusk_theme = WidgetTheme::make_theme(button_style::BUTTON_LAVENDER_DUSK, texture_style::TEXTURE_LAVENDER_DUSK, checkbox_style::CHECKBOX_LAVENDER_DUSK, entry_style::ENTRY_LAVENDER_DUSK, label_style::LABEL_LAVENDER_DUSK);
+inline static std::shared_ptr<WidgetTheme> sky_azure_theme = WidgetTheme::make_theme(button_style::BUTTON_SKY_AZURE, texture_style::TEXTURE_SKY_AZURE, checkbox_style::CHECKBOX_SKY_AZURE, entry_style::ENTRY_SKY_AZURE, label_style::LABEL_SKY_AZURE);
+inline static std::shared_ptr<WidgetTheme> arctic_frost_theme = WidgetTheme::make_theme(button_style::BUTTON_ARCTIC_FROST, texture_style::TEXTURE_ARCTIC_FROST, checkbox_style::CHECKBOX_ARCTIC_FROST, entry_style::ENTRY_ARCTIC_FROST, label_style::LABEL_ARCTIC_FROST);
+inline static std::shared_ptr<WidgetTheme> sandstone_dune_theme = WidgetTheme::make_theme(button_style::BUTTON_SANDSTONE_DUNE, texture_style::TEXTURE_SANDSTONE_DUNE, checkbox_style::CHECKBOX_SANDSTONE_DUNE, entry_style::ENTRY_SANDSTONE_DUNE, label_style::LABEL_SANDSTONE_DUNE);
 }
 }
 #endif
