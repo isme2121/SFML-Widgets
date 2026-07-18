@@ -1,6 +1,5 @@
 #include <cmath>
 #include "../include/button.hpp"
-#include <iostream>
 
 namespace sfml_widgets // Button
 {
@@ -58,13 +57,7 @@ void Button::setText(const sf::String& text)
     else setFlag(m_flags, FLAGS::TEXT);
     
     updateTextSize();
-    m_requirePosUpdate = true; //!< Fix image position in case TEXT flag state has changed
-}
-
-void Button::setTextLimit(unsigned int char_limit)
-{
-    if(char_limit > s_MAX_CHAR_COUNT) return;
-    m_charLimit = char_limit;
+    setFlag(m_flags, FLAGS::UPDATE); //!< Fix image position in case TEXT flag state has changed
 }
 
 bool Button::setIcon(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)
@@ -120,34 +113,43 @@ bool Button::setIcon(const sf::String& image_path, const std::string_view& shade
     else m_imagePtr->setTexture(*m_texturePtr, true);
 
     updateClipShader();
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
     setFlag(m_flags, FLAGS::IMAGE);
 
     return true;
 }
 
-void Button::setTextSide(Button::Side text_side)
+bool Button::setTextLimit(unsigned int char_limit)
+{
+    if(char_limit > s_MAX_CHAR_COUNT) return false;
+    m_charLimit = char_limit;
+    return true;
+}
+
+void Button::setTextPosition(Button::SIDE text_side)
 {
     if(m_textPosition == text_side) return;
 
     m_textPosition = text_side;
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void Button::setTextSize(unsigned int char_size)
+bool Button::setTextSize(unsigned int char_size)
 {
     m_charSizeRatio = 0.f;
     m_charSize = char_size;
     updateTextSize();
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
+    return true;
 }
 
-void Button::setTextSize(float ratio)
+bool Button::setTextSize(float ratio)
 {
-    if(ratio < 0.f || ratio >= 1.f) return;
+    if(ratio < 0.f || ratio >= 1.f) return false;
     m_charSizeRatio = ratio;
     updateTextSize();
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
+    return true;
 }
 
 void Button::setTextFont(const sf::Font& font)
@@ -157,7 +159,7 @@ void Button::setTextFont(const sf::Font& font)
     if(m_fontPtr) m_fontPtr.reset();
 
     updateTextSize(); //!< auto update size
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Button::setTextFont(const sf::Font&& font)
@@ -166,24 +168,25 @@ void Button::setTextFont(const sf::Font&& font)
     m_text.setFont(*m_fontPtr);
 
     updateTextSize(); //!< auto update size
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void Button::setIconSide(Button::Side image_side)
+void Button::setIconPosition(Button::SIDE image_side)
 {
     if(m_imagePosition == image_side) return;
 
     m_imagePosition = image_side;
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
     updateClipShader();
 }
 
-void Button::setIconSizeRatio(float ratio)
+bool Button::setIconSizeRatio(float ratio)
 {
-    if(ratio < 0.1f || ratio > 0.33f) return;
+    if(ratio < 0.1f || ratio > 0.33f) return false;
     m_imageSizeRatio = ratio;
     updateImageSize();
     updateClipShader();
+    return true;
 }
 
 void Button::clearIcon()
@@ -203,6 +206,20 @@ void Button::setTheme(ButtonStyle s_button)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void Button::fetchTheme()
+{
+    if(auto t = m_themePtr.lock())
+    {
+        setTheme(t->getStyle<Button>());
+        setFlag(m_flags, FLAGS::MODIFIED);
+    }
+}
+
+ButtonStyle& Button::style()
+{
+    return m_style;
+}
+
 const sf::String& Button::getText() const
 {
     return m_text.getString();
@@ -219,15 +236,40 @@ const sf::String& Button::getIconPath() const
     return m_imagePath;
 }
 
+unsigned int Button::getTextSize() const
+{
+    return m_charSize;
+}
+
+unsigned int Button::getTextLimit() const
+{
+    return m_charLimit;
+}
+
+Button::SIDE Button::getIconPosition() const
+{
+    return m_imagePosition;
+}
+
+Button::SIDE Button::getTextPosition() const
+{
+    return m_textPosition;
+}
+
+const sf::Font& Button::getTextFont() const
+{
+    return m_text.getFont();
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
 
 void Button::drawWidget()
 {
-    if(m_requirePosUpdate)
+    if(checkFlag(m_flags, FLAGS::UPDATE))
     {
-        m_requirePosUpdate = false;
+        resetFlag(m_flags, FLAGS::UPDATE);
         updateTextPosition();
         updateImagePosition();
     }
@@ -243,7 +285,7 @@ void Button::drawWidget()
 void Button::updatePosition()
 {
     // updates text and image
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Button::updateSize()
@@ -255,7 +297,7 @@ void Button::updateSize()
 
     // keep text aligned
     // image position scales with size
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Button::updateRotation()
@@ -265,7 +307,7 @@ void Button::updateRotation()
 
     // there is no render object that handles text & image transforms
     // they are handled in their update position methods
-    m_requirePosUpdate = true;
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Button::updateState()
@@ -341,7 +383,7 @@ void Button::updateClipShader()
     m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
     m_clipShaderPtr->setUniform("radius", m_radius);
     m_clipShaderPtr->setUniform("opacity", m_opacity);
-    m_clipShaderPtr->setUniform("side", m_imagePosition == Side::Right? 2.f : m_imagePosition == Side::Left? 0.f : 1.f);
+    m_clipShaderPtr->setUniform("side", m_imagePosition == SIDE::Right? 2.f : m_imagePosition == SIDE::Left? 0.f : 1.f);
 }
 
 void Button::updateTextPosition()
@@ -356,15 +398,15 @@ void Button::updateTextPosition()
 
     switch (m_textPosition)
     {
-    case Side::Left:
+    case SIDE::Left:
         local_offset.x = m_size.x * 0.33f;
         break;
     
-    case Side::Center:
+    case SIDE::Center:
         local_offset.x = m_size.x * 0.5f;
         break;
 
-    case Side::Right:
+    case SIDE::Right:
         local_offset.x = m_size.x * 0.67f;
         break;
     }
@@ -401,15 +443,15 @@ void Button::updateImagePosition()
 
     switch (m_imagePosition)
     {
-    case Side::Left:
+    case SIDE::Left:
         local_offset.x = m_size.x * 0.165f;
         break;
 
-    case Side::Center:
+    case SIDE::Center:
         local_offset.x = m_size.x * 0.5f;
         break;
     
-    case Side::Right:
+    case SIDE::Right:
         local_offset.x = m_size.x * 0.835f;
         break;
     

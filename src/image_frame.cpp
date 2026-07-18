@@ -260,6 +260,16 @@ void ImageFrame::setTheme(TextureStyle s_imageFrame)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void ImageFrame::fetchTheme()
+{
+    if(auto t = m_themePtr.lock()) setTheme(t->getStyle<ImageFrame>());
+}
+
+TextureStyle& ImageFrame::style()
+{
+    return m_style;
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////

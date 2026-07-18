@@ -102,6 +102,16 @@ void Frame::setTheme(TextureStyle s_frame)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void Frame::fetchTheme()
+{
+    if(auto t = m_themePtr.lock()) setTheme(t->getStyle<Frame>());
+}
+
+TextureStyle& Frame::style()
+{
+    return m_style;
+}
+
 sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
 {
     sf::Vector2f local = sf::Vector2f(mouse_position);
@@ -132,38 +142,40 @@ bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mo
     // handle widgets events
     std::vector<Widget*>::reverse_iterator it_end = m_childWidgets.rbegin();
     std::vector<Widget*>::const_reverse_iterator it_begin = m_childWidgets.crend();
+    bool event_used{false};
+
     while(it_end != it_begin)
     {
         if(isVisible(*it_end))
         {
-            if((*it_end)->captureMouseEvents(event, mouse_position))
-            {
-                // child widget enabled s_MouseEventUsed but frame can still use the event if we return false
-                if(s_STACK_CHILD_EVENT) break;
-                if(s_GUARD_EVENT) return true;
-            }
+            if((*it_end)->captureMouseEvents(event, mouse_position) && !s_STACK_CHILD_EVENT) event_used = true;
         }
         ++it_end;
     }
-    return false;
+    return event_used;
 }
 
-void Frame::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+bool Frame::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     // handle frame unique events
     if(details.event_type == W_MouseEventType::Scroll && checkFlag(m_flags, FLAGS::HOVERED))
     {
         scroll(details.scroll_delta);
-        details.is_used = true;
+        return true;
     }
+    return false;
 }
 
 bool Frame::preProcessKeyEvents(const sf::Event& event)
 {
     bool event_used = false;
-    for(Widget* w : m_childWidgets)
+    // handle widgets events
+    std::vector<Widget*>::reverse_iterator it_end = m_childWidgets.rbegin();
+    std::vector<Widget*>::const_reverse_iterator it_begin = m_childWidgets.crend();
+    while(it_end != it_begin)
     {
-        if(w->captureKeyEvents(event) && !s_STACK_CHILD_EVENT) event_used = true;
+        if((*it_end)->captureKeyEvents(event) && !s_STACK_CHILD_EVENT) event_used = true;
+        ++it_end;
     }
     return event_used;
 }

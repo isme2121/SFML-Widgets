@@ -33,7 +33,7 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
     configure(FLAGS::INDICATOR);
 }
 
-void Entry::setInput(const sf::String& text)
+void Entry::setText(const sf::String& text)
 {
     if(m_inputFilter)
     {
@@ -42,8 +42,8 @@ void Entry::setInput(const sf::String& text)
         std::size_t size = std::min(text.getSize(), m_inputLimit);
         for(std::size_t idx{0}; idx < size; idx++)
         {
-            const char32_t& c = text[idx];
-            if(m_inputFilter(c)) result += c;
+            char32_t c = text[idx];
+            if(m_inputFilter(&c)) result += c;
         }
         m_textBuffer = result;
     }
@@ -55,35 +55,20 @@ void Entry::setInput(const sf::String& text)
 
     m_cursorIndex = m_textBuffer.getSize(); //!< shift to last
     writeToEntry(); //!< update front end
-
-    // focusWidget(*this, std::nullopt); //!< enables cursor
 }
 
 void Entry::setBackGroundText(const sf::String& bg_text)
 {
     // limit to 256
-    m_bgText.setString(bg_text.substring(0, std::min(bg_text.getSize(), std::size_t{256})));
+    m_bgText.setString(bg_text.substring(0, std::min(bg_text.getSize(), s_MAX_BG_TEXT_SIZE)));
 }
 
-void Entry::setCursorIndex(unsigned int idx)
-{
-    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.getSize());
-    shiftToCursor();
-}
-
-void Entry::setPlaceholderChar(const char placeholder_char)
-{
-    if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
-    m_placeholderCharacter = placeholder_char;
-    writeToEntry(); //!< updates front end
-}
-
-void Entry::setInputFilter(std::function<bool(char32_t)> func)
+void Entry::setTextFilter(std::function<bool(char32_t*)> func)
 {
     m_inputFilter = func;
 }
 
-void Entry::setInputLimit(std::size_t max_chars)
+void Entry::setTextLimit(std::size_t max_chars)
 {
     m_inputLimit = max_chars;
 
@@ -93,56 +78,20 @@ void Entry::setInputLimit(std::size_t max_chars)
     writeToEntry();
 }
 
-
-
-void Entry::setBLinkUpRatio(float ratio)
+bool Entry::setTextSize(float ratio)
 {
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_cursorOnDuration = s_BLINK_PERIOD * ratio;
-    m_cursorOffDuration = s_BLINK_PERIOD * (1.f - ratio);
-    if(ratio == 1.f)
-    {
-        // skips comparing the timer and always draws cursor when focused
-        setFlag(m_flags, FLAGS::SET);
-        resetFlag(m_flags, FLAGS::RESET);
-    }
-    else if(ratio == 0.f)
-    {
-        // skips comparing the timer and never draws cursor
-        setFlag(m_flags, FLAGS::RESET);
-        resetFlag(m_flags, FLAGS::SET);
-    }
-    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
-}
-
-void Entry::setTextSize(float ratio)
-{
-    if(ratio < 0.f || ratio > 1.f) return;
+    if(ratio < 0.f || ratio > 1.f) return false;
     m_textSizeRatio = ratio;
     updateText();
+    return true;
 }
 
-void Entry::setTextSize(unsigned int char_size)
+bool Entry::setTextSize(unsigned int char_size)
 {
     m_charSize = char_size;
     m_textSizeRatio = 0.f;
     updateText();
-}
-
-void Entry::setOffsetRatio(float ratio)
-{
-    if(ratio < 0.f || ratio >= 1.f) return;
-    m_textOffsetRatio = ratio;
-
-    updateText();
-    updateContentWidth();
-    shiftToCursor();
-}
-
-void Entry::setCursorWidth(unsigned int width)
-{
-    m_cursorWidth = width;
-    shiftToCursor();
+    return true;
 }
 
 void Entry::setTextFont(const sf::Font& font)
@@ -163,16 +112,63 @@ void Entry::setTextFont(const sf::Font&& font)
     updateText();
 }
 
-void Entry::clear()
+void Entry::clearText()
 {
     m_textBuffer.clear();
     m_cursorIndex = 0;
     writeToEntry();
 }
 
-const sf::String& Entry::get() const
+bool Entry::setBLinkUpRatio(float ratio)
 {
-    return m_textBuffer;
+    if(ratio < 0.f || ratio > 1.f) return false;
+    m_cursorOnDuration = s_BLINK_PERIOD * ratio;
+    m_cursorOffDuration = s_BLINK_PERIOD * (1.f - ratio);
+    if(ratio == 1.f)
+    {
+        // skips comparing the timer and always draws cursor when focused
+        setFlag(m_flags, FLAGS::SET);
+        resetFlag(m_flags, FLAGS::RESET);
+    }
+    else if(ratio == 0.f)
+    {
+        // skips comparing the timer and never draws cursor
+        setFlag(m_flags, FLAGS::RESET);
+        resetFlag(m_flags, FLAGS::SET);
+    }
+    else resetFlag(m_flags, FLAGS::SET | FLAGS::RESET);
+    return true;
+}
+
+unsigned int Entry::setCursorIndex(unsigned int idx)
+{
+    m_cursorIndex = std::clamp<unsigned int>(idx, 0, m_textBuffer.getSize());
+    shiftToCursor();
+    return m_cursorIndex;
+}
+
+void Entry::setPlaceholderChar(const char placeholder_char)
+{
+    if(placeholder_char != 0 && !(placeholder_char >= 32 && placeholder_char != 127)) return;
+    m_placeholderCharacter = placeholder_char;
+    writeToEntry(); //!< updates front end
+}
+
+bool Entry::setTextOffsetRatio(float ratio)
+{
+    if(ratio < 0.f || ratio >= 1.f) return false;
+    m_textOffsetRatio = ratio;
+
+    updateText();
+    updateContentWidth();
+    shiftToCursor();
+    return true;
+}
+
+void Entry::setCursorWidth(unsigned int width)
+{
+    m_cursorWidth = width;
+    shiftToCursor();
 }
 
 void Entry::setTheme(EntryStyle s_entry)
@@ -181,12 +177,79 @@ void Entry::setTheme(EntryStyle s_entry)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void Entry::fetchTheme()
+{
+    if(auto t = m_themePtr.lock()) setTheme(t->getStyle<Entry>());
+}
+
+EntryStyle& Entry::style()
+{
+    return m_style;
+}
+
+const sf::String& Entry::getText() const
+{
+    return m_textBuffer;
+}
+
+const sf::String& Entry::getBackGroundText() const
+{
+    return m_bgText.getString();
+}
+
+unsigned int Entry::getTextSize() const
+{
+    return m_charSize;
+}
+
+std::size_t Entry::getTextLimit() const
+{
+    return m_inputLimit;
+}
+
+float Entry::getTextOffsetRatio() const
+{
+    return m_textOffsetRatio;
+}
+
+const sf::Font& Entry::getTextFont() const
+{
+    return m_text.getFont();
+}
+
+char Entry::getPlaceholderChar() const
+{
+    return m_placeholderCharacter;
+}
+
+unsigned int Entry::getCursorIndex() const
+{
+    return m_cursorIndex;
+}
+
+unsigned int Entry::getCursorWidth() const
+{
+    return m_cursorWidth;
+}
+
+float Entry::getBlinkUpRatio() const
+{
+    return m_cursorOnDuration.asSeconds();
+}
+
+float Entry::getScrollOffset() const
+{
+    return m_currentPanOffset;
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
 
-void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+bool Entry::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
+    bool event_used{false};
+
     // clicked on entry
     if(details.event_type == W_MouseEventType::Press && checkFlag(m_flags, FLAGS::HOVERED) && details.button == s_FOCUS_BUTTON)
     {
@@ -194,9 +257,9 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
         sf::Vector2f transform_view = this->getInverseTransform().transformPoint(root_view);        //!< considering rotation
         sf::Vector2f local_view = m_renderTexture.mapPixelToCoords(sf::Vector2i(transform_view));   //!< considering texture view (padding)
 
-        setCursorIndex(local_view.x);
+        moveCursorIndex(local_view.x);
         shiftToCursor();
-        details.is_used = true;
+        event_used = true;
     }
 
     // scrolling while hovered
@@ -206,8 +269,10 @@ void Entry::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event
         // scrolls through text space
         m_currentPanOffset = std::clamp(m_currentPanOffset + details.scroll_delta * (s_SCROLL_RATIO * m_size.y), 0.f, m_maxPanOffset);
         updateView();
-        details.is_used = true;
+        event_used = true;
     }
+
+    return event_used;
 }
 
 bool Entry::postProcessKeyEvents(const sf::Event& event)
@@ -220,11 +285,12 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
     // text entered while focused
     if(const sf::Event::TextEntered* input_char = event.getIf<sf::Event::TextEntered>())
     {
+        char32_t c = input_char->unicode;
         // char is not a special character + size limit check + filter input
-        if(input_char->unicode >= 32 && input_char->unicode != 127 && m_textBuffer.getSize() <= m_inputLimit && (!m_inputFilter || m_inputFilter && m_inputFilter(input_char->unicode)))
+        if(c >= 32 && c != 127 && m_textBuffer.getSize() < m_inputLimit && (!m_inputFilter || m_inputFilter && m_inputFilter(&c)))
         {
             // insert char
-            m_textBuffer.insert(m_cursorIndex, input_char->unicode);
+            m_textBuffer.insert(m_cursorIndex, c);
             ++m_cursorIndex;
 
             writeToEntry();         //!< updates front end
@@ -255,7 +321,7 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                 if(input_key->control)
                 {
                     sf::Clipboard::setString(m_textBuffer);
-                    clear();
+                    clearText();
                     event_used = true;
                 }
                 break;
@@ -299,7 +365,7 @@ bool Entry::postProcessKeyEvents(const sf::Event& event)
                 break;
             
             case sf::Keyboard::Key::Delete: //!< clear all input
-                clear();
+                clearText();
                 event_used = true;
                 break;
 
@@ -504,7 +570,7 @@ void Entry::drawCursorLine()
     m_renderTexture.draw(cursor_line, 6, sf::PrimitiveType::Triangles);
 }
 
-void Entry::setCursorIndex(float x_pos)
+void Entry::moveCursorIndex(float x_pos)
 {
     // considering panning + scrolling offsets
     float offset_x = x_pos + m_currentPanOffset + m_textOffsetRatio * m_size.y;

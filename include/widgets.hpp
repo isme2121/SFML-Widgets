@@ -64,21 +64,21 @@ enum class FLAGS : std::int32_t
 {
 // Main properties for flow control
     IDLE = 1 << 0,                  //!< State: `default state`
-    INIT = 1 << 1,                  //!< State: `initialized state`
-    MODIFIED = 1 << 2,              //!< State: `set automatically after an update`
-    FOCUSED = 1 << 3,               //!< State: `focus resource obtained from clicking a widget by default`
+    MODIFIED = 1 << 1,              //!< State: `set automatically after an update`
+    FOCUSED = 1 << 2,               //!< State: `focus resource obtained from clicking a widget by default`
 
 // Base states, controlled within the base class
-    HOVERED = 1 << 4,               //!< State: `widget is hovered`
-    ALPHAREDUCED = 1 << 5,          //!< State: `widget is transparent`
-    SELECTED = 1 << 6,              //!< State: `widget is selected and can trigger callbacks`
-    RESTRICTED = 1 << 7,            //!< State: `widget is blocking certain functions`
-    ACTIVE = 1 << 8,                //!< State: `widget is pressed with the active mouse button or held`
+    HOVERED = 1 << 3,               //!< State: `widget is hovered`
+    ALPHAREDUCED = 1 << 4,          //!< State: `widget is transparent`
+    SELECTED = 1 << 5,              //!< State: `widget is selected and can trigger callbacks`
+    RESTRICTED = 1 << 6,            //!< State: `widget is blocking certain functions`
+    ACTIVE = 1 << 7,                //!< State: `widget is pressed with the active mouse button or held`
 
 // Derived states, controlled within derived classes
-    DRAWING = 1 << 9,               //!< State: `widget is drawing` @see `Frame`
-    SHORTSKIP = 1 << 10,            //!< State: `widget can skip a repetitive process` @see `Frame`, `CheckBox`
-    LONGSKIP = 1 << 11,             //!< State: `widget can skip a process based on internal conditions` @see `Frame`
+    DRAWING = 1 << 8,               //!< State: `widget is drawing` @see `Frame`
+    SHORTSKIP = 1 << 9,             //!< State: `widget can skip a repetitive process` @see `Frame`, `CheckBox`
+    LONGSKIP = 1 << 10,             //!< State: `widget can skip a process based on internal conditions` @see `Frame`
+    UPDATE = 1 << 11,               //!< State: `widget requests an update process`
     SET = 1 << 12,                  //!< State: `widget's 1 state` @see `CheckBox`, `Entry`
     RESET = 1 << 13,                //!< State: `widget's 0 state` @see `CheckBox`, `Entry`
     TEXT = 1 << 14,                 //!< State: `widget is currently displaying text` @see `Button`
@@ -159,8 +159,8 @@ sf::Vector2u get_prime_combination(unsigned int n);
 ///////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////
-/// @brief Represents a `sf::Event::KeyPressed` object, made for
-/// implicit constructing
+/// @brief Represents a `sf::Event::KeyPressed` object, used in
+/// `Widget::BindShortCut` to create a sequence of key presses
 ///
 ///////////////////////////////////////////////////////////////////
 struct Key
@@ -187,10 +187,10 @@ struct Key
 private:
         sf::Keyboard::Key code{sf::Keyboard::Key::Unknown};
         sf::Keyboard::Scancode scancode{sf::Keyboard::Scancode::Unknown};
-        bool control{};
-        bool alt{};
-        bool shift{};
-        bool system{};
+        bool control{false};
+        bool alt{false};
+        bool shift{false};
+        bool system{false};
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -286,7 +286,7 @@ private:
 
     std::vector<SequenceEntry> m_sequences;                     //!< Stored sequences
     Sequence m_current_sequence;                                //!< Current sequence
-    size_t m_max_sequence = 0;                                  //!< Max number of keys needed to match a saved sequence
+    size_t m_max_sequence{0};                                   //!< Max number of keys needed to match a saved sequence
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -384,8 +384,8 @@ public:
     Frame* getFramePtr() const; 
 
 private:
-    sf::RenderWindow* m_window;
-    Frame* m_frame;
+    sf::RenderWindow* m_window{nullptr};
+    Frame* m_frame{nullptr};
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -395,25 +395,31 @@ private:
 /// referenced by the same group share special rules when it comes to
 /// gaining or losing focus on a widget.
 ///
+/// A widget group achieves synced functionality between multiple widgets of
+/// the same group depending on the configurations @see `groupFocusCallback`, `groupFocuslossCallback`.
+///
+/// - `groupFocusCallback`: Once a widget from an existing group gains focus, choose to trigger `Focus Gain`
+/// callback for all group widgets at once with `true`, or trigger only the focused widget callback with `false`.
+///
+/// - `groupFocuslossCallback`: Once the group loses focus, choose to trigger `Focus Loss` callback for all
+/// group widgets at once with `true`, or trigger for only the single widget that lost the resource with `false`.
+///
 /// Use `make_group` static method to construct a new instance:
 ///
 /// ```cpp
-///     auto w_group1 = sfml_widgets::WidgetGroup::make_group();
-///     if(w_group1)
+///     auto widget_group = sfml_widgets::WidgetGroup::make_group();
+///     if(widget_group)
 ///     {
 ///         # assigning widgets to share focus if one is clicked
-///         button198320.linkWidget(w_group1);
-///         entry67.linkWidget(w_group1);
+///         button_1.linkWidget(widget_group);
+///         entry_1.linkWidget(widget_group);
 ///         # both widgets would fire their focus callback together if focused
-///         w_group1->groupFocusCallback = true;
+///         widget_group->groupFocusCallback = true;
 ///         # only the widget that lost focus would fire their proper callback
-///         w_group1->groupFocuslossCallback = false;
+///         widget_group->groupFocuslossCallback = false;
 ///     }
 ///     ...
 /// ```
-///
-/// @note `WidgetGroup` cannot be copied or moved and is lifetime safe, meanwhile
-/// `Widget` is responsible for move / lifetime operations with it's group
 ///
 ///////////////////////////////////////////////////////////////////
 class WidgetGroup
@@ -433,8 +439,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool contains(const Widget* w) const;
 
-    bool groupFocusCallback = false;        //!< Focusing on a group of widgets triggers their focus callbacks all at once, `false` by default
-    bool groupFocuslossCallback = true;     //!< Losing focus on a group of widget triggers their unfocus callbacks all at once, `true` by default
+    bool groupFocusCallback{false};        //!< Focusing on a group of widgets triggers their focus callbacks all at once, `false` by default
+    bool groupFocuslossCallback{true};     //!< Losing focus on a group of widget triggers their unfocus callbacks all at once, `true` by default
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -473,10 +479,10 @@ private:
 namespace constants
 {
 constexpr std::size_t KSTALE = std::numeric_limits<std::size_t>::max();
-constexpr float PI = 3.14159265f;
-constexpr float DEGREE90 = 90.f;
-constexpr float DEGREE180 = 180.f;
-constexpr float DEGREE270 = 270.f;
+constexpr float PI{3.14159265f};
+constexpr float DEGREE90{90.f};
+constexpr float DEGREE180{180.f};
+constexpr float DEGREE270{270.f};
 constexpr float START_ANGLES[4] =
 {
     DEGREE180 * PI / DEGREE180,  // TL
@@ -488,15 +494,15 @@ constexpr float START_ANGLES[4] =
 
 namespace parameters
 {
-// hidden | blocked | resize | autohide | autoselect | block bg image | indicator |  grid | scroll | zoom | pan
-inline const FLAGS MODIFIABLE = FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
+// hidden | blocked | resize | autohide | autoselect | transparent | autotransparent | block bg image | block clip shader | block color shader | indicator |  grid | scroll | zoom | pan
+inline const FLAGS MODIFIABLE{FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
                                 FLAGS::AUTOHIDE | FLAGS::ALWAYSSELECTED | FLAGS::TRANSPARENT | FLAGS::AUTOTRANSPARENT |
                                 FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM | FLAGS::PAN |
-                                FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER;
+                                FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER};
 
 
-constexpr std::size_t CHAR_LIMIT = 15;                                      //!< Limit of characters in widgets with text
-constexpr unsigned int CHAR_SIZE = 18;                                      //!< Default character size for text used by widgets
+constexpr std::size_t CHAR_LIMIT{15};                                       //!< Limit of characters in widgets with text
+constexpr unsigned int CHAR_SIZE{18};                                       //!< Default character size for text used by widgets
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////          Fonts              ///////////////////

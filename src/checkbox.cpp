@@ -3,7 +3,7 @@
 
 namespace sfml_widgets // checkbox
 {
-CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size),
+CheckBox::CheckBox(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, bool initial_state, const sf::Font& font) : Widget(root, position, size),
 m_text(font, "", parameters::CHAR_SIZE)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
@@ -17,7 +17,7 @@ m_text(font, "", parameters::CHAR_SIZE)
     setText(text);
 }
 
-CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, const sf::Font& font, bool initial_state) : Widget(root, position, size),
+CheckBox::CheckBox(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& text, bool initial_state, const sf::Font& font) : Widget(root, position, size),
 m_text(font, "", parameters::CHAR_SIZE)
 {
     m_currentBgColorPtr = &m_style.fill_off_color;
@@ -41,11 +41,6 @@ void CheckBox::unbindToggleEvent()
     m_clickCallback = nullptr;
 }
 
-bool CheckBox::getState()
-{
-    return checkFlag(m_flags, FLAGS::SET);
-}
-
 void CheckBox::setText(const sf::String& text)
 {
     m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
@@ -53,21 +48,30 @@ void CheckBox::setText(const sf::String& text)
     if(!text.isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
 
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void CheckBox::setTextSize(unsigned int char_size)
+bool CheckBox::setTextSize(unsigned int char_size)
 {
     m_textSizeRatio = 0.f;  //!< disables ratio updating
     m_charSize = char_size;
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
+    return true;
 }
 
-void CheckBox::setTextSize(float ratio)
+bool CheckBox::setTextSize(float ratio)
 {
-    if(ratio < 0.f || ratio > 2.f) return;
+    if(ratio < 0.f || ratio > 2.f) return false;
     m_textSizeRatio = ratio;
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
+    return true;
+}
+
+bool CheckBox::setTextLimit(unsigned int max_size)
+{
+    if(max_size > 30) return false;
+    m_charLimit = max_size;
+    return true;
 }
 
 void CheckBox::setTextFont(const sf::Font& font)
@@ -76,7 +80,7 @@ void CheckBox::setTextFont(const sf::Font& font)
     m_text.setFont(font);
     if(m_font) m_font.reset();
 
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 
 }
 
@@ -85,20 +89,21 @@ void CheckBox::setTextFont(const sf::Font&& font)
     m_font = std::make_unique<const sf::Font>(std::move(font));
     m_text.setFont(*m_font);
 
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void CheckBox::setTextSide(DIRECTION side)
+void CheckBox::setTextPosition(DIRECTION side)
 {
     m_textSide = side;
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void CheckBox::setSeparationSpace(float ratio)
+bool CheckBox::setTextPadding(float ratio)
 {
-    if(ratio < 0.f || ratio > 1.f) return;
-    m_deadSpace = ratio;
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    if(ratio < 0.f || ratio > 5.f) return false;
+    m_padding = ratio;
+    setFlag(m_flags, FLAGS::UPDATE);
+    return true;
 }
 
 void CheckBox::setTheme(CheckboxStyle s_checkbox)
@@ -107,19 +112,64 @@ void CheckBox::setTheme(CheckboxStyle s_checkbox)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void CheckBox::fetchTheme()
+{
+    if(auto t = m_themePtr.lock())
+    {
+        setTheme(t->getStyle<CheckBox>());
+        setFlag(m_flags, FLAGS::MODIFIED);
+    }
+}
+
+CheckboxStyle& CheckBox::style()
+{
+    return m_style;
+}
+
+bool CheckBox::getState()
+{
+    return checkFlag(m_flags, FLAGS::SET);
+}
+
+unsigned int CheckBox::getTextSize() const
+{
+    return m_charSize;
+}
+
+unsigned int CheckBox::getTextLimit() const
+{
+    return m_charLimit;
+}
+
+float CheckBox::getTextPadding() const
+{
+    return m_padding;
+}
+
+DIRECTION CheckBox::getTextPosition() const
+{
+    return m_textSide;
+}
+
+const sf::Font& CheckBox::getTextFont() const
+{
+    return m_text.getFont();
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
 
-void CheckBox::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+bool CheckBox::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     // checkbox state update
     if(details.event_type == W_MouseEventType::Release && details.button == s_FOCUS_BUTTON && checkFlag(m_flags, FLAGS::SELECTED))
     {
         toggle(m_flags, FLAGS::SET);
         if(m_clickCallback) m_clickCallback(event);
-        details.is_used = true;
+        return true;
     }
+    return false;
 }
 
 void CheckBox::drawWidget()
@@ -133,18 +183,18 @@ void CheckBox::drawWidget()
 
 void CheckBox::updatePosition()
 {
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void CheckBox::updateSize()
 {
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void CheckBox::updateRotation()
 {
     m_text.setRotation(this->getRotation());
-    resetFlag(m_flags, FLAGS::SHORTSKIP);
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void CheckBox::updateState()
@@ -156,6 +206,7 @@ void CheckBox::updateState()
     {
         // show image if assigned when checkbox = 1
         if(m_bgTexturePtr) this->setTexture(m_bgTexturePtr.get());
+        if(m_shaderHolder) m_shaderHolder.swap(m_bgShaderPtr);
 
         m_currentBgColorPtr = &m_style.fill_on_color;
 
@@ -190,6 +241,7 @@ void CheckBox::updateState()
     else
     {
         if(m_bgTexturePtr) this->setTexture(nullptr);
+        if(m_bgShaderPtr) m_bgShaderPtr.swap(m_shaderHolder);
 
         if(!m_stale && checkFlag(m_flags, FLAGS::BLOCKED))
         {
@@ -241,8 +293,8 @@ void CheckBox::updateTheme()
 
 void CheckBox::updateText()
 {
-    if(checkFlag(m_flags, FLAGS::SHORTSKIP)) return;
-    setFlag(m_flags, FLAGS::SHORTSKIP); //!< skipping until another update is queued
+    if(!checkFlag(m_flags, FLAGS::UPDATE)) return;
+    resetFlag(m_flags, FLAGS::UPDATE); //!< skipping until another update is queued
 
     // update text size first for accurate local bounds
     if(m_textSizeRatio != 0.f)
@@ -260,8 +312,8 @@ void CheckBox::updateText()
     m_text.setCharacterSize(m_charSize);
 
 
-    const float HORIZONTAL_SPACE = m_size.x * m_deadSpace;
-    const float VERTICAL_SPACE   = m_size.y * m_deadSpace;
+    const float HORIZONTAL_SPACE = m_size.x * m_padding;
+    const float VERTICAL_SPACE   = m_size.y * m_padding;
 
     sf::FloatRect bounds = m_text.getLocalBounds();
 

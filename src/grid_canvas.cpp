@@ -185,6 +185,16 @@ void GridCanvas::setTheme(TextureStyle s_gridCanvas)
     for(Cell& cell : m_cellMap) setFlag(cell.m_flags, FLAGS::MODIFIED);
 }
 
+void GridCanvas::fetchTheme()
+{
+    if(auto t = m_themePtr.lock()) setTheme(t->getStyle<GridCanvas>());
+}
+
+TextureStyle& GridCanvas::style()
+{
+    return m_style;
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
@@ -210,17 +220,20 @@ bool GridCanvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2
     return false;
 }
 
-void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+bool GridCanvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     sf::Vector2i local_mouse_position = getLocalPixel(mouse_position); //!< doesn't considers canvas view
+
+    bool event_used{false};
 
     // click event
     if(details.event_type == W_MouseEventType::Press)
     {
-        if(!checkFlag(m_flags, FLAGS::HOVERED)) return; //!< Not hovering
+        if(!checkFlag(m_flags, FLAGS::HOVERED)) return event_used; //!< Not hovering
 
         /* currently hovering */
 
+    
         if(m_selectedCell)
         {
             // reset previous
@@ -228,7 +241,7 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
             m_selectedCell = nullptr;
         }
         
-        if(details.button != s_FOCUS_BUTTON) return;
+        if(details.button != s_FOCUS_BUTTON) return event_used;
 
         /* left mouse button was clicked section */
 
@@ -241,6 +254,7 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
             {
                 // first activation stage
                 m_clickedCell = &cell;
+                event_used = true;
                 break;
             }
         }
@@ -257,7 +271,7 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
                 if(cell.isFlag(FLAGS::HOVERED) && m_clickedCell== &cell)
                 {
                     m_selectedCell = &cell;
-                    details.is_used = true;
+                    event_used = true;
                 }
             }
         }
@@ -271,7 +285,7 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
         if(checkFlag(m_flags, FLAGS::HOVERED)) 
         {
             zoom(details.scroll_delta, local_mouse_position);
-            details.is_used = true;
+            event_used = true;
         }
     }
 
@@ -281,9 +295,11 @@ void GridCanvas::postProcessMouseEvents(W_MouseEventDetails& details, const sf::
         if(checkFlag(m_flags, FLAGS::ACTIVE))
         {
             pan(local_mouse_position);
-            details.is_used = true;
+            event_used = true;
         }
     }
+
+    return event_used;
 }
 
 void GridCanvas::drawWidget()

@@ -213,6 +213,14 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTheme(TextureStyle s_gridCanvas);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Pulls the widget's style from it's linked theme object
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void fetchTheme() override;
+
+    TextureStyle& style();
+
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Processes events for cells
@@ -224,7 +232,7 @@ private:
     /// @brief Canvas related events, such as selecting, panning, and zooming
     ///
     ///////////////////////////////////////////////////////////////////
-    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws canvas on the screen
@@ -279,11 +287,6 @@ private:
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Syncs shared theme with widget
-    ///
-    /// @note This method can be skipped if `FLAGS::PASSIVESKIP` is set
-    /// internally
-    ///
-    /// @see `Widget::linkTheme`, `Widget::unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;

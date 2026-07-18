@@ -9,7 +9,7 @@ class Entry : public Widget
 {
 public:
     ///////////////////////////////////////////////////////////////////
-    /// @brief Takes a master object for internal graphics handling
+    /// @brief Constructs the button with `sf::RenderWindow`
     ///
     /// Parameters such as size and position are set to default values.
     ///
@@ -22,8 +22,7 @@ public:
     Entry(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Font& font = parameters::INTER_REGULAR_18);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Takes a master object for internal graphics handling and
-    /// position + size as a FloatRect object
+    /// @brief Constructs the button on a `Frame` object
     ///
     /// @param root window or a frame widget
     /// @param position widget's initial position
@@ -41,34 +40,20 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets text as input
     ///
-    /// @see `get`, `clear`
+    /// @see `getText`, `clearText`, `setTextLimit`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setInput(const sf::String& text);
+    void setText(const sf::String& text);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the background string content
     ///
+    /// Limit is 256 characters.
+    ///
+    /// @see `getBackGroundText`
+    ///
     ///////////////////////////////////////////////////////////////////
     void setBackGroundText(const sf::String& bg_text);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Moves the cursor to the input index
-    ///
-    /// If the index is larger than the current text length then the cursor
-    /// is moved to the last index.
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setCursorIndex(unsigned int idx);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Sets a filler character for entered text
-    ///
-    /// @param placeholder_char any character, set to 0 to remove the 
-    /// placeholder
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setPlaceholderChar(const char placeholder_char = 0);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets an input filter for entered characters
@@ -76,61 +61,43 @@ public:
     /// Function must accept a `char32_t` type as a parameter and return
     /// a boolean value to validate input.
     ///
-    /// Set func to null type to remove the filter.
+    /// Set func to nullptr type to remove the filter.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setInputFilter(std::function<bool(char32_t)> func = nullptr);
+    void setTextFilter(std::function<bool(char32_t*)> func = nullptr);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Sets a character limit for the entry
+    /// @brief Sets a character limit for the entry, default is 
+    /// `parameters::CHAR_LIMIT`
     ///
-    /// The limit also effects background text.
+    /// The limit does not effect background text.
     ///
-    ///////////////////////////////////////////////////////////////////
-    void setInputLimit(std::size_t max_chars);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Adjusts the uptime for the cursor
-    ///
-    /// Ratio can range from 0.f to 1.f, 0.f would mean the cursor is never
-    /// visible while 1.f keeps it visible at all time, anything in between
-    /// takes a share of `s_BLINK_PERIOD`.
-    ///
-    /// Cursor can be disabled/enabled with `FLAGS::INDICATOR` bit.
+    /// @see `getTextLimit`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setBLinkUpRatio(float ratio = 0.5f);
+    void setTextLimit(std::size_t max_chars);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates character size based on the height of the widget,
     /// default is `0.5f`
     ///
+    /// @note set to `0.f` to use a direct character size value instead of ratio value
+    ///
     /// @param ratio value from 0.f to 1.f
     ///
+    /// @see `getTextSize`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextSize(float ratio);
+    bool setTextSize(float ratio);
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates character size with the new value, default is
     /// `parameters::CHAR_SIZE`
     ///
-    ///////////////////////////////////////////////////////////////////
-    void setTextSize(unsigned int char_size);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the left offset for text scaling with the entry's
-    /// width, default is `0.1f`
-    ///
-    /// @param ratio set from `0.f` to 0.99..f`
+    /// @see `getTextSize`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setOffsetRatio(float ratio);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the cursor width
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setCursorWidth(unsigned int width);
+    bool setTextSize(unsigned int char_size);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a font for the input text
@@ -139,6 +106,8 @@ public:
     ///
     /// @warning if the passed font is an lvalue, it must outlive the entry
     /// or get replaced before it's deleted
+    ///
+    /// @see `getTextFont`
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font& font);
@@ -152,24 +121,73 @@ public:
     /// call to maintain it's reference for the widget's lifetime with the
     /// cost of extra memory usage
     ///
+    /// @see `getTextFont`
+    ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font&& font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the entry's input
     ///
-    /// @see `setInput`, `get`
+    /// @see `setText`, `getText`
     ///
     ///////////////////////////////////////////////////////////////////
-    void clear();
+    void clearText();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the current input string
+    /// @brief Adjusts the uptime for the cursor
     ///
-    /// @see `setInput`, `clear`
+    /// Ratio can range from `0.f` to `1.f`, `0.f` would mean the cursor is never
+    /// visible while `1.f` keeps it visible at all time, anything in between
+    /// takes a share of `s_BLINK_PERIOD` which is `1` second by default.
+    ///
+    /// @note Cursor can be disabled/enabled with `FLAGS::INDICATOR` bit.
+    ///
+    /// @see `getBlinkUpRatio`
     ///
     ///////////////////////////////////////////////////////////////////
-    const sf::String& get() const;
+    bool setBLinkUpRatio(float ratio = 0.5f);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Moves the cursor to the input index
+    ///
+    /// If the index is larger than the current text length then the cursor
+    /// is moved to the last index.
+    ///
+    /// @see `getCursorIndex`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    unsigned int setCursorIndex(unsigned int idx);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Sets a filler character for entered text
+    ///
+    /// @param placeholder_char any character, set to `0` to remove the 
+    /// placeholder
+    ///
+    /// @see `getPlaceholderChar`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setPlaceholderChar(const char placeholder_char = 0);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the left offset for text scaling with the entry's
+    /// width, default is `0.1f`
+    ///
+    /// @param ratio ranges from `[0.f, 1.f[`
+    ///
+    /// @see `getTextOffsetRatio`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setTextOffsetRatio(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the cursor width
+    ///
+    /// @see `getCursorWidth`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setCursorWidth(unsigned int width);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -181,12 +199,119 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTheme(EntryStyle s_entry);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Pulls the widget's style from it's linked theme object
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void fetchTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief R/W Reference to the current widget style
+    ///
+    /// @note if the widget is linked to a `WidgetTheme` source, any modifications
+    /// to the returned reference do not affect the theme's style and are overridden
+    /// by the theme if any updates are pushed to the widget.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] EntryStyle& style();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current input string
+    ///
+    /// @see `setText`, `clearText`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::String& getText() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current background text content
+    ///
+    /// @see `setBackGroundText`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::String& getBackGroundText() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current character size for text
+    ///
+    /// @see `setTextSize`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getTextSize() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current input text maximum number of characters
+    ///
+    /// @see `getTextLimit`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] std::size_t getTextLimit() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current text padding ratio
+    ///
+    /// @see `setTextOffsetRatio`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getTextOffsetRatio() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current font used by text
+    ///
+    /// @see `setTextFont`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::Font& getTextFont() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the placeholder character for input
+    ///
+    /// Returns 0 if no placeholder is taking place.
+    ///
+    /// @see `setPlaceholderChar`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] char getPlaceholderChar() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current index of the cursor
+    ///
+    /// @see `setCursorIndex`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getCursorIndex() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current width of the cursor
+    ///
+    /// @see `setCursorWidth`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getCursorWidth() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the duration in seconds for the cursor uptime
+    ///
+    /// If the cursor's visible period is 50% of the default complete period,
+    /// then this function would return `0.5` for 1/2 seconds.
+    ///
+    /// @see `setBlinkUpRatio`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getBlinkUpRatio() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current scroll offset in pixels
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getScrollOffset() const;
+
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Selects the entry and enables cursor
     ///
     ///////////////////////////////////////////////////////////////////
-    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Enters text to the entry
@@ -257,7 +382,7 @@ private:
     /// offsets.
     ///
     ///////////////////////////////////////////////////////////////////
-    void setCursorIndex(float x_pos);
+    void moveCursorIndex(float x_pos);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current x coordinate of the cursor
@@ -290,9 +415,9 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateView();
 
-
-
-
+///////////////////////////////////////////////////////////////////
+/// Member Variables
+///////////////////////////////////////////////////////////////////
 
     // drawing
     sf::RenderTexture m_renderTexture;                                  //!< Main drawing texture
@@ -303,29 +428,29 @@ private:
     
     // data
     sf::String m_textBuffer;                                            //!< Entry content
-    std::size_t m_cursorIndex = 0;                                      //!< Points to char in string index + 1, so m_textBuffer[0] = index 1
-    std::function<bool(char32_t)> m_inputFilter = nullptr;              //!< Active input filter for entry, this include `set_input` method as well
+    std::size_t m_cursorIndex{0};                                       //!< Points to char in string index + 1, so m_textBuffer[0] = index 1
+    std::function<bool(char32_t*)> m_inputFilter{nullptr};              //!< Active input filter for entry, this include `set_input` method as well
 
     // parameters
-    std::size_t m_inputLimit = parameters::CHAR_LIMIT;                  //!< Max possible number of characters
-    float m_textSizeRatio = 0.5f;                                       //!< Entry determines char size based on it's height
-    float m_textOffsetRatio = 0.05f;                                    //!< Left offset for text
-    unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Entry's char size
-    unsigned int m_cursorWidth = 1;                                     //!< The width of the cursor
-    char m_placeholderCharacter = 0;                                    //!< The visual text is replaced by this char, `0` char disables the replacement
+    std::size_t m_inputLimit{parameters::CHAR_LIMIT};                   //!< Max possible number of characters, default is `parameters::CHAR_LIMIT`
+    float m_textSizeRatio{0.5f};                                        //!< Entry determines char size based on it's height, default is `0.5f`, `range=[0.f, 1.f[`
+    float m_textOffsetRatio{0.05f};                                     //!< Left offset for text, default is `0.05f`, `range=[0.f, 1.f[`
+    unsigned int m_charSize{parameters::CHAR_SIZE};                     //!< Entry's char size, default is `parameters::CHAR_SIZE`
+    unsigned int m_cursorWidth{1};                                      //!< The width of the cursor, default is `1`
+    char m_placeholderCharacter{0};                                     //!< The visual text is replaced by this char, `0` char disables the replacement
     sf::Time m_cursorOnDuration;                                        //!< Uptime period for cursor
     sf::Time m_cursorOffDuration;                                       //!< Downtime period for cursor
 
     // funcionality
     sf::Clock m_blinkTimer;                                             //!< Cursor blinking timer
-    float m_textBoxWidth;                                               //!< Entry's text complete width
-    float m_currentPanOffset = 0.f;                                     //!< Current panned value
-    float m_maxPanOffset = 0.f;                                         //!< Max possible space for panning
-    EntryStyle m_style = Theme::entry_style::ENTRY_STALE_VIOLET;        //!< Entry's default style
+    float m_textBoxWidth{0.f};                                          //!< Entry's text complete width
+    float m_currentPanOffset{0.f};                                      //!< Current panned value
+    float m_maxPanOffset{0.f};                                          //!< Max possible space for panning
+    EntryStyle m_style{Theme::entry_style::ENTRY_STALE_VIOLET};         //!< Entry's default style
 
     static constexpr sf::Time s_BLINK_PERIOD = sf::milliseconds(1000);  //!< Blinking indicators period
-    static constexpr float s_SCROLL_RATIO = 0.3f;                       //!< Scrolls by 30% of the entry's width on each scroll event
-
+    static constexpr float s_SCROLL_RATIO{0.3f};                        //!< Scrolls by 30% of the entry's width on each scroll event
+    static constexpr std::size_t s_MAX_BG_TEXT_SIZE{256};               //!< Max length for background text
 };
 
 template <>

@@ -36,8 +36,7 @@ void Label::setText(const sf::String& text)
     if(!m_text.getString().isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
 
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setCharacterLimit(unsigned int char_limit)
@@ -52,73 +51,65 @@ void Label::setTextSize(unsigned int char_size)
     m_textSizeRatio = 0.f;
     m_charSize = char_size;
 
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setTextSize(float ratio)
 {
     if(ratio <= 0.f || ratio >= 1.f) return;
     m_textSizeRatio = ratio;
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setTextFont(const sf::Font& font)
 {
     m_text.setFont(font);
     if(m_font) m_font.reset();
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setTextFont(sf::Font&& font)
 {
     m_font = std::make_unique<const sf::Font>(std::move(font));
     m_text.setFont(*m_font);
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setTextStyle(sf::Text::Style style)
 {
     m_text.setStyle(style);
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setHorizontalAlignment(HAlign h)
 {
     m_horizontalAlign = h;
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setVerticalAlignment(VAlign v)
 {
     m_verticalAlign = v;
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setLineSpacing(float factor)
 {
     m_text.setLineSpacing(factor);
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setLetterSpacing(float factor)
 {
     m_text.setLetterSpacing(factor);
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setPaddingRatio(float ratio)
 {
     if(ratio < 0.f || ratio > 1.f) return;
     m_paddingRatio = ratio;
-    updateTextSize();
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::setTheme(LabelStyle s_label)
@@ -127,30 +118,46 @@ void Label::setTheme(LabelStyle s_label)
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
+void Label::fetchTheme()
+{
+    if(auto t = m_themePtr.lock()) setTheme(t->getStyle<Label>());
+}
+
+LabelStyle& Label::style()
+{
+    return m_style;
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
 
 void Label::drawWidget()
 {
+    if(checkFlag(m_flags, FLAGS::UPDATE))
+    {
+        resetFlag(m_flags, FLAGS::UPDATE);
+        updateTextSize();
+        updateTextPosition();
+    }
+
     if(checkFlag(m_flags, FLAGS::TEXT)) m_master.draw(m_text);
 }
 
 void Label::updatePosition()
 {
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::updateSize()
 {
-    updateTextSize();
-    updateTextPosition(); //!< keep text aligned
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::updateRotation()
 {
     m_text.setRotation(this->getRotation());
-    updateTextPosition();
+    setFlag(m_flags, FLAGS::UPDATE);
 }
 
 void Label::updateState()

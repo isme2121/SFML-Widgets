@@ -7,9 +7,9 @@
 */
 #ifndef FONTS_AND_LEN
 #define FONTS_AND_LEN
-static inline unsigned int Inter_Light_ttf_len = 343704;
-static inline unsigned int Inter_Regular_ttf_len = 342680;
-static inline unsigned int Inter_SemiBold_ttf_len = 343828;
+constexpr unsigned int Inter_Light_ttf_len = 343704;
+constexpr unsigned int Inter_Regular_ttf_len = 342680;
+constexpr unsigned int Inter_SemiBold_ttf_len = 343828;
 
 
 static inline unsigned char Inter_Light_ttf[] = {

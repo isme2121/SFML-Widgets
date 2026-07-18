@@ -334,7 +334,7 @@ constexpr ButtonStyle BUTTON_LIGHT_STYLE =
     {215, 215, 218, 255},   // blocked_outline_color
     {185, 185, 198, 70},    // transparent_outline_color
  
-    0.0f,                   // outline_thickness
+    1.0f,                   // outline_thickness
     0.0f,                   // hovered_outline_thickness
     0.0f,                   // active_outline_thickness
     0.0f,                   // blocked_outline_thickness
@@ -388,7 +388,7 @@ constexpr ButtonStyle BUTTON_DARK_STYLE =
     {44, 44, 50, 255},      // blocked_outline_color
     {78, 78, 95, 72},       // transparent_outline_color
  
-    0.0f,                   // outline_thickness
+    1.0f,                   // outline_thickness
     0.0f,                   // hovered_outline_thickness
     0.0f,                   // active_outline_thickness
     0.0f,                   // blocked_outline_thickness
@@ -532,29 +532,29 @@ constexpr ButtonStyle BUTTON_MIDNIGHT_ROSE =
 
 constexpr ButtonStyle BUTTON_EMERALD_FOREST =
 {
-    {24, 32, 26},
-    {47, 54, 49},
-    {36, 97, 64},
-    {18, 24, 20},
-    {24, 32, 26, 80},
+    {24, 32, 26},           
+    {47, 54, 49},           
+    {36, 97, 64},           
+    {18, 24, 20},           
+    {24, 32, 26, 80},           
 
-    {206, 218, 211},
-    {166, 201, 182},
-    {228, 235, 231},
-    {103, 118, 108},
-    {206, 218, 211, 120},
+    {206, 218, 211},            
+    {166, 201, 182},            
+    {228, 235, 231},            
+    {103, 118, 108},            
+    {206, 218, 211, 120},           
 
-    {38, 109, 71},
-    {71, 131, 99},
-    {103, 153, 126},
-    {17, 49, 32},
-    {38, 109, 71, 120},
+    {38, 109, 71},          
+    {71, 131, 99},          
+    {103, 153, 126},            
+    {17, 49, 32},           
+    {38, 109, 71, 120},         
 
-    2.0f,
-    2.0f,
-    2.0f,
-    1.0f,
-    2.0f
+    2.0f,           
+    2.0f,           
+    2.0f,           
+    1.0f,           
+    2.0f            
 };
 
 constexpr ButtonStyle BUTTON_GOLDEN_AMBER =
@@ -1136,7 +1136,7 @@ namespace checkbox_style
 {
 constexpr CheckboxStyle CHECKBOX_LIGHT_STYLE =
 {
-    {28, 28, 32, 255},      // on_color
+    {202, 196, 201, 255},   // on_color
     {245, 245, 247, 255},   // off_color
     {245, 245, 247, 255},   // hover_color
     {220, 220, 223, 255},   // blocked_color
@@ -1152,12 +1152,12 @@ constexpr CheckboxStyle CHECKBOX_LIGHT_STYLE =
     {215, 215, 218, 255},   // blocked_outline_color
     {185, 185, 198, 70},    // transparent_outline_color
 
-    5.0f,                   // outline_thickness          
+    2.0f,                   // outline_thickness          
 };
 
 constexpr CheckboxStyle CHECKBOX_DARK_STYLE =
 {
-    {245, 245, 247, 255},   // on_color
+    {76, 72, 72, 255},      // on_color
     {28, 28, 32, 255},      // off_color
     {28, 28, 32, 255},      // hover_color
     {34, 34, 38, 255},      // blocked_color
@@ -1173,7 +1173,7 @@ constexpr CheckboxStyle CHECKBOX_DARK_STYLE =
     {215, 215, 218, 255},   // blocked_outline_color
     {185, 185, 198, 70},    // transparent_outline_color
 
-    5.0f,                   // outline_thickness          
+    2.0f,                   // outline_thickness          
 };
 
 constexpr CheckboxStyle CHECKBOX_STALE_VIOLET =
@@ -1262,84 +1262,84 @@ constexpr CheckboxStyle CHECKBOX_MIDNIGHT_ROSE =
 
 constexpr CheckboxStyle CHECKBOX_EMERALD_FOREST =
 {
-    {43, 132, 85},           // fill_on_color
+    {43, 132, 85},          // fill_on_color
     {24, 32, 26},           // fill_off_color
     {47, 54, 49},           // fill_hover_color
     {18, 24, 20},           // fill_blocked_color
-    {24, 32, 26, 80},           // fill_trasnparent_color (sic — matches real field name)
+    {24, 32, 26, 80},       // fill_trasnparent_color (sic — matches real field name)
 
-    {206, 218, 211},           // text_color
-    {166, 201, 182},           // text_hover_color
-    {103, 118, 108},           // text_blocked_color
-    {206, 218, 211, 120},           // text_transparent_color
+    {206, 218, 211},        // text_color
+    {166, 201, 182},        // text_hover_color
+    {103, 118, 108},        // text_blocked_color
+    {206, 218, 211, 120},   // text_transparent_color
 
-    {38, 109, 71},           // outline_color
-    {71, 131, 99},           // outline_hover_color
+    {38, 109, 71},          // outline_color
+    {71, 131, 99},          // outline_hover_color
     {17, 49, 32},           // outline_blocked_color
-    {38, 109, 71, 120},           // outline_transparent_color
+    {38, 109, 71, 120},     // outline_transparent_color
 
     2.0f                    // outline_thickness
 };
 
 constexpr CheckboxStyle CHECKBOX_GOLDEN_AMBER =
 {
-    {179, 132, 37},           // fill_on_color
+    {179, 132, 37},         // fill_on_color
     {34, 28, 18},           // fill_off_color
     {56, 51, 42},           // fill_hover_color
     {26, 21, 14},           // fill_blocked_color
-    {34, 28, 18, 80},           // fill_trasnparent_color (sic — matches real field name)
+    {34, 28, 18, 80},       // fill_trasnparent_color (sic — matches real field name)
 
-    {223, 217, 205},           // text_color
-    {218, 200, 164},           // text_hover_color
-    {123, 115, 100},           // text_blocked_color
-    {223, 217, 205, 120},           // text_transparent_color
+    {223, 217, 205},        // text_color
+    {218, 200, 164},        // text_hover_color
+    {123, 115, 100},        // text_blocked_color
+    {223, 217, 205, 120},   // text_transparent_color
 
-    {145, 107, 32},           // outline_color
-    {162, 129, 65},           // outline_hover_color
+    {145, 107, 32},         // outline_color
+    {162, 129, 65},         // outline_hover_color
     {65, 48, 14},           // outline_blocked_color
-    {145, 107, 32, 120},           // outline_transparent_color
+    {145, 107, 32, 120},    // outline_transparent_color
 
     2.0f                    // outline_thickness
 };
 
 constexpr CheckboxStyle CHECKBOX_CRIMSON_ASH =
 {
-    {171, 50, 52},           // fill_on_color
+    {171, 50, 52},          // fill_on_color
     {32, 20, 20},           // fill_off_color
     {54, 44, 44},           // fill_hover_color
     {24, 15, 15},           // fill_blocked_color
-    {32, 20, 20, 80},           // fill_trasnparent_color (sic — matches real field name)
+    {32, 20, 20, 80},       // fill_trasnparent_color (sic — matches real field name)
 
-    {222, 207, 207},           // text_color
-    {215, 169, 170},           // text_hover_color
-    {121, 102, 102},           // text_blocked_color
-    {222, 207, 207, 120},           // text_transparent_color
+    {222, 207, 207},        // text_color
+    {215, 169, 170},        // text_hover_color
+    {121, 102, 102},        // text_blocked_color
+    {222, 207, 207, 120},   // text_transparent_color
 
-    {138, 43, 45},           // outline_color
-    {156, 75, 76},           // outline_hover_color
+    {138, 43, 45},          // outline_color
+    {156, 75, 76},          // outline_hover_color
     {62, 19, 20},           // outline_blocked_color
-    {138, 43, 45, 120},           // outline_transparent_color
+    {138, 43, 45, 120},     // outline_transparent_color
 
     2.0f                    // outline_thickness
 };
 
 constexpr CheckboxStyle CHECKBOX_STEEL_GRAPHITE =
 {
-    {93, 110, 132},           // fill_on_color
+    {93, 110, 132},         // fill_on_color
     {24, 26, 30},           // fill_off_color
     {47, 49, 52},           // fill_hover_color
     {18, 20, 22},           // fill_blocked_color
-    {24, 26, 30, 80},           // fill_trasnparent_color (sic — matches real field name)
+    {24, 26, 30, 80},       // fill_trasnparent_color (sic — matches real field name)
 
-    {212, 215, 217},           // text_color
-    {185, 192, 200},           // text_hover_color
-    {122, 124, 127},           // text_blocked_color
-    {212, 215, 217, 120},           // text_transparent_color
+    {212, 215, 217},        // text_color
+    {185, 192, 200},        // text_hover_color
+    {122, 124, 127},        // text_blocked_color
+    {212, 215, 217, 120},   // text_transparent_color
 
-    {77, 90, 108},           // outline_color
-    {104, 115, 130},           // outline_hover_color
+    {77, 90, 108},          // outline_color
+    {104, 115, 130},        // outline_hover_color
     {35, 40, 49},           // outline_blocked_color
-    {77, 90, 108, 120},           // outline_transparent_color
+    {77, 90, 108, 120},     // outline_transparent_color
 
     2.0f                    // outline_thickness
 };

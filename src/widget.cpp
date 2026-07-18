@@ -16,7 +16,6 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     // original window size
     m_windowSize = sf::Vector2f(root.getSize());
     // for any derived checks
-    setFlag(m_flags, FLAGS::INIT);
 }
 
 Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
@@ -27,10 +26,9 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
 
     s_widgets.emplace_back(this);
     m_windowSize = sf::Vector2f(root.getWindowPtr()->getSize());
-    setFlag(m_flags, FLAGS::INIT);
 
     // this updates the inheritable flags from root frame
-    configure(FLAGS::INIT);
+    configure(FLAGS::MODIFIED);
 }
 
 Widget::~Widget()
@@ -96,9 +94,9 @@ void Widget::configure(FLAGS flags)
     }
 
     /* updates related to explicit function calls happen directly */
-    if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
-    if(checkFlag(m_flags, FLAGS::NOCLIPSHADER)) resetClipShader();
-    if(checkFlag(m_flags, FLAGS::NOCOLORSHADER)) resetColorShader();
+    if(checkFlag(mask, FLAGS::NOBGIMAGE) and !checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
+    if(checkFlag(mask, FLAGS::NOCLIPSHADER) and !checkFlag(m_flags, FLAGS::NOCLIPSHADER)) resetClipShader();
+    if(checkFlag(mask, FLAGS::NOCOLORSHADER) and !checkFlag(m_flags, FLAGS::NOCOLORSHADER)) resetColorShader();
     
     /* flags that should be immediately updated */
 
@@ -178,7 +176,7 @@ void Widget::setWidgetRotation(float new_angle)
 bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     // hidden or blocked widgets can't trigger mouse events
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || s_GUARD_EVENT && s_mouseEventUsed) return false;
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) return false;
 
     // get mouse position
     if(!mouse_position) *mouse_position = getMousePosition();    
@@ -186,16 +184,22 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     // HOVERED & ALPHAREDUCED flags are updated here
     updateMouseState(event, *mouse_position);
 
+    // indicate if event is already consumed by other widgets
+    // blocks event callbacks but allows for state update
+    const bool EVENT_USED{s_GUARD_EVENT && s_mouseEventUsed};
+
+    // this is passed to post-process with relevant info about the event
+    W_MouseEventDetails event_details;
+
     // from derived, may consume the event
-    if(preProcessMouseEvents(event, *mouse_position))
+    if(!EVENT_USED && preProcessMouseEvents(event, *mouse_position))
     {
-        s_mouseEventUsed = true;
-        return s_mouseEventUsed;
+        event_details.is_used = true;
     }
     
     /* This section contains the default mouse event checkup for widgets */
-    // this is passed to post-process with relevant info about the event
-    W_MouseEventDetails event_details;
+
+
 
     // pressed mouse button
     if(const sf::Event::MouseButtonPressed* clicked = event.getIf<sf::Event::MouseButtonPressed>())
@@ -208,7 +212,6 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         if(checkFlag(m_flags, FLAGS::HOVERED))
         {
             setFlag(m_flags, FLAGS::SELECTED); //!< widget is selected, can trigger release and keyboard events
-            focusWidget(*this, event); //!< widget is set for focus resource
 
             // memory for release event
             m_memButton.emplace(clicked->button);
@@ -217,10 +220,13 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
                 setFlag(m_flags, FLAGS::ACTIVE); //!< widget can now trigger hold event
             
             // assigned callback
-            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_pressEvents.find(clicked->button);
-            if(it != m_pressEvents.end()) it->second(*clicked);
-
-            event_details.is_used = true; //!< event is consumed even if no callback is assigned
+            if(!EVENT_USED)
+            {
+                const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_pressEvents.find(clicked->button);
+                if(it != m_pressEvents.end()) it->second(*clicked);
+                event_details.is_used = true; //!< event is consumed even if no callback is assigned
+                focusWidget(*this, event); //!< widget is set for focus
+            }
         }
         else
         {
@@ -244,13 +250,15 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         // to trigger release event:
         // 1. widget must be selected & hovered
         // 2. released mouse button is the same as pressed mouse events
-        if(checkFlags(m_flags, FLAGS::SELECTED | FLAGS::HOVERED) && m_memButton && m_memButton.value() == released_button)
+        if(checkFlag(m_flags, FLAGS::HOVERED))
         {
-            // assigned callback
-            const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
-            if(it != m_releaseEvents.end()) it->second(*released);
-
-            event_details.is_used = true; //!< event is consumed event if no callback is called
+            if(!EVENT_USED && checkFlag(m_flags, FLAGS::SELECTED) && m_memButton && m_memButton.value() == released_button)
+            {
+                // assigned callback
+                const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
+                if(it != m_releaseEvents.end()) it->second(*released);
+                event_details.is_used = true; //!< event is consumed event if no callback is called
+            }
         }
         else
         {
@@ -269,20 +277,11 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         event_details.scroll_delta = scrolled->delta;
 
         // assigned callback
-        if(checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
+        if(!EVENT_USED && checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
         {
             m_scrollCallBack(*scrolled);
             event_details.is_used = true;
         }
-    }
-
-    // resize event, static callback to resize all widgets
-    else if(const sf::Event::Resized* resized = event.getIf<sf::Event::Resized>())
-    {
-        // this blocks re-doing the process for each widget checkin for events
-        // only the first widget to check will call this
-        Widget::resizeWidgets(m_master.getRootWindowPtr(), *resized);
-        event_details.is_used = true;
     }
     
     // holding mouse button, we know the widget is pressed and has yet to release
@@ -292,7 +291,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         event_details.button = s_FOCUS_BUTTON;
 
         // assigned callback
-        if(m_holdCallBack)
+        if(!EVENT_USED && m_holdCallBack)
         {
             m_holdCallBack(event);
             event_details.is_used = true;
@@ -305,10 +304,21 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         }
     }
 
-    // derived class post-process, can modify details
-    postProcessMouseEvents(event_details, event, *mouse_position);
+    // resize event, static callback to resize all widgets
+    else if(const sf::Event::Resized* resized = event.getIf<sf::Event::Resized>())
+    {
+        // this blocks re-doing the process for each widget checkin for events
+        // only the first widget to check will call this
+        Widget::resizeWidgets(m_master.getRootWindowPtr(), *resized);
+    }
 
-    s_mouseEventUsed = event_details.is_used;
+    // derived class post-process, can modify details
+    if(!EVENT_USED && postProcessMouseEvents(event_details, event, *mouse_position))
+    {
+        event_details.is_used = true;
+    }
+
+    s_mouseEventUsed = s_mouseEventUsed || event_details.is_used;
     return event_details.is_used;
 
 }
@@ -318,30 +328,40 @@ bool Widget::captureKeyEvents(const sf::Event& event)
     // key event won't trigger if:
     if(s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
        checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) ||                                        //!< widget is either blocked or restricted
-      !checkFlag(m_flags, FLAGS::HOVERED | FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;      //!< widget is neither hovered, selected, not always selected
+      !checkFlag(m_flags, FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;                       //!< widget is neither selected, always selected
     
+    // indicate if event is already consumed by other widgets
+    // blocks event callbacks but allows for state update
+    const bool EVENT_USED{s_GUARD_EVENT && s_keyEventUsed};
+    bool used_event{false};
+
     // derived class pre-process
-    if(preProcessKeyEvents(event)) return true;
+    if(!EVENT_USED && preProcessKeyEvents(event))
+    {
+        used_event = true;
+    }
 
     // triggers key callback
-    bool event_used = m_binds.checkEvents(event);
-
-    // check if we wanna restrict the widget after a successful call
-    if(event_used && s_RESTRICT_AFTER_KEYEVENT)
+    if(!EVENT_USED && m_binds.checkEvents(event))
     {
-        if(s_RESTRICTION_DURATION != sf::Time::Zero)
+        used_event = true;
+
+        if(s_RESTRICT_AFTER_KEYEVENT && s_RESTRICTION_DURATION != sf::Time::Zero)
         {
             // now key events cannot trigger for this duration
             setFlag(m_flags, FLAGS::RESTRICTED);
             m_restrictEvent = std::make_unique<W_QueueEvent>(s_RESTRICTION_DURATION, [this](){resetFlag(m_flags, FLAGS::RESTRICTED);});
         }
-        event_used = true;
     }
 
     // derived class post-process
-    if(postProcessKeyEvents(event)) event_used = true;
+    if(!EVENT_USED && postProcessKeyEvents(event))
+    {
+        used_event = true;
+    }
 
-    return event_used;
+    s_keyEventUsed = s_keyEventUsed || used_event;
+    return used_event;
 }
 
 void Widget::bindMouseEvent(W_MouseEventType event_type, MouseCallback callback, std::optional<sf::Mouse::Button> button)
@@ -431,12 +451,12 @@ void Widget::unbindMouseEvent(W_MouseEventType event_type, std::optional<sf::Mou
     }
 }
 
-void Widget::bindShortCut(const std::string& tag, Sequence key_sequence, SequenceFunction callback)
+void Widget::bindKeyEvent(const std::string& tag, Sequence key_sequence, SequenceFunction callback)
 {
     m_binds.addSequence(tag, key_sequence, callback);
 }
 
-void Widget::unbindShortCut(const std::string& tag)
+void Widget::unbindKeyEvent(const std::string& tag)
 {
     m_binds.deleteSequence(tag);
 }
@@ -641,6 +661,11 @@ void Widget::addToQueue(std::size_t after_frames, std::function<void()> callback
     checkQueue();
 }
 
+void Widget::clearQueue()
+{
+    m_events.clear();
+}
+
 void Widget::addRoutine(sf::Time ms_period, std::function<bool()> callback)
 {
     m_repeatEvents.emplace_back(ms_period, std::move(callback));
@@ -656,31 +681,39 @@ void Widget::clearRoutine()
     m_repeatEvents.clear();
 }
 
-void Widget::linkWidget(std::shared_ptr<WidgetGroup>& new_group)
+bool Widget::linkWidget(std::shared_ptr<WidgetGroup>& new_group)
 {
-    if(!new_group) return;
+    if(!new_group) return false;
 
     std::shared_ptr<WidgetGroup> old_group = m_groupPtr.lock();
-    if(old_group == new_group) return;
+    if(old_group == new_group) return false; //!< same group
     
-    if(old_group && !old_group->remove(this)) return;
+    if(old_group && !old_group->remove(this)) return false; //!< failed to remove widget from old group
 
     if(new_group->add(this))
     {
+        // synced to new group
         m_groupPtr = new_group;
-        return;
+        return true;
     }
 
+    // failed to add this to new group + removed from old group
     std::cerr << "Failed to add widget to group.\n";
     m_groupPtr.reset();
+    return false;
 }
 
-void Widget::unlinkWidget()
+bool Widget::unlinkWidget()
 {
     if(std::shared_ptr<WidgetGroup> old_group = m_groupPtr.lock())
     {
-        if(old_group->remove(this)) m_groupPtr.reset();
+        if(old_group->remove(this))
+        {
+            m_groupPtr.reset();
+            return true;
+        }
     }
+    return false;
 }
 
 void Widget::linkTheme(std::shared_ptr<WidgetTheme>& t)
@@ -747,6 +780,16 @@ const sf::FloatRect Widget::getAbsoluteBounds() const
     return sf::FloatRect(getAbsolutePosition(), m_size);
 }
 
+const sf::RenderWindow* Widget::getRootWindow() const
+{
+    return m_master.getWindowPtr();
+}
+
+const Frame* Widget::getRootFrame() const
+{
+    return m_master.getFramePtr();
+}
+
 bool Widget::isFlag(FLAGS bits) const
 {
     return checkFlag(m_flags, bits);
@@ -770,7 +813,7 @@ bool Widget::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& m
     return false;
 }
 
-void Widget::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+bool Widget::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     /*
     * default implementation, called after doing the mouse event checkup
@@ -778,7 +821,7 @@ void Widget::postProcessMouseEvents(W_MouseEventDetails& details, const sf::Even
     * as an argument for any post-callback. set details.is_used if the event
     * resource was utilized here.
     */
-
+    return false;
 }
 
 bool Widget::preProcessKeyEvents(const sf::Event& event)

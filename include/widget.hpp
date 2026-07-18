@@ -66,6 +66,12 @@ public:
     ///
     /// Use `|` operator to pass multiple flags at once.
     ///
+    /// @note only flags stated in constant `MODIFIABLE` are accepted as parameters.
+    /// @note flags like `HIDDEN | BLOCKED | RESIZED` are propagated by the root frame
+    /// if this widget is constructed on one but can still be manually set here.
+    /// @note flags like `NOBGIMAGE | NOCLIPSHADER | NOCOLORSHADER | TRANSPARENT | AUTOTRANSPARENT`
+    /// immediately take effect.
+    ///
     /// @param  flags modifiable state flags, @see `MODIFIABLE`
     ///
     ///////////////////////////////////////////////////////////////////
@@ -84,7 +90,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates widget's size
     ///
-    /// @see `getWidgetSize`, 
+    /// @see `getWidgetSize`
     ///
     ///////////////////////////////////////////////////////////////////
     void setWidgetSize(const sf::Vector2f size);
@@ -124,7 +130,7 @@ public:
     /// @brief Checks for widget keyboard events
     ///
     /// Checks for keyboard events that are assigned to the widget within
-    /// `bindShortCut` method.
+    /// `bindKeyEvent` method.
     ///
     /// Call this method in the events loop once per widget unless if the widget
     /// belongs to a `Frame`, then calling this from the root `Frame` widget is
@@ -135,7 +141,7 @@ public:
     ///
     /// @param event Event object from `sf::WindowBase::pollEvent`
     ///
-    /// @see `bindShortCut`, `unbindShortCut`, `resizeWidgets`
+    /// @see `bindKeyEvent`, `unbindKeyEvent`, `resizeWidgets`
     ///
     ///////////////////////////////////////////////////////////////////
     bool captureKeyEvents(const sf::Event& event);
@@ -180,32 +186,32 @@ public:
     /// Takes a vector of `Key` objects to define a sequence of key presses,
     /// sequence can also be a single key press.
     ///
-    /// @param tag string reference to the following sequence
+    /// @param tag unique string reference to the following sequence
     /// @param key_sequence vector<sfml_widgets::Key> objects defining a sequence, passing
     /// an empty sequence will simply fail to bind
     /// @param callback function that triggers upon matching the sequence, does not take 
     /// any parameters
     ///
-    /// @see `captureKeyEvents`, `unbindShortCut`
+    /// @see `captureKeyEvents`, `unbindKeyEvent`
     ///
     ///////////////////////////////////////////////////////////////////
-    void bindShortCut(const std::string& tag, Sequence key_sequence, SequenceFunction callback);
+    void bindKeyEvent(const std::string& tag, Sequence key_sequence, SequenceFunction callback);
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears callback and event key sequence from widget.
     ///
     /// @param tag string reference of the sequence
     /// 
-    /// @see `captureKeyEvents`, `bindShortCut`
+    /// @see `captureKeyEvents`, `bindKeyEvent`
     ///
     ///////////////////////////////////////////////////////////////////
-    void unbindShortCut(const std::string& tag);
+    void unbindKeyEvent(const std::string& tag);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Loads a shader for sprites
     ///
-    /// Tries to load a fragment shader from disk or from memory while
-    /// replacing the existing one even if the process fails.
+    /// Attempts to load a fragment shader from disk or from memory while, any previously
+    /// loaded clip shader is cleared even if the process fails.
     ///
     /// Clip shader is responsible for clipping sprites to match the widget's
     /// shape based on what the widget requires, not needed for widgets that
@@ -238,7 +244,8 @@ public:
     /// @brief Loads a shader for fill color 
     ///
     /// Applied to the shape texture by default, handles colors multiplication
-    /// between the shape and any loaded texture.
+    /// between the shape and any loaded texture, any previously loaded color shader
+    /// is cleared even if the process fails.
     ///
     /// @note this process would fail if the hardware does no support shaders or
     /// `NOCOLORSHADER` flag is set
@@ -267,9 +274,11 @@ public:
     ///////////////////////////////////////////////////////////////////    
     /// @brief Loads an image as a fill background
     ///
-    /// Tries to load an image using it's path in the disk, if `NOBGIMAGE`
-    /// flag is set then the whole process is skipped. This would also load
-    /// a proper color shader if wasn't previously loaded.
+    /// Attempts to load the widget's texture from memory or from a file,
+    /// texture is displayed on the widget's background and can also use a shader
+    /// for better color handling.
+    ///
+    /// @note this process is skipped if `FLAGS::NOBGIMAGE` flag is set
     ///
     /// @param file_path path to image
     /// @param shader fragment file path or content from memory
@@ -280,7 +289,7 @@ public:
     /// @see `loadColorShader`, `clearBackgroundTexture`, `refreshBackgroundTexture`
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader = TEXTURE_SHADER_FRAG, W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears Background image texture from memory
@@ -331,12 +340,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a callback for execution after a certain delay
     ///
-    /// @note `BLOCKED` flag pauses any queued event timer
+    /// @note `BLOCKED` flag pauses any queued event timer but can still add or remove
+    /// from the queue while in a blocked state
     ///
     /// @param after_ms delay in ms
     /// @param callback function to trigger
     /// @param is_priority takes the current queued event spot, any postponed
     /// event is only paused until this one executes
+    ///
+    /// @see `clearQueue`
     ///
     ///////////////////////////////////////////////////////////////////
     void addToQueue(sf::Time after_ms, std::function<void()> callback, bool is_priority = false);
@@ -345,15 +357,26 @@ public:
     /// @brief Sets a callback for execution after a set number of frames
     /// have passed
     ///
-    /// @note `BLOCKED` flag pauses any queued event timer
+    /// @note `BLOCKED` flag pauses any queued event timer but can still add or remove
+    /// from the queue while in a blocked state
     ///
     /// @param after_frames delay in frames
     /// @param callback function to trigger
     /// @param is_priority takes the current queued event spot, any postponed
     /// event is only paused until this one executes
     ///
+    /// @see `clearQueue`
+    ///
     ///////////////////////////////////////////////////////////////////
     void addToQueue(std::size_t after_frames, std::function<void()> callback, bool is_priority = false);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Cancels all queued events for this widget
+    ///
+    /// @see `addToQueue`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void clearQueue();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Creates and starts a repeated process until callback returns
@@ -368,6 +391,8 @@ public:
     /// @param ms_period down time before calling callback again
     /// @param callback function to call, must return boolean value to indicate
     /// routine termination
+    ///
+    /// @see `clearRoutine`
     ///
     ///////////////////////////////////////////////////////////////////
     void addRoutine(sf::Time ms_period, std::function<bool()> callback);
@@ -386,11 +411,15 @@ public:
     /// @param callback function to call, must return boolean value to indicate
     /// routine termination
     ///
+    /// @see `clearRoutine`
+    ///
     ///////////////////////////////////////////////////////////////////
     void addRoutine(std::size_t frames_period, std::function<bool()> callback);
     
     ///////////////////////////////////////////////////////////////////
     /// @brief clears all routines from the widget's memory
+    ///
+    /// @see `addRoutine`
     ///
     ///////////////////////////////////////////////////////////////////
     void clearRoutine();
@@ -398,22 +427,14 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Appends this widget to a group of related widgets
     ///
-    /// This is only needed to control the `FOCUSED` resource between widgets:
-    ///
-    /// `FOCUSED` resource is assigned to only 1 widget at most at each time,
-    /// passing the resource implicitly calls the widget's focus or focuslost callback if
-    /// provided, a widget group can control if they should call those callbacks when
-    /// the resource is passed within the same group (@see `WidgetGroup` for more info).
-    /// 
-    /// For example, a manu bar linked with it's drop boxes to control when they lose
-    /// focus and become hidden again after selecting.
+    /// Useful for controlling the `FOCUSED` flag, @see `WidgetGroup` for more info.
     ///
     /// @param new_group shared ptr of type `WidgetGroup` created using `WidgetGroup::make_group`
     ///    
     /// @see `WidgetGroup`, `unlinkGroup`
     ///
     ///////////////////////////////////////////////////////////////////
-    void linkWidget(std::shared_ptr<WidgetGroup>& new_group);
+    bool linkWidget(std::shared_ptr<WidgetGroup>& new_group);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes the widget from it's current group
@@ -421,7 +442,7 @@ public:
     /// @see `WidgetGroup`, `linkWidget`
     ///
     ///////////////////////////////////////////////////////////////////
-    void unlinkWidget();
+    bool unlinkWidget();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns widget to a shared theme object
@@ -431,7 +452,7 @@ public:
     ///
     /// @param t shared ptr of type `WidgetTheme` created using `WidgetTheme::make_theme`
     ///
-    /// @see `WidgetTheme`, `Widget::unlinkTheme`
+    /// @see `WidgetTheme`, `unlinkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void linkTheme(std::shared_ptr<WidgetTheme>& t);
@@ -440,30 +461,33 @@ public:
     /// @brief Removes syncing of theme with assigned `WidgetTheme` object
     ///
     /// Widget keeps it current style and can still be manually updated
-    /// but it would no longer be controled by a shared theme.
+    /// but it would no longer get updates from a shared theme.
     ///
-    /// @see `WidgetTheme`, `Widget::linkTheme`
+    /// @see `WidgetTheme`, `linkTheme`
     ///
     ///////////////////////////////////////////////////////////////////
     void unlinkTheme();
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Pulls the widget's style from it's linked theme object
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    virtual void fetchTheme() = 0;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Initiates ToolTip for this widget and returns it's pointer
     ///
     /// After hovering on this widget for `delay_ms` period of time, `ToolTip`
-    /// is drawn at `abs_position` parameter relative to the window, each parameter
-    /// here can be directly updated from the returned pointer alongside
-    /// the text content itself.
-    ///
-    /// Calling this method while ToolTip is already enabled simply returns a
-    /// weak pointer to the same ToolTip object.
+    /// is drawn at `abs_position` parameter relative to the main window, each
+    /// parameter can be directly updated from the returned pointer alongside
+    /// the text content.
     ///
     /// @param abs_position position relative to the widget's window
     /// @param delay_ms hover duration in milliseconds
     /// @param text_size character size used by text
     /// @param style ToolTip's color style
     ///
-    /// @see `DisableToolTip`
+    /// @see `DisableToolTip`, `ToolTip`
     ///
     ///////////////////////////////////////////////////////////////////
     [[nodiscard]] std::weak_ptr<ToolTip> EnableToolTip(sf::Vector2f abs_position,
@@ -474,11 +498,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current ToolTip instance
     ///
-    /// Any weak pointer pointing at the generated ToolTip becomes expired and
-    /// ToolTip is no longer drawn after hovering, it can be enabled again but
-    /// it's parameters are reset back to default.
+    /// Any weak pointer pointing at the generated ToolTip turns expired and
+    /// `ToolTip` is no longer drawn after hovering, it can be enabled again but
+    /// its parameters are reset back to default.
     ///
-    /// @see `EnableToolTip`
+    /// @see `EnableToolTip`, `ToolTip`
     ///
     ///////////////////////////////////////////////////////////////////
     void DisableToolTip();
@@ -510,6 +534,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief returns the current rotation angle of the widget
     ///
+    /// @see `setWidgetRotation`, `rotateWidget`
+    ///
     ///////////////////////////////////////////////////////////////////
     sf::Angle getWidgetRotation() const;
 
@@ -518,16 +544,28 @@ public:
     ///
     /// Position in bounds would be relative to the root frame if widget
     /// is placed in one, otherwise, returns position relative to the window 
-    /// view if widget is placed on the window.
+    /// view if widget is placed directly on the window.
     ///
     ///////////////////////////////////////////////////////////////////
     const sf::FloatRect getBounds() const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns widget bounds relative to the window
+    /// @brief Returns widget bounds relative to the main window
     ///
     ///////////////////////////////////////////////////////////////////
     const sf::FloatRect getAbsoluteBounds() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a pointer to the main window
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const sf::RenderWindow* getRootWindow() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a pointer to the root frame if it exists
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const Frame* getRootFrame() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for a state or a flag's current condition in this widget
@@ -555,16 +593,20 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Optional pre-process for when checking for mouse events
     ///
-    /// `captureMouseEvents` calls this before doing it's checkup process,
-    /// if true is returned then the rest of the checkup is skipped and true is
-    /// returned, but this is completely optional.
+    /// `captureMouseEvents` calls this before doing it's state update process if event is
+    /// not consumed yet, if true is returned then the event is consumed, this widget can still
+    /// trigger bind callbacks and postProcess afterwards but other widgets cannot call any
+    /// callbacks until next loop (unless if `s_GUARD_EVENT` macro is false).
+    ///
+    /// @note Returning true consumes the event for this loop.
+    /// @note Flag states are updated after this method is called even if true is returned.
     ///
     /// @param event reference to event object passed in `captureMouseEvents`
-    /// @param mouse_position position relative to the window screen
+    /// @param mouse_position position relative to the window view
     ///
     /// @return true if the event was consumed, otherwise false
     ///
-    /// @see `captureMouseEvents`
+    /// @see `captureMouseEvents`, `postProcessMouseEvents`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position);
@@ -572,32 +614,36 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Optional post-process for when checking for mouse events
     ///
-    /// `captureMouseEvents` calls this after doing it's checkup process,
-    /// details parameter is already processed by the widget and stores
-    /// details about the event to skip checking for the type of event, this
-    /// acts as an optional derived extra checkup for the event.
+    /// `captureMouseEvents` calls this after doing it's state update process,
+    /// takes read only details parameter for info about the current event.
+    ///
+    /// @note Returning true consumes the event for this loop.
+    /// @note This method will only run if the event is not consumed by other widgets
+    /// or the event was just consumed by this widget (will always run if `s_GUARD_EVENT` is false).
+    /// @note Flag states are updated before this method is called (except `FOCUSED` flag)
     ///
     /// @param details details object
     /// @param event reference to event object passed in `captureMouseEvents`
-    /// @param mouse_position position relative to the window screen
+    /// @param mouse_position position relative to the window view
     ///
-    /// @see `captureMouseEvents`
+    /// @return true if the event was consumed, otherwise false
+    ///
+    /// @see `captureMouseEvents`, `preProcessMouseEvents`
     ///
     ///////////////////////////////////////////////////////////////////
-    virtual void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position);
+    virtual bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Optional pre-process for when checking for key events
     ///
-    /// `captureKeyEvents` calls this before doing it's checkup process,
-    /// if true is returned then the rest of the checkup is skipped and true is
-    /// returned, but this is completely optional.
-    ///
+    /// `captureKeyEvents` calls this method before bind event, if true is returned then
+    /// the event is consumed but bind callback and postProcess are still processed.
+    /// 
     /// @param event reference to event object passed in `captureKeyEvents`
     ///
     /// @return true if the event was consumed, otherwise false
     ///
-    /// `captureKeyEvents`
+    /// `captureKeyEvents`, `postProcessKeyEvents`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual bool preProcessKeyEvents(const sf::Event& event);
@@ -605,16 +651,14 @@ protected:
     ///////////////////////////////////////////////////////////////////
     /// @brief Optional post-process for when checking for key events
     ///
-    /// `captureKeyEvents` calls this after doing it's checkup process,
-    /// at this point, any binding shortcut would have triggered, but this
-    /// can still handles events unique to derived widget for it's own built-in
-    /// features.
+    /// `captureKeyEvents` calls this method after bind callback as long as
+    /// the event is not consumed by other widgets (will always run if `s_GUARD_EVENT` is false).
     ///
     /// @param event reference to event object passed in `captureKeyEvents`
     ///
     /// @return true if event is consumed, otherwise false
     ///
-    /// `captureKeyEvents`
+    /// `captureKeyEvents`, `preProcessKeyEvents`
     ///
     ///////////////////////////////////////////////////////////////////
     virtual bool postProcessKeyEvents(const sf::Event& event);
@@ -771,48 +815,56 @@ private:
 /// Member Variables
 ///////////////////////////////////////////////////////////////////
 protected:
+    // common members
     RenderContext m_master;                                                         //!< Root object that draws the widget
     sf::Vector2f m_position, m_size;                                                //!< Current local dimensions of the widget
     sf::Vector2f m_originalPosition, m_originalSize;                                //!< User-set dimensions for the widget, used for more precise resize ratio
     sf::Vector2f m_windowSize;                                                      //!< Window construction-time size, used for more precise resize ratio
     
+    // pointer members
     std::weak_ptr<WidgetGroup> m_groupPtr;                                          //!< Group that shares `FOCUSED` state
     std::weak_ptr<WidgetTheme> m_themePtr;                                          //!< Global style from external pointer
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
+    std::unique_ptr<sf::Shader> m_clipShaderPtr;                                    //!< Needed for widgets that use sprites
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
     std::shared_ptr<ToolTip> m_ToolTipPtr;                                          //!< ToolTip object pointer for this widget
 
-    std::unique_ptr<sf::Shader> m_clipShaderPtr;                                    //!< Needed for widgets that use sprites
+    // unique members and flags
     sf::String m_bgImagePath;                                                       //!< Path to bg resource on disk
-    
     CaptureSequence m_binds;                                                        //!< Stores keyboard sequences and triggers keyboard events
-    FLAGS m_flags = FLAGS::MODIFIED;                                                //!< Stores internal and external states of the widget, start with MODIFIED for initial style assignment
-    bool m_stale = false;                                                           //!< Blocks visual updates for widget while set
+    FLAGS m_flags{FLAGS::MODIFIED};                                                 //!< Stores internal and external states of the widget, start with MODIFIED for initial style assignment
+    bool m_stale{false};                                                            //!< Blocks visual updates for widget while set
+    
+    // numeric members
+    float m_radius{0.f};                                                            //!< Corner radius, `0.f` for rectangle shape
+    unsigned int m_cornerPoints{1};                                                 //!< Number of points in each corner, 1 for rectangle shape (automatically updates to `Widget::s_CORNER_POINTS`)
+    float m_opacity{1.f};                                                           //!< Transparency ratio of the widget, `1.f` for fully transparent
+    std::size_t m_generationToken{constants::KSTALE};                               //!< Used with `m_themePtr` to check if optimal style for widget was modified
 
-    float m_radius = 0.f;                                                           //!< Corner radius, `0.f` for rectangle shape
-    unsigned int m_cornerPoints = 1;                                                //!< Number of points in each corner, 1 for rectangle shape (automatically updates to `Widget::s_CORNER_POINTS`)
-    float m_opacity = 1.f;                                                          //!< Transparency ratio of the widget, `1.f` for fully transparent
-    std::size_t m_generationToken = constants::KSTALE;                              //!< Used with `m_themePtr` to check if optimal style for widget was modified
-
-    sf::Color* m_currentBgColorPtr = nullptr;                                       //!< Pointer to current fill color
-    sf::Color* m_currentOutlineColorPtr = nullptr;                                  //!< Pointer to current outline color
-    float* m_currentOutlineThicknessPtr = nullptr;                                  //!< Pointer to current outline color
+    // active style members
+    sf::Color* m_currentBgColorPtr{nullptr};                                        //!< Pointer to current fill color
+    sf::Color* m_currentOutlineColorPtr{nullptr};                                   //!< Pointer to current outline color
+    float* m_currentOutlineThicknessPtr{nullptr};                                   //!< Pointer to current outline color
 
 private:
-    std::unique_ptr<W_QueueEvent> m_restrictEvent;
+    /* events */
+    // queues
+    std::unique_ptr<W_QueueEvent> m_restrictEvent;                                  //!< For key event restriction
     std::deque<W_QueueEvent> m_events;                                              //!< Queued events
     std::vector<W_RepeatEvent> m_repeatEvents;                                      //!< Routine events, they run concurrently
 
-    std::optional<sf::Mouse::Button> m_memButton = std::nullopt;                    //!< Memorizes recently clicked mouse button
+    // memory
+    std::optional<sf::Mouse::Button> m_memButton{std::nullopt};                     //!< Memorizes recently clicked mouse button
 
+    // bind callbacks
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_pressEvents;             //!< Stores assigned mouse press events
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_releaseEvents;           //!< Stored assigned mouse release events
-    MouseCallback m_holdCallBack = nullptr;                                         //!< Called while holding `Widget::s_FOCUS_BUTTON` on widget
-    MouseCallback m_scrollCallBack = nullptr;                                       //!< Called when scrolling the mouse wheel while hovering on widget
-    MouseCallback m_gainhoverCallBack = nullptr;                                    //!< Called once when the widget is first hovered
-    MouseCallback m_losehoverCallBack = nullptr;                                    //!< Called once when the widget is no longer hovered
-    MouseCallback m_gainFocusCallBack = nullptr;                                    //!< Called automatically when widget gains focus
-    MouseCallback m_loseFocusCallBack = nullptr;                                    //!< Called automatically when widget loses focus
+    MouseCallback m_holdCallBack{nullptr};                                          //!< Called while holding `Widget::s_FOCUS_BUTTON` on widget
+    MouseCallback m_scrollCallBack{nullptr};                                        //!< Called when scrolling the mouse wheel while hovering on widget
+    MouseCallback m_gainhoverCallBack{nullptr};                                     //!< Called once when the widget is first hovered
+    MouseCallback m_losehoverCallBack{nullptr};                                     //!< Called once when the widget is no longer hovered
+    MouseCallback m_gainFocusCallBack{nullptr};                                     //!< Called automatically when widget gains focus
+    MouseCallback m_loseFocusCallBack{nullptr};                                     //!< Called automatically when widget loses focus
 
 
 ///////////////////////////////////////////////////////////////////
@@ -842,7 +894,7 @@ private:
     /// is set to false then the assignment becomes more unpredictable but it would
     /// still only call one focus callback.
     ///
-    /// This process is done automatically by the widget class.
+    /// @note This process is done automatically by the widget class.
     ///
     /// @see `unfocusWidget`, `updateFocus`, `WidgetGroup`
     ///
@@ -879,34 +931,31 @@ private:
 ///////////////////////////////////////////////////////////////////
 
     inline static std::vector<Widget*> s_widgets;                                   //!< Reference to every live widget
-    inline static sf::Vector2f s_windowSize = {0.f, 0.f};                           //!< Prevents calling resize method multiple times for no purpose
+    inline static sf::Vector2f s_windowSize{0.f, 0.f};                              //!< Prevents calling resize method multiple times for no purpose
 
-    // variables
+    inline static Widget* s_focusedWidgetPtr{nullptr};                              //!< Pointer to currently focused widget
+    inline static Widget* s_widgetToFocusPtr{nullptr};                              //!< Pointer to the upcoming focused widget, this only exists until focus resource is updated
 
-    inline static Widget* s_focusedWidgetPtr = nullptr;                             //!< Pointer to currently focused widget
-    inline static Widget* s_widgetToFocusPtr = nullptr;                             //!< Pointer to the upcoming focused widget, this only exists until focus resource is updated
+    inline static std::optional<sf::Event> s_memFocusEvent{std::nullopt};           //!< Cached event for widget focus event
+    inline static std::optional<sf::Event> s_memUnfocusEvent{std::nullopt};         //!< Cached event for widget unfocus event
 
-    inline static std::optional<sf::Event> s_memFocusEvent = std::nullopt;          //!< Cached event for widget focus event
-    inline static std::optional<sf::Event> s_memUnfocusEvent = std::nullopt;        //!< Cached event for widget unfocus event
+    inline static bool s_FfoundFocusedWidget{false};                                //!< Tells widget to bother updating the focused widget
+    inline static bool s_FrequestUnfocus{false};                                    //!< Requests for the focused widget to lose the resource
+    inline static bool s_FrequestFocusUpdate{false};                                //!< Requests for a new widget to obtain the resource
 
-    inline static bool s_FfoundFocusedWidget = false;                               //!< Tells widget to bother updating the focused widget
-    inline static bool s_FrequestUnfocus = false;                                   //!< Requests for the focused widget to lose the resource
-    inline static bool s_FrequestFocusUpdate = false;                               //!< Requests for a new widget to obtain the resource
-
-    inline static bool s_mouseEventUsed = false;                                    //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
-    inline static bool s_keyEventUsed = false;                                      //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
-    inline static bool s_setOriginals = true;                                       //!< Widgets update their original dimensions if set, otherwise skips the process
+    inline static bool s_mouseEventUsed{false};                                     //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
+    inline static bool s_keyEventUsed{false};                                       //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
+    inline static bool s_setOriginals{true};                                        //!< Widgets update their original dimensions if set, otherwise skips the process
 
 public:
-    // parameters
-    static constexpr sf::Mouse::Button s_FOCUS_BUTTON = sf::Mouse::Button::Left;    //!< Mouse button that triggers focus and hold events
-    static constexpr sf::Time s_RESTRICTION_DURATION = sf::Time::Zero;              //!< Duration of which a widget that triggered a key event remains limited
-    static constexpr sf::Time s_HOVER_DURATION = sf::milliseconds(500);             //!< Hovering duration before tooltip is drawn
-    static constexpr unsigned int s_CORNER_POINTS = 16;                             //!< Number of vertices for a single rounded corner in a widget
+    static constexpr sf::Mouse::Button s_FOCUS_BUTTON{sf::Mouse::Button::Left};     //!< Mouse button that triggers focus and hold events
+    static constexpr sf::Time s_RESTRICTION_DURATION{sf::Time::Zero};               //!< Duration of which a widget that triggered a key event remains limited
+    static constexpr sf::Time s_HOVER_DURATION{sf::milliseconds(500)};              //!< Hovering duration before tooltip is drawn
+    static constexpr unsigned int s_CORNER_POINTS{16};                              //!< Number of vertices for a single rounded corner in a widget
 
-    static constexpr bool s_GUARD_EVENT = true;                                     //!< Blocks multiple event triggers in a single loop
-    static constexpr bool s_RESTRICT_AFTER_KEYEVENT = false;                        //!< Blocks the widget from triggering any key events for `s_RESTRICTION_DURATION` period after using a key event
-    static constexpr bool s_UNSELECT_WHEN_HELD = true;                              //!< Prevents a widget from triggering mouse release callback at the end of a hold event
+    static constexpr bool s_GUARD_EVENT{true};                                      //!< Blocks multiple event triggers in a single loop
+    static constexpr bool s_RESTRICT_AFTER_KEYEVENT{false};                         //!< Blocks the widget from triggering any key events for `s_RESTRICTION_DURATION` period after using a key event
+    static constexpr bool s_UNSELECT_WHEN_HELD{true};                               //!< Prevents a widget from triggering mouse release callback at the end of a hold event
 
 ///////////////////////////////////////////////////////////////////
 /// Widget objects
@@ -966,8 +1015,8 @@ public:
     {
         std::optional<W_MouseEventType> event_type;
         std::optional<sf::Mouse::Button> button;
-        float scroll_delta = 0.f;
-        bool is_used = false;
+        float scroll_delta{0.f};
+        bool is_used{false};
     };
 
     ///////////////////////////////////////////////////////////////////
@@ -1001,7 +1050,7 @@ public:
         W_CounterType m_type;
         sf::Clock m_timer;
         std::function<void()> m_callback;
-        sf::Time m_delay = sf::Time::Zero;
+        sf::Time m_delay{sf::Time::Zero};
         std::size_t m_framesCount{0};
     };
 
@@ -1028,7 +1077,7 @@ public:
 
     private:
         W_CounterType m_type;
-        sf::Time m_period = sf::Time::Zero;
+        sf::Time m_period{sf::Time::Zero};
         std::size_t m_framesPeriod{0};
         std::size_t m_framesCounter{0};
         std::function<bool()> m_callback;

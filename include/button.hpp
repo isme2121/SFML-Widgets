@@ -13,8 +13,7 @@ namespace sfml_widgets
 class Button : public Widget
 {
 public:
-
-    enum class Side : int;
+    enum class SIDE : int;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the button with `sf::RenderWindow`
@@ -23,6 +22,7 @@ public:
     /// @param position button's initial position
     /// @param size button's initial size
     /// @param text text displayed on the button initially
+    /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
     explicit Button(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::INTER_SEMIBOLD_18);
@@ -34,6 +34,7 @@ public:
     /// @param position button's initial position
     /// @param size button's initial size
     /// @param text text displayed on the button initially
+    /// @param font text's font
     ///
     ///////////////////////////////////////////////////////////////////
     explicit Button(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& text = "", const sf::Font& font = parameters::INTER_SEMIBOLD_18);
@@ -49,12 +50,12 @@ public:
     ///
     /// Displays parameter text on the button's surface.
     ///
-    /// Text's length cannot surpass parameter character limit.
-    /// @see `parameters::CHAR_LIMIT`
+    /// Text's length cannot surpass parameter character limit, default is
+    /// `parameters::CHAR_LIMIT`. @see `setTextLimit`
     ///
     /// @param text string text
     ///
-    /// @see `setTextSide`, `setTextSize`, `setTextFont`,
+    /// @see `setTextSide`, `setTextSize`, `getText`
     ///
     ///////////////////////////////////////////////////////////////////
     void setText(const sf::String& text);
@@ -76,7 +77,17 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool setIcon(const sf::String& image_path, const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
-    void setTextLimit(unsigned int char_limit);
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the maximum number of text characters in this button
+    ///
+    /// `range=[0, s_MAX_CHAR_COUNT]`
+    ///
+    /// @return true if the new value is set, otherwise false
+    ///
+    /// @see `getTextLimit`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setTextLimit(unsigned int char_limit);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets the center position of the button's text
@@ -84,27 +95,37 @@ public:
     /// Position can be either `Button::Left`, `Button::Center`, or `Button::Right`
     /// and cannot overlap with image position.
     ///
+    /// @see `getTextPosition`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextSide(Side text_side);
+    void setTextPosition(SIDE text_side);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the size of the characters for the button's text
     ///
+    /// @return true if the new value is set, otherwise false
+    ///
+    /// @see `getTextSize`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextSize(unsigned int char_size);
+    bool setTextSize(unsigned int char_size);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Auto updates the size of the characters for the button's text
     ///
     /// Ratio is relative to the button's height and matches characters
     /// with caps' size, can be set from `0.f` to `0.999...f`, with `0.f`
-    /// disabling ratio updating.
+    /// disabling ratio updating, default is `0.35f`.
     ///
     /// @note if ratio is set to `0.f`, manual assignment to character size
     /// would become the priority.
     ///
+    /// @return true if the new value is set, otherwise false
+    ///
+    /// @see `getTextSize`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setTextSize(float ratio);
+    bool setTextSize(float ratio);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a font for the button's text and clears the stored font
@@ -115,13 +136,17 @@ public:
     /// @warning parameter value must outlive the widget to prevent memory errors,
     /// to store the font in the widget pass an rvalue instead.
     ///
+    /// @see `getTextFont`
+    ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font& font);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets a font for the button's text and stores it internally
     ///
-    /// @param font font instance
+    /// @param font font
+    ///
+    /// @see `getTextFont`
     ///
     ///////////////////////////////////////////////////////////////////
     void setTextFont(const sf::Font&& font);
@@ -132,8 +157,10 @@ public:
     /// Position can be either `Button::Left`, `Button::Center`, or `Button::Right`
     /// and cannot overlap with text position.
     ///
+    /// @see `getIconPosition`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setIconSide(Side icon_side);
+    void setIconPosition(SIDE icon_side);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the base size of the icon image
@@ -142,8 +169,10 @@ public:
     ///
     /// @param ratio size ratio between `0.1f` and `0.33f`
     ///
+    /// @see `getIconSizeRatio`
+    ///
     ///////////////////////////////////////////////////////////////////
-    void setIconSizeRatio(float ratio);
+    bool setIconSizeRatio(float ratio);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears loaded image from widget
@@ -163,12 +192,88 @@ public:
     ///////////////////////////////////////////////////////////////////
     void setTheme(ButtonStyle s_button);
 
-    const sf::String& getText() const;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Pulls the widget's style from it's linked theme object
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void fetchTheme() override;
 
-    std::optional<sf::Image> getIcon();
+    ///////////////////////////////////////////////////////////////////
+    /// @brief R/W Reference to the current widget style
+    ///
+    /// @note if the widget is linked to a `WidgetTheme` source, any modifications
+    /// to the returned reference do not affect the theme's style and are overridden
+    /// by the theme if any updates are pushed to the widget.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] ButtonStyle& style();
 
-    const sf::String& getIconPath() const;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a read only reference of the current displayed text
+    /// on the button
+    ///
+    /// @see `setText`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::String& getText() const;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a copy image of the current used icon on the button
+    /// if icon is set
+    ///
+    /// @see `setIcon`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] std::optional<sf::Image> getIcon();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the image icon path
+    ///
+    /// @see `setIcon`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::String& getIconPath() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current character size for text
+    ///
+    /// @see `setTextSize`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getTextSize() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current maximum number of characters in text
+    ///
+    /// @see `setTextLimit`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getTextLimit() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current icon position relative to button surface
+    ///
+    /// @see `setIconPosition`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] SIDE getIconPosition() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current text position relative to button surface
+    ///
+    /// @see `setTextPosition`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] SIDE getTextPosition() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns text font
+    ///
+    /// @see `setTextFont`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::Font& getTextFont() const;
+    
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws the button on master object
@@ -239,30 +344,28 @@ private:
     ///////////////////////////////////////////////////////////////////
     bool updateImageSize();
 
-    ///////////////////////////////////////////////////////////////////
-    // Member Variables
-    ///////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+/// Member Variables
+///////////////////////////////////////////////////////////////////
 
     sf::Text m_text;                                                    //!< Button text
     std::unique_ptr<const sf::Font> m_fontPtr;                          //!< font for the text
     std::unique_ptr<sf::Texture> m_texturePtr;                          //!< Image texture
     std::unique_ptr<sf::Sprite> m_imagePtr;                             //!< Image sprite
-
     sf::String m_imagePath;                                             //!< Path for used image
-    float m_imageSizeRatio = 0.33f;
-    float m_charSizeRatio = 0.35f;                                      //!< Button's height occupied by text, prio until it's set to 0.f
-    unsigned int m_charSize = parameters::CHAR_SIZE;                    //!< Manual text size assigned by user, not used until ratio is 0.f
-    unsigned int m_charLimit = parameters::CHAR_LIMIT;
-    Side m_imagePosition = Side::Center;                                //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
-    Side m_textPosition = Side::Center;                                 //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
-    ButtonStyle m_style = Theme::button_style::BUTTON_STALE_VIOLET;     //!< Button's default style
 
-    bool m_requirePosUpdate = true;                                     //!< Updates the positions of text and image if set
+    float m_imageSizeRatio{0.33f};                                      //!< Icon size relative to the button's width, `range=[0.1f, 0.33f]`
+    float m_charSizeRatio{0.35f};                                       //!< Button's height occupied by text, prio until it's set to 0.f, `range=[0.f, 1.f[`
+    unsigned int m_charSize{parameters::CHAR_SIZE};                     //!< Manual text size assigned by user, not used until ratio is 0.f, default is `parameters::CHAR_SIZE`
+    unsigned int m_charLimit{parameters::CHAR_LIMIT};                   //!< Maximum number of text characters in button, `range=[0, s_MAX_CHAR_COUNT]`, default is `parameters::CHAR_LIMIT` 
+    SIDE m_imagePosition{SIDE::Center};                                 //!< Which side does the image occupies, can't be the same as text position (center by default, adjusted during runtime)
+    SIDE m_textPosition{SIDE::Center};                                  //!< Which side does the text occupies, can't be the same as image position (center by default, adjusted during runtime)
+    ButtonStyle m_style{Theme::button_style::BUTTON_STALE_VIOLET};      //!< Button's default style
 
     static constexpr unsigned int s_MAX_CHAR_COUNT{30};
 public:
 
-enum class Side : int
+enum class SIDE : int
     {
         Center,
         Left,

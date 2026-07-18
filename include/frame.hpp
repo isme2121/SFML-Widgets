@@ -105,6 +105,14 @@ public:
     void setTheme(TextureStyle s_frame);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Pulls the widget's style from it's linked theme object
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void fetchTheme() override;
+
+    TextureStyle& style();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns accurate coordinates for local view
     ///
     /// @param mouse_position mouse position based on window's view
@@ -135,7 +143,7 @@ private:
     /// @brief Calls for scrolling event
     ///
     ///////////////////////////////////////////////////////////////////
-    void postProcessMouseEvents(W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks for child widgets events first
