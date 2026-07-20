@@ -17,6 +17,7 @@ m_window(&window), m_texture(size), m_sprite(m_texture.getTexture()), m_contentH
     setWidgetSize(m_size);
     loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     toggle(m_flags, FLAGS::SCROLL);
+    m_skipAfterPreProcess.emplace(false);
 }
 
 Frame::Frame(Frame& root, sf::Vector2f position, sf::Vector2u size) : Widget(root, position, size),
@@ -30,6 +31,7 @@ m_window(root.getWindowPtr()), m_texture(size), m_sprite(m_texture.getTexture())
     setWidgetSize(m_size);
     loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
     toggle(m_flags, FLAGS::SCROLL);
+    m_skipAfterPreProcess.emplace(false);
 }
 
 Frame::~Frame()
@@ -69,12 +71,14 @@ void Frame::setGrid(sf::Vector2u grid_mapping)
     resetFlag(m_flags, FLAGS::GRID);
 }
 
-void Frame::setSeparators(SeparatorType type, float length_ratio, float sep_distance)
+void Frame::setSeparators(F_SeparatorType type, float length_ratio, float sep_distance)
 {
     m_separatorType = type;
-    if(type == SeparatorType::NoSeparator)
+    if(type == F_SeparatorType::NoSeparator)
     {
         resetFlag(m_flags, FLAGS::SEPARATORS);
+        m_separatorRatio = 0.f;
+        m_separatorDistance = 0.f;
         return;
     }
     m_separatorRatio = std::clamp(length_ratio, 0.f, 1.f);
@@ -82,12 +86,9 @@ void Frame::setSeparators(SeparatorType type, float length_ratio, float sep_dist
     setFlag(m_flags, FLAGS::SEPARATORS);
 }
 
-void Frame::scroll(float delta)
+void Frame::setProcessMode(F_AfterPreProcess f_mode)
 {
-    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
-
-    m_scrollOffset = std::clamp(m_scrollOffset + (-delta) * (m_scrollSpeedRatio * m_size.y), 0.f, m_maxScroll);
-    refreshView();
+    m_processHolder.emplace(f_mode);
 }
 
 void Frame::setScrollSpeed(float ratio)
@@ -112,6 +113,14 @@ TextureStyle& Frame::style()
     return m_style;
 }
 
+void Frame::scroll(float delta)
+{
+    if(!checkFlag(m_flags, FLAGS::SCROLL)) return;
+
+    m_scrollOffset = std::clamp(m_scrollOffset + (-delta) * (m_scrollSpeedRatio * m_size.y), 0.f, m_maxScroll);
+    refreshView();
+}
+
 sf::Vector2f Frame::mapPixelToCoords(sf::Vector2i mouse_position) const
 {
     sf::Vector2f local = sf::Vector2f(mouse_position);
@@ -133,6 +142,41 @@ sf::RenderWindow* Frame::getWindowPtr() const
     return m_window;
 }
 
+std::size_t Frame::getChildCount() const
+{
+    return m_childWidgets.size();
+}
+
+float Frame::getScrollOffset() const
+{
+    return m_scrollOffset;
+}
+
+float Frame::getScrollSpeed() const
+{
+    return m_scrollSpeedRatio;
+}
+
+const sf::Vector2u& Frame::getGridMap() const
+{
+    return m_gridMapping;
+}
+
+Frame::F_SeparatorInfo Frame::getSeparatorInfo() const
+{
+    return {m_separatorType, m_separatorRatio, m_separatorDistance};
+}
+
+Frame::F_AfterPreProcess Frame::getProcessMode() const
+{
+    if(m_skipAfterPreProcess)
+    {
+        if(*m_skipAfterPreProcess) return F_AfterPreProcess::SKIP_ALL;
+        else return F_AfterPreProcess::SKIP_CALLBACK;
+    }
+    return F_AfterPreProcess::NO_SKIP;
+}
+
 ///////////////////////////////////////////////////////////////////
 /// Private
 ///////////////////////////////////////////////////////////////////
@@ -146,9 +190,9 @@ bool Frame::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mo
 
     while(it_end != it_begin)
     {
-        if(isVisible(*it_end))
+        if(isVisible(*it_end) && (*it_end)->captureMouseEvents(event, mouse_position))
         {
-            if((*it_end)->captureMouseEvents(event, mouse_position) && !s_STACK_CHILD_EVENT) event_used = true;
+            event_used = true;
         }
         ++it_end;
     }
@@ -174,7 +218,7 @@ bool Frame::preProcessKeyEvents(const sf::Event& event)
     std::vector<Widget*>::const_reverse_iterator it_begin = m_childWidgets.crend();
     while(it_end != it_begin)
     {
-        if((*it_end)->captureKeyEvents(event) && !s_STACK_CHILD_EVENT) event_used = true;
+        if((*it_end)->captureKeyEvents(event)) event_used = true;
         ++it_end;
     }
     return event_used;
@@ -202,6 +246,14 @@ void Frame::drawWidget()
         {
             if(isVisible(w)) w->draw();
         }
+    }
+
+    if(m_processHolder)
+    {
+        if(*m_processHolder == F_AfterPreProcess::NO_SKIP) m_skipAfterPreProcess.reset();
+        else if(*m_processHolder == F_AfterPreProcess::SKIP_CALLBACK) m_skipAfterPreProcess.emplace(false);
+        else m_skipAfterPreProcess.emplace(true);
+        m_processHolder.reset();
     }
 
     display();
@@ -375,7 +427,7 @@ void Frame::drawSeparators()
     }
 
     // sort by y, smallest y first
-    if(m_separatorType == SeparatorType::Horizontal)
+    if(m_separatorType == F_SeparatorType::Horizontal)
     {
         std::sort(sorted_by_position.begin(), sorted_by_position.end(), [](const Widget* a, const Widget* b)
         {
@@ -399,7 +451,7 @@ void Frame::drawSeparators()
         Widget* current_widget = sorted_by_position[i];
         Widget* new_widget = sorted_by_position[i + 1];
 
-        if(m_separatorType == SeparatorType::Horizontal)
+        if(m_separatorType == F_SeparatorType::Horizontal)
         {
             // gap between bottom of current and top of next
             float current_bottom_y = current_widget->m_position.y + current_widget->m_size.y;

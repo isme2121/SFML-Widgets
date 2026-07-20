@@ -39,7 +39,7 @@ void Label::setText(const sf::String& text)
     setFlag(m_flags, FLAGS::UPDATE);
 }
 
-void Label::setCharacterLimit(unsigned int char_limit)
+void Label::setTextLimit(unsigned int char_limit)
 {
     m_charLimit = char_limit;
     m_text.setString(m_text.getString().substring(0, std::min(m_charLimit, m_text.getString().getSize())));
@@ -126,6 +126,56 @@ void Label::fetchTheme()
 LabelStyle& Label::style()
 {
     return m_style;
+}
+
+const sf::String& Label::getText() const
+{
+    return m_text.getString();
+}
+
+std::size_t Label::getTextLimit() const
+{
+    return m_charLimit;
+}
+
+unsigned int Label::getTextSize() const
+{
+    return m_charSize;
+}
+
+const sf::Font& Label::getTextFont() const
+{
+    return m_text.getFont();
+}
+
+sf::Text::Style Label::getTextStyle() const
+{
+    return static_cast<sf::Text::Style>(m_text.getStyle());
+}
+
+Label::HAlign Label::getHorizontalAlignment() const
+{
+    return m_horizontalAlign;
+}
+
+Label::VAlign Label::getVerticalAlignment() const
+{
+    return m_verticalAlign;
+}
+
+float Label::getLineSpacing() const
+{
+    return m_text.getLineSpacing();
+}
+
+float Label::getLetterSpacing() const
+{
+    return m_text.getLetterSpacing();
+}
+
+float Label::getPaddingRatio() const
+{
+    return m_paddingRatio;
 }
 
 ///////////////////////////////////////////////////////////////////

@@ -105,13 +105,6 @@ enum class FLAGS : std::int32_t
     PAN = 1 << 31                   //!< Configured Flag: `panning is enabled for widget` @see `GridCanvas`
 };
 
-enum class SeparatorType
-{
-    NoSeparator,
-    Horizontal,
-    Vertical
-};
-
 enum class DIRECTION
 {
     TOP,

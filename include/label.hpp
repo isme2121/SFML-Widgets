@@ -47,7 +47,7 @@ public:
     ///
     /// @param text string object
     ///
-    /// @see `Label::setTextLimit`
+    /// @see `setTextLimit`, `setTextSize`
     ///
     ///////////////////////////////////////////////////////////////////
     void setText(const sf::String& text);
@@ -56,18 +56,18 @@ public:
     /// @brief Updates the max number of characters in the label
     ///
     /// Cuts the current string if the new limit is smaller than the current
-    /// size of the string.
+    /// size of the string, default is `parameters::CHAR_LIMIT`.
     ///
-    /// @param char_limit new cap
+    /// @param char_limit new maximum number of characters for this label
     ///
     ///////////////////////////////////////////////////////////////////
-    void setCharacterLimit(unsigned int char_limit);
+    void setTextLimit(unsigned int char_limit);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Manually set the character size for the label
     ///
     /// Label is set with a constant character size, to add a variant
-    /// text size, use the float overload instead.
+    /// text size, use the float overload instead, default is `parameters::CHAR_SIZE`
     ///
     /// @param char_size character size
     ///
@@ -79,7 +79,7 @@ public:
     ///
     /// Text size would scale with size.y of the widget if this
     /// method is called, set from `0.f` to `1.0f` as a y axis
-    /// ratio with `0.f` disabling ratio scaling.
+    /// ratio with `0.f` disabling ratio scaling, default is `0.f`.
     ///
     /// @param ratio percent value from `0.f` to `1.f`
     ///
@@ -188,7 +188,78 @@ public:
     ///////////////////////////////////////////////////////////////////
     void fetchTheme() override;
 
-    LabelStyle& style();
+    ///////////////////////////////////////////////////////////////////
+    /// @brief R/W Reference to the current widget style
+    ///
+    /// @note if the widget is linked to a `WidgetTheme` source, any modifications
+    /// to the returned reference do not affect the theme's style and are overridden
+    /// by the theme if any updates are pushed to the widget.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] LabelStyle& style();
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current label content
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::String& getText() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current maximum number of characters in label
+    ///
+    /// default is `parameters::CHAR_LIMIT`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] std::size_t getTextLimit() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current text size
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] unsigned int getTextSize() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current text font
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::Font& getTextFont() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current text style
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] sf::Text::Style getTextStyle() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current horizontal alignment value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] HAlign getHorizontalAlignment() const;
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current vertical alignment value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] VAlign getVerticalAlignment() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current line spacing value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getLineSpacing() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current letter spacing value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getLetterSpacing() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current alignment padding ratio value
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getPaddingRatio() const;
+
     
 private:
     ///////////////////////////////////////////////////////////////////
@@ -258,14 +329,14 @@ private:
     std::unique_ptr<const sf::Font> m_font;                     //!< Reference for internal font
     sf::Text m_text;                                            //!< Label's text
 
-    std::size_t m_charLimit = parameters::CHAR_LIMIT;           //!< Max number of characters
-    unsigned int m_charSize = parameters::CHAR_SIZE;            //!< Default character size
-    float m_textSizeRatio = 0.f;                                //!< Default character size ratio (disabled initially)
-    float m_paddingRatio = 0.f;                                 //!< Default padding, set from 0 to 1 and scales with alignment
-    HAlign m_horizontalAlign = HAlign::Center;                  //!< Horizontal alignment, scales with padding
-    VAlign m_verticalAlign = VAlign::Middle;                    //!< Vertical alignment, scales with padding
+    std::size_t m_charLimit{parameters::CHAR_LIMIT};            //!< Max number of characters
+    unsigned int m_charSize{parameters::CHAR_SIZE};             //!< Default character size
+    float m_textSizeRatio{0.f};                                 //!< Default character size ratio (disabled initially)
+    float m_paddingRatio{0.f};                                  //!< Default padding, set from 0 to 1 and scales with alignment
+    HAlign m_horizontalAlign{HAlign::Center};                   //!< Horizontal alignment, scales with padding
+    VAlign m_verticalAlign{VAlign::Middle};                     //!< Vertical alignment, scales with padding
 
-    LabelStyle m_style = Theme::label_style::LABEL_SLATE_VIOLET;//!< Label theme
+    LabelStyle m_style{Theme::label_style::LABEL_SLATE_VIOLET}; //!< Label theme
 public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Horizontal placement of the text object

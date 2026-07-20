@@ -152,13 +152,13 @@ public:
     /// if available
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<const sf::Image> getImage() const;
+    [[nodiscard]] std::optional<const sf::Image> getImage() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current loaded image's path
     ///
     ///////////////////////////////////////////////////////////////////
-    const sf::String& getImagePath() const;
+    [[nodiscard]] const sf::String& getImagePath() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the original image dimensions
@@ -168,7 +168,7 @@ public:
     /// to the loaded image's original size.
     ///
     ///////////////////////////////////////////////////////////////////
-    const sf::Vector2u& getOriginalImageSize() const;
+    [[nodiscard]] const sf::Vector2u& getOriginalImageSize() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the widget color theme
@@ -186,7 +186,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void fetchTheme() override;
 
-    TextureStyle& style();
+    ///////////////////////////////////////////////////////////////////
+    /// @brief R/W Reference to the current widget style
+    ///
+    /// @note if the widget is linked to a `WidgetTheme` source, any modifications
+    /// to the returned reference do not affect the theme's style and are overridden
+    /// by the theme if any updates are pushed to the widget.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] TextureStyle& style();
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -271,18 +279,18 @@ private:
     ///////////////////////////////////////////////////////////////////
     void updateImageSize();
 
-    std::mutex m_guard;
     std::unique_ptr<sf::RenderTexture> m_textTexturePtr;                //!< Text texture
     std::unique_ptr<sf::Sprite> m_spritePtr;                            //!< Sprite to display the texture
-
+    
     std::unique_ptr<sf::Texture> m_imageTexturePtr;                     //!< Image texture
     std::unique_ptr<sf::Text> m_noImageTextPtr;                         //!< Text displayed when no image is selected
-
+    
+    std::mutex m_guard;                                                 //!< For multi-threading safety when loading an image from a separate thread
     std::weak_ptr<const sf::Texture> m_extImagePtr;                     //!< Weak pointer to an external read only texture
 
-    sf::String m_imagePath = "";                                        //!< Path to currently loaded image
-    sf::Vector2u m_originalImageSize = {0, 0};
-    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Image frame's default style
+    sf::String m_imagePath;                                             //!< Path to currently loaded image
+    sf::Vector2u m_originalImageSize{0, 0};                             //!< Original dimensions of the loaded image
+    TextureStyle m_style{Theme::texture_style::STYLE_STALE_VIOLET};     //!< Image frame's default style
 };
 
 template <>

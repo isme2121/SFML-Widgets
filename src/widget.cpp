@@ -187,6 +187,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
     const bool EVENT_USED{s_GUARD_EVENT && s_mouseEventUsed};
+    bool skip_callbacks{false};
 
     // this is passed to post-process with relevant info about the event
     W_MouseEventDetails event_details;
@@ -195,6 +196,11 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     if(!EVENT_USED && preProcessMouseEvents(event, *mouse_position))
     {
         event_details.is_used = true;
+        if(m_skipAfterPreProcess)
+        {
+            if(*m_skipAfterPreProcess) return event_details.is_used;
+            else skip_callbacks = true;
+        }
     }
     
     /* This section contains the default mouse event checkup for widgets */
@@ -220,7 +226,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
                 setFlag(m_flags, FLAGS::ACTIVE); //!< widget can now trigger hold event
             
             // assigned callback
-            if(!EVENT_USED)
+            if(!EVENT_USED && !skip_callbacks)
             {
                 const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_pressEvents.find(clicked->button);
                 if(it != m_pressEvents.end()) it->second(*clicked);
@@ -252,7 +258,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         // 2. released mouse button is the same as pressed mouse events
         if(checkFlag(m_flags, FLAGS::HOVERED))
         {
-            if(!EVENT_USED && checkFlag(m_flags, FLAGS::SELECTED) && m_memButton && m_memButton.value() == released_button)
+            if(!EVENT_USED && !skip_callbacks && checkFlag(m_flags, FLAGS::SELECTED) && m_memButton && m_memButton.value() == released_button)
             {
                 // assigned callback
                 const std::unordered_map<sf::Mouse::Button, MouseCallback>::iterator it = m_releaseEvents.find(released_button);
@@ -277,7 +283,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         event_details.scroll_delta = scrolled->delta;
 
         // assigned callback
-        if(!EVENT_USED && checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
+        if(!EVENT_USED && !skip_callbacks && checkFlag(m_flags, FLAGS::HOVERED) && m_scrollCallBack)
         {
             m_scrollCallBack(*scrolled);
             event_details.is_used = true;
@@ -291,7 +297,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
         event_details.button = s_FOCUS_BUTTON;
 
         // assigned callback
-        if(!EVENT_USED && m_holdCallBack)
+        if(!EVENT_USED && !skip_callbacks && m_holdCallBack)
         {
             m_holdCallBack(event);
             event_details.is_used = true;
@@ -313,7 +319,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     }
 
     // derived class post-process, can modify details
-    if(!EVENT_USED && postProcessMouseEvents(event_details, event, *mouse_position))
+    if(!EVENT_USED && !skip_callbacks && postProcessMouseEvents(event_details, event, *mouse_position))
     {
         event_details.is_used = true;
     }
@@ -339,6 +345,10 @@ bool Widget::captureKeyEvents(const sf::Event& event)
     if(!EVENT_USED && preProcessKeyEvents(event))
     {
         used_event = true;
+        if(m_skipAfterPreProcess)
+        {
+            return used_event;
+        }
     }
 
     // triggers key callback

@@ -16,6 +16,10 @@ class Frame : public Widget
     friend class RenderContext;
 
 public:
+    enum class F_AfterPreProcess : int;
+    enum class F_SeparatorType : int;
+    struct F_SeparatorInfo;
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the frame with `sf::RenderWindow`
     ///
@@ -38,7 +42,6 @@ public:
 
     Frame(Frame&& other) = delete;
     Frame& operator=(Frame&& other) = delete;
-
     Frame(const Frame& other) = delete;
     Frame& operator=(const Frame& other) = delete;
 
@@ -73,15 +76,24 @@ public:
     /// @see `SeparatorType`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setSeparators(SeparatorType sep_type, float length_ratio, float sep_dist);
+    void setSeparators(F_SeparatorType sep_type, float length_ratio, float sep_dist);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief scroll event
+    /// @brief Updates how this frame reacts to a child widget event base
+    /// on the parameter
     ///
-    /// @param delta scroll value and direction based on sign
+    /// 1- `NO_SKIP` (default for other widgets but not frame): after a child event,
+    /// frame would still be able to process it's state update, bind callbacks, and
+    /// it's scroll callback.
+    ///
+    /// 2- `SKIP_CALLBACK` (default for frame): after a child event, frame
+    /// can no longer trigger any callbacks, but can still update it's state flags.
+    ///
+    /// 3- `SKIP_ALL`: after a child event, frame just returns without performing a
+    /// state update and any callback.
     ///
     ///////////////////////////////////////////////////////////////////
-    void scroll(float delta);
+    void setProcessMode(F_AfterPreProcess f_mode = F_AfterPreProcess::SKIP_CALLBACK);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates scrolling speed for frame
@@ -110,7 +122,23 @@ public:
     ///////////////////////////////////////////////////////////////////
     void fetchTheme() override;
 
-    TextureStyle& style();
+    ///////////////////////////////////////////////////////////////////
+    /// @brief R/W Reference to the current widget style
+    ///
+    /// @note if the widget is linked to a `WidgetTheme` source, any modifications
+    /// to the returned reference do not affect the theme's style and are overridden
+    /// by the theme if any updates are pushed to the widget.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] TextureStyle& style();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief scroll event
+    ///
+    /// @param delta scroll value and direction based on sign
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void scroll(float delta);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns accurate coordinates for local view
@@ -120,13 +148,49 @@ public:
     /// @return float coordinates relative to the frame's view
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::Vector2f mapPixelToCoords(sf::Vector2i mouse_position) const;
+    [[nodiscard]] sf::Vector2f mapPixelToCoords(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a pointer to root window
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::RenderWindow* getWindowPtr() const;
+    [[nodiscard]] sf::RenderWindow* getWindowPtr() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current number of child widgets
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] std::size_t getChildCount() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current scroll offset in pixels
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getScrollOffset() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current scroll ratio
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getScrollSpeed() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current grid map
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] const sf::Vector2u& getGridMap() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns all the current parameters for the separator
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] F_SeparatorInfo getSeparatorInfo() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current process mode
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] F_AfterPreProcess getProcessMode() const;
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -307,27 +371,46 @@ private:
     /// Member Variables
     ///////////////////////////////////////////////////////////////////
 
-    float m_scrollOffset = 0.f;                                         //!< Scrolled height offset
-    float m_maxScroll = 0.f;                                            //!< Invisible height and max scroll offset value
-    float m_contentHeight;                                              //!< visible + invisible frame height
-
-    SeparatorType m_separatorType = SeparatorType::NoSeparator;         //!< Separator line between child widgets
-    float m_separatorRatio = 0.f;                                       //!< Separator's length based on the frame itself
-    float m_separatorDistance = 0.f;                                    //!< Required distance in pixels between child widgets to draw a separator
-    float m_scrollSpeedRatio = 0.05f;                                   //!< Frame scrolls by 5% of it's height on each scroll event
-
     sf::RenderWindow* m_window;                                         //!< Root window
     sf::RenderTexture m_texture;                                        //!< Drawing ground for widgets
     sf::Sprite m_sprite;                                                //!< Drawn to window
     std::vector<Widget*> m_childWidgets;                                //!< Active pointers to widgets
-    sf::Vector2u m_gridMapping;                                         //!< 2 dimensional map for displaying widgets in a grid line
-    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;    //!< Frame's default style
 
-    ///////////////////////////////////////////////////////////////////
-    /// Static Variables
-    ///////////////////////////////////////////////////////////////////
+    float m_scrollOffset{0.f};                                          //!< Scrolled height offset, `range=[0.f, m_maxScroll]`
+    float m_maxScroll{0.f};                                             //!< Maximum invisible surface at each given point
+    float m_contentHeight{0.f};                                         //!< visible + invisible frame height (m_size.y + m_maxScroll)
+    float m_scrollSpeedRatio{0.05f};                                    //!< Scroll speed relative to ratio, default is `0.05f`, `range=[0.01f, 1.f]`
+    
+    sf::Vector2u m_gridMapping{0, 0};                                   //!< 2 dimensional map for displaying widgets in a grid line
 
-    static constexpr bool s_STACK_CHILD_EVENT = false;                  //!< Allows the frame to trigger mouse & key events even after a child widget's callback
+    F_SeparatorType m_separatorType{F_SeparatorType::NoSeparator};      //!< Separator line between child widgets
+    std::optional<F_AfterPreProcess> m_processHolder{std::nullopt};     //!< Temporary holder for process mode, takes effect when draw is called
+    float m_separatorRatio{0.f};                                        //!< Separator's length based on the frame itself, `range=[0.f, 1.f]`
+    float m_separatorDistance{0.f};                                     //!< Required distance in pixels between child widgets to draw a separator
+
+    TextureStyle m_style{Theme::texture_style::STYLE_STALE_VIOLET};     //!< Frame's default style
+
+public:
+    enum class F_AfterPreProcess
+    {
+        NO_SKIP,        //!< Frame's bind callback can still trigger after a child widget uses the event resource
+        SKIP_CALLBACK,  //!< Frame cannot call a bind callback after a child widget uses the event resource but still goes through state update
+        SKIP_ALL        //!< Frame returns without doing a state update if a child widget uses the event resource
+    };
+
+    enum class F_SeparatorType
+    {
+        NoSeparator,
+        Horizontal,
+        Vertical
+    };
+
+    struct F_SeparatorInfo
+    {
+        F_SeparatorType type;
+        float ratio;
+        float dist;
+    };
 };
 
 template <>

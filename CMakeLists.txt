@@ -36,7 +36,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
 
 #core library
-add_library(widgets STATIC
+add_library(widgets
     src/widgets.cpp
     src/widget.cpp
     src/frame.cpp
@@ -54,7 +54,7 @@ if(UNIX)
 endif()
 
 #button library
-add_library(button STATIC
+add_library(button
     src/button.cpp
 )
 target_include_directories(button PUBLIC include)
@@ -63,7 +63,7 @@ target_link_libraries(button PUBLIC
 )
 
 #entry library
-add_library(entry STATIC
+add_library(entry
     src/entry.cpp
 )
 target_include_directories(entry PUBLIC include)
@@ -72,7 +72,7 @@ target_link_libraries(entry PUBLIC
 )
 
 #checkbox library
-add_library(checkbox STATIC
+add_library(checkbox
     src/checkbox.cpp
 )
 target_include_directories(checkbox PUBLIC include)
@@ -81,7 +81,7 @@ target_link_libraries(checkbox PUBLIC
 )
 
 #grid canvas library
-add_library(grid_canvas STATIC
+add_library(grid_canvas
     src/grid_canvas.cpp
 )
 target_include_directories(grid_canvas PUBLIC include)
@@ -90,7 +90,7 @@ target_link_libraries(grid_canvas PUBLIC
 )
 
 #image frame library
-add_library(image_frame STATIC
+add_library(image_frame
     src/image_frame.cpp
 )
 target_include_directories(image_frame PUBLIC include)
@@ -99,7 +99,7 @@ target_link_libraries(image_frame PUBLIC
 )
 
 #label library
-add_library(label STATIC
+add_library(label
     src/label.cpp
 )
 target_include_directories(label PUBLIC include)

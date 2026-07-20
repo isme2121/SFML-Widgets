@@ -30,7 +30,7 @@ public:
     struct W_RepeatEvent;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Constructs the button with `sf::RenderWindow`
+    /// @brief Constructs the widget with `sf::RenderWindow`
     ///
     /// @param root window or a frame widget
     /// @param position widget's initial position
@@ -40,7 +40,7 @@ public:
     Widget(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Constructs the button on a `Frame` object
+    /// @brief Constructs the widget on a `Frame` object
     ///
     /// @param root window or a frame widget
     /// @param position widget's initial position
@@ -855,7 +855,7 @@ private:
 
     // memory
     std::optional<sf::Mouse::Button> m_memButton{std::nullopt};                     //!< Memorizes recently clicked mouse button
-
+    std::optional<bool> m_skipAfterPreProcess{true};                        //!< Option for frame: nullopt->normal; false->skip callbacks; true->return
     // bind callbacks
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_pressEvents;             //!< Stores assigned mouse press events
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_releaseEvents;           //!< Stored assigned mouse release events
