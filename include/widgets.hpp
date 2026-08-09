@@ -3,14 +3,13 @@
 #ifndef WIDGETS_HPP
 #define WIDGETS_HPP
 #include <SFML/Graphics.hpp>
-#include <unordered_map>
 #include <functional>
 #include <optional>
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "../external-include/shaders.hpp"
-#include "../external-include/fonts.h"
+#include "shaders.hpp"
+#include "fonts.hpp"
 
 namespace sfml_widgets
 {
@@ -113,22 +112,83 @@ enum class DIRECTION
     RIGHT
 };
 
-
 ///////////////////////////////////////////////////////////////////
 ///////////////////       Functions             ///////////////////
 ///////////////////////////////////////////////////////////////////
 
-FLAGS operator &(FLAGS, FLAGS);         //!< Does not set MODIFIED
-FLAGS& operator &=(FLAGS&, FLAGS);      //!< Sets MODIFIED
-FLAGS operator |(FLAGS, FLAGS);         //!< Does not set MODIFIED
-FLAGS& operator |=(FLAGS&, FLAGS);      //!< Sets MODIFIED
-FLAGS operator ^(FLAGS, FLAGS);         //!< Does not set MODIFIED
-FLAGS& operator ^=(FLAGS&, FLAGS);      //!< Sets MODIFIED
-FLAGS& setFlag(FLAGS&, FLAGS);          //!< Sets MODIFIED
-FLAGS& resetFlag(FLAGS&, FLAGS);        //!< Sets MODIFIED IF not included in bits
-FLAGS& toggle(FLAGS&, FLAGS);           //!< Does not set MODIFIED
-bool checkFlag(const FLAGS&, FLAGS);    //!< Quick boolean check, returns true if any bit is set in both sides
-bool checkFlags(const FLAGS&, FLAGS);   //!< Quick boolean check, returns true if all bits on right are set in left, otherwise false
+constexpr FLAGS operator&(FLAGS first, FLAGS second)
+{
+    return static_cast<FLAGS>(static_cast<std::int32_t>(first) & static_cast<std::int32_t>(second));
+}
+
+constexpr FLAGS operator|(FLAGS first, FLAGS second)
+{
+    return static_cast<FLAGS>(static_cast<std::int32_t>(first) | static_cast<std::int32_t>(second));
+}
+
+constexpr FLAGS operator^(FLAGS first, FLAGS second)
+{
+    return static_cast<FLAGS>(static_cast<std::int32_t>(first) ^ static_cast<std::int32_t>(second));
+}
+
+// Sets `FLAGS::MODIFIED`
+constexpr FLAGS& operator&=(FLAGS& self, FLAGS other)
+{
+    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) & static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
+    return self;
+}
+
+// Sets `FLAGS::MODIFIED`
+constexpr FLAGS& operator|=(FLAGS& self, FLAGS other)
+{
+    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) | static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
+    return self;
+}
+
+// Sets `FLAGS::MODIFIED`
+constexpr FLAGS& operator^=(FLAGS& self, FLAGS other)
+{
+    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) ^ static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
+    return self;
+}
+
+// Sets `FLAGS::MODIFIED`
+constexpr FLAGS& setFlag(FLAGS& self, FLAGS bits)
+{
+    self |= bits;    //!< sets MODIFIED
+    return self;
+};
+
+// Checks if atleast one bit from bits is set in self
+constexpr bool checkFlag(const FLAGS& self, FLAGS bits)
+{
+    return static_cast<bool>(self & bits);
+}
+
+// Checks if all bits are set in self
+constexpr bool checkFlags(const FLAGS& self, FLAGS bits)
+{
+    return (self & bits) == bits;
+}
+
+// Sets `FLAGS::MODIFIED` IF it's not stated in bits
+constexpr FLAGS& resetFlag(FLAGS& self, FLAGS bits)
+{
+    std::int32_t mask = ~static_cast<std::int32_t>(bits);
+    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) & mask);
+    if(!checkFlag(bits, FLAGS::MODIFIED)) self |= FLAGS::MODIFIED;
+    return self;
+};
+
+// Does not set `FLAGS::MODIFIED`
+constexpr FLAGS& toggle(FLAGS& self, FLAGS bits)
+{
+    self = self ^ bits;
+    return self;
+}
+
+// Checks if a flag can be passed in `Widget::configure`
+constexpr bool isModifiable(FLAGS);
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Updates image size (does not preserve quality)
@@ -279,7 +339,7 @@ private:
 
     std::vector<SequenceEntry> m_sequences;                     //!< Stored sequences
     Sequence m_current_sequence;                                //!< Current sequence
-    size_t m_max_sequence{0};                                   //!< Max number of keys needed to match a saved sequence
+    std::size_t m_max_sequence{0};                              //!< Max number of keys needed to match a saved sequence
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -488,7 +548,7 @@ constexpr float START_ANGLES[4] =
 namespace parameters
 {
 // hidden | blocked | resize | autohide | autoselect | transparent | autotransparent | block bg image | block clip shader | block color shader | indicator |  grid | scroll | zoom | pan
-inline const FLAGS MODIFIABLE{FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
+constexpr FLAGS MODIFIABLE{FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE |
                                 FLAGS::AUTOHIDE | FLAGS::ALWAYSSELECTED | FLAGS::TRANSPARENT | FLAGS::AUTOTRANSPARENT |
                                 FLAGS::GRID | FLAGS::SCROLL | FLAGS::ZOOM | FLAGS::PAN |
                                 FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER};
@@ -496,6 +556,7 @@ inline const FLAGS MODIFIABLE{FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED 
 
 constexpr std::size_t CHAR_LIMIT{15};                                       //!< Limit of characters in widgets with text
 constexpr unsigned int CHAR_SIZE{18};                                       //!< Default character size for text used by widgets
+constexpr std::size_t MAX_STACK_IMAGE_SIZE{256 * 256 * 4};                  //!< Max size in bytes used by `resize_image` function to store an image on the stack
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////          Fonts              ///////////////////

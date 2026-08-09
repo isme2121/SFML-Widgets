@@ -1,66 +1,17 @@
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "widgets.hpp"
+#include "frame.hpp"
+#include "stb_image_resize2.h"
 #include <cmath>
-#include "../external-include/stb_image_resize2.h"
-#include "../include/frame.hpp"
+#include <iostream>
+
+#define BIND_ERROR(name, reason) std::cerr << "Failed to bind key event: " << name << "\nReason: " << reason << ".\n"
 
 namespace sfml_widgets // FLAGS
 {
-FLAGS operator&(FLAGS first, FLAGS second)
-{
-    return static_cast<FLAGS>(static_cast<std::int32_t>(first) & static_cast<std::int32_t>(second));
-}
-FLAGS& operator&=(FLAGS& self, FLAGS other)
-{
-    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) & static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
-    return self;
-}
-FLAGS operator|(FLAGS first, FLAGS second)
-{
-    return static_cast<FLAGS>(static_cast<std::int32_t>(first) | static_cast<std::int32_t>(second));
-}
-FLAGS& operator|=(FLAGS& self, FLAGS other)
-{
-    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) | static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
-    return self;
-}
-FLAGS operator^(FLAGS first, FLAGS second)
-{
-    return static_cast<FLAGS>(static_cast<std::int32_t>(first) ^ static_cast<std::int32_t>(second));
-}
-FLAGS& operator^=(FLAGS& self, FLAGS other)
-{
-    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) ^ static_cast<std::int32_t>(other)) | FLAGS::MODIFIED;
-    return self;
-}
-FLAGS& setFlag(FLAGS& self, FLAGS bits)
-{
-    self |= bits;    //!< sets MODIFIED
-    return self;
-};
-
-FLAGS& resetFlag(FLAGS& self, FLAGS bits)
-{
-    std::int32_t mask = ~static_cast<std::int32_t>(bits);
-    self = static_cast<FLAGS>(static_cast<std::int32_t>(self) & mask);
-    if(!checkFlag(bits, FLAGS::MODIFIED)) self |= FLAGS::MODIFIED;
-    return self;
-};
-
-FLAGS& toggle(FLAGS& self, FLAGS bits)
-{
-    self = self ^ bits;
-    return self;
-}
-
-bool checkFlag(const FLAGS& self, FLAGS bits)
-{
-    return static_cast<bool>(self & bits);
-}
-
-bool checkFlags(const FLAGS& self, FLAGS bits)
-{
-    return (self & bits) == bits;
-}
+    constexpr bool isModifiable(FLAGS f)
+    {
+        return static_cast<bool>(parameters::MODIFIABLE & f);
+    }
 }
 
 namespace sfml_widgets // resize_image
@@ -70,15 +21,14 @@ namespace sfml_widgets // resize_image
         const sf::Vector2u current_size = source.getSize();
         const std::uint8_t* source_data = source.getPixelsPtr();
         
-        constexpr std::size_t MAX_STACK_SIZE = 256 * 256 * 4;
         std::size_t output_size = target_size.x * target_size.y * 4;
 
-        std::uint8_t stack_buffer[MAX_STACK_SIZE];
+        std::uint8_t stack_buffer[parameters::MAX_STACK_IMAGE_SIZE];
         std::vector<std::uint8_t> heap_buffer;
 
         std::uint8_t* output = nullptr;
 
-        if(output_size < MAX_STACK_SIZE)
+        if(output_size < parameters::MAX_STACK_IMAGE_SIZE)
         {
             output = stack_buffer;
         }
@@ -225,10 +175,17 @@ namespace sfml_widgets // CaptureSequence
 void CaptureSequence::addSequence(const std::string& name, Sequence sequence, SequenceFunction callback)
 {
     std::size_t sequence_length = sequence.size();
-    if(sequence_length == 0) return;
-
+    if(sequence_length == 0)
+    {
+        BIND_ERROR(name, "Sequence of invalid length 0");
+        return;
+    }
     // name tag already exists
-    if(std::find(m_sequences.begin(), m_sequences.end(), name) != m_sequences.end()) return;
+    if(std::find(m_sequences.begin(), m_sequences.end(), name) != m_sequences.end())
+    {
+        BIND_ERROR(name, "Tag already taken");
+        return;
+    }
 
     SequenceEntry temp{std::move(name), std::move(sequence), std::move(callback)};
     
@@ -250,7 +207,7 @@ void CaptureSequence::deleteSequence(const std::string& name)
     
     if(it != m_sequences.end())
     {
-        size_t removed_size = it->sequence.size();
+        std::size_t removed_size = it->sequence.size();
         m_sequences.erase(it);
         if(m_max_sequence == removed_size && m_sequences.size() > 0)
             m_max_sequence = m_sequences.at(0).sequence.size(); //!< take the first index size since it's ordered
@@ -260,7 +217,7 @@ void CaptureSequence::deleteSequence(const std::string& name)
 bool CaptureSequence::checkEvents(const sf::Event& key_event)
 {
     const sf::Event::KeyPressed* key = key_event.getIf<sf::Event::KeyPressed>();
-    if(!key) return 0;
+    if(!key) return false;
     m_current_sequence.push_back(*key);
     return compareSequence();
 }

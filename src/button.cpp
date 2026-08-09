@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../include/button.hpp"
+#include "button.hpp"
 
 namespace sfml_widgets // Button
 {

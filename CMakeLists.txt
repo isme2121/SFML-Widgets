@@ -34,15 +34,19 @@ file(COPY "${sfml_SOURCE_DIR}/include/" DESTINATION "${CMAKE_SOURCE_DIR}/SFML/in
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #core library
-add_library(widgets
+add_library(widgets STATIC
     src/widgets.cpp
     src/widget.cpp
     src/frame.cpp
     src/tooltip.cpp
 )
-target_include_directories(widgets PUBLIC include)
+target_compile_definitions(widgets PUBLIC STB_IMAGE_RESIZE_IMPLEMENTATION)
+target_include_directories(widgets PUBLIC include
+    "${CMAKE_SOURCE_DIR}/external-include")
+
 target_link_libraries(widgets PUBLIC
     SFML::Graphics
     SFML::Window
@@ -54,7 +58,7 @@ if(UNIX)
 endif()
 
 #button library
-add_library(button
+add_library(button STATIC
     src/button.cpp
 )
 target_include_directories(button PUBLIC include)
@@ -63,7 +67,7 @@ target_link_libraries(button PUBLIC
 )
 
 #entry library
-add_library(entry
+add_library(entry STATIC
     src/entry.cpp
 )
 target_include_directories(entry PUBLIC include)
@@ -72,7 +76,7 @@ target_link_libraries(entry PUBLIC
 )
 
 #checkbox library
-add_library(checkbox
+add_library(checkbox STATIC
     src/checkbox.cpp
 )
 target_include_directories(checkbox PUBLIC include)
@@ -81,7 +85,7 @@ target_link_libraries(checkbox PUBLIC
 )
 
 #grid canvas library
-add_library(grid_canvas
+add_library(grid_canvas STATIC
     src/grid_canvas.cpp
 )
 target_include_directories(grid_canvas PUBLIC include)
@@ -90,7 +94,7 @@ target_link_libraries(grid_canvas PUBLIC
 )
 
 #image frame library
-add_library(image_frame
+add_library(image_frame STATIC
     src/image_frame.cpp
 )
 target_include_directories(image_frame PUBLIC include)
@@ -99,7 +103,7 @@ target_link_libraries(image_frame PUBLIC
 )
 
 #label library
-add_library(label
+add_library(label STATIC
     src/label.cpp
 )
 target_include_directories(label PUBLIC include)

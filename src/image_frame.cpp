@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../include/image_frame.hpp"
+#include "image_frame.hpp"
 
 namespace sfml_widgets
 {
@@ -59,7 +59,14 @@ ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, st
 
 ImageFrame::~ImageFrame()
 {
-    clearImage();
+    if(m_imageTexturePtr)
+    {
+        if(checkFlag(m_flags, FLAGS::SET))
+        {
+            ImageCache::getInstance().decrementRefCounter(m_imagePath);
+            resetFlag(m_flags, FLAGS::SET);
+        }
+    }
 }
 
 bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& shader, W_LoadType loading_type)

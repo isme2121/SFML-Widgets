@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../include/checkbox.hpp"
+#include "checkbox.hpp"
 
 namespace sfml_widgets // checkbox
 {

@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../include/tooltip.hpp"
+#include "tooltip.hpp"
 
 namespace sfml_widgets
 {

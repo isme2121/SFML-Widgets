@@ -1,6 +1,7 @@
+#include "widgets.hpp"
+#include "frame.hpp"
 #include <cmath>
 #include <iostream>
-#include "../include/frame.hpp"
 
 namespace sfml_widgets // Widget
 {
@@ -51,21 +52,22 @@ Widget::~Widget()
 
 void Widget::draw()
 {
-    if(!checkFlag(m_flags, FLAGS::LONGSKIP)) //!< check if widget calls for a skip
-    {
-        checkQueue();   //!< updates queue clock and triggers callback
-        updateTheme();  //!< syncs shared theme with widget
-        updateState();  //!< updates shaders and coloring
-    }
-    
-    if(m_restrictEvent && m_restrictEvent->advance()) m_restrictEvent.reset();
+    /* Update attributes section */
 
-    s_mouseEventUsed = false;
-    s_keyEventUsed = false;
-    updateFocus();      //!< updates focused widget and triggers focus and unfocus callback
+    checkQueue();           //!< updates queue clock and triggers callback
+    m_loopGuard = false;    //!< Frees queue check for the next loop
+
+    updateTheme();          //!< syncs shared theme with widget
+    updateState();          //!< updates shaders and coloring
+
+    updateFocus();          //!< updates focused widget and triggers focus and unfocus callback
     
+    /* Draw section */
+
     // check if it's hidden
-    if(checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) return;
+    if(m_isHidden) return;
+
+    setFlag(m_flags, FLAGS::DRAWING);
 
     // drawing the shape itself
     if(m_bgShaderPtr) m_master.draw(*this, m_bgShaderPtr.get());
@@ -76,6 +78,8 @@ void Widget::draw()
 
     // drawing tool tip if enabled
     if(m_ToolTipPtr) m_ToolTipPtr->draw(checkFlag(m_flags, FLAGS::HOVERED));
+
+    resetFlag(m_flags, FLAGS::DRAWING | FLAGS::MODIFIED);
 }
 
 void Widget::configure(FLAGS flags)
@@ -88,9 +92,11 @@ void Widget::configure(FLAGS flags)
     // flags that should remain in sync with root frame if there is one
     if(Frame* root = m_master.getFramePtr())
     {
-        if(root->isFlag(FLAGS::HIDDEN)) mask |= FLAGS::HIDDEN;
-        if(root->isFlag(FLAGS::BLOCKED)) mask |= FLAGS::BLOCKED;
-        if(root->isFlag(FLAGS::RESIZE)) mask |= FLAGS::RESIZE;
+        // flag root frame to update it's grid/separator properties
+        if(checkFlag(mask, FLAGS::HIDDEN | FLAGS::AUTOHIDE)) setFlag(root->m_flags, FLAGS::UPDATE);
+
+        if(root->isFlag(FLAGS::BLOCKED)) m_flags |= FLAGS::BLOCKED;
+        if(root->isFlag(FLAGS::RESIZE)) m_flags |= FLAGS::RESIZE;
     }
 
     /* updates related to explicit function calls happen directly */
@@ -137,7 +143,7 @@ void Widget::setWidgetPosition(sf::Vector2f new_position)
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
-        setFlag(root->m_flags, FLAGS::SET);
+        setFlag(root->m_flags, FLAGS::UPDATE);  //!< update grid/separator lines
     }
 }
 
@@ -161,7 +167,7 @@ void Widget::setWidgetSize(sf::Vector2f new_size)
     // update frame height if it exists
     if(Frame* root = m_master.getFramePtr())
     {
-        setFlag(root->m_flags, FLAGS::SET);
+        setFlag(root->m_flags, FLAGS::UPDATE);  //!< update grid/separator lines
     }
 
     update();
@@ -176,13 +182,7 @@ void Widget::setWidgetRotation(float new_angle)
 bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
     // hidden or blocked widgets can't trigger mouse events
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED)) return false;
-
-    // get mouse position
-    if(!mouse_position) *mouse_position = getMousePosition();    
-
-    // HOVERED & ALPHAREDUCED flags are updated here
-    updateMouseState(event, *mouse_position);
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || updateMouseState(event, mouse_position)) return false;
 
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
@@ -204,8 +204,6 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     }
     
     /* This section contains the default mouse event checkup for widgets */
-
-
 
     // pressed mouse button
     if(const sf::Event::MouseButtonPressed* clicked = event.getIf<sf::Event::MouseButtonPressed>())
@@ -653,9 +651,6 @@ void Widget::addToQueue(sf::Time after_ms, std::function<void()> callback, bool 
         m_events.emplace_front(std::move(after_ms), std::move(callback));
     }
     else m_events.emplace_back(std::move(after_ms), std::move(callback));
-
-    // initial check
-    checkQueue();
 }
 
 void Widget::addToQueue(std::size_t after_frames, std::function<void()> callback, bool is_priority)
@@ -666,9 +661,6 @@ void Widget::addToQueue(std::size_t after_frames, std::function<void()> callback
         m_events.emplace_front(std::move(after_frames), std::move(callback));
     }
     else m_events.emplace_back(std::move(after_frames), std::move(callback));
-
-    // initial check
-    checkQueue();
 }
 
 void Widget::clearQueue()
@@ -726,7 +718,7 @@ bool Widget::unlinkWidget()
     return false;
 }
 
-void Widget::linkTheme(std::shared_ptr<WidgetTheme>& t)
+void Widget::linkTheme(const std::shared_ptr<WidgetTheme>& t)
 {
     m_themePtr = t;
     m_generationToken = constants::KSTALE;
@@ -749,6 +741,11 @@ std::weak_ptr<ToolTip> Widget::EnableToolTip(sf::Vector2f abs_position, sf::Time
 void Widget::DisableToolTip()
 {
     m_ToolTipPtr.reset();
+}
+
+void Widget::poke()
+{
+    m_flags |= FLAGS::MODIFIED;
 }
 
 const sf::Vector2f Widget::getWidgetPosition() const
@@ -808,6 +805,11 @@ bool Widget::isFlag(FLAGS bits) const
 bool Widget::isFlags(FLAGS bits) const
 {
     return checkFlags(m_flags, bits);
+}
+
+bool Widget::isHidden() const
+{
+    return m_isHidden;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -908,7 +910,7 @@ sf::Vector2i Widget::getMousePosition() const
     return {0, 0}; //!< shouldn't reach here but here we are
 }
 
-bool Widget::isHovered(sf::Vector2i mouse_position) const 
+bool Widget::isHovered(const sf::Vector2i& mouse_position) const 
 {
     sf::Vector2f world = m_master.mapMousePosition(mouse_position);         //!< coordinates relative to widget's root view
     sf::Vector2f local = this->getInverseTransform().transformPoint(world); //!< shift coords in case widget is rotated
@@ -920,18 +922,28 @@ bool Widget::isHovered(sf::Vector2i mouse_position) const
     return this->getLocalBounds().contains(local) && root_hovered;          //!< local coords are relative to local widget surface 
 }
 
-void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_position)
+bool Widget::updateMouseState(const sf::Event& event, std::optional<sf::Vector2i>& mouse_position)
 {
-    if(isHovered(mouse_position))
+    if(!mouse_position) *mouse_position = getMousePosition();
+    bool root_is_transparent{false};
+    Frame* root = m_master.getFramePtr();
+    if(root) root_is_transparent = checkFlag(root->m_flags, FLAGS::ALPHAREDUCED);
+
+    if(isHovered(*mouse_position))
     {
         // first hover callback
         if(!checkFlag(m_flags, FLAGS::HOVERED))
         {
             setFlag(m_flags, FLAGS::HOVERED);
             if(m_gainhoverCallBack) m_gainhoverCallBack(event);
+            if(checkFlag(m_flags, FLAGS::AUTOHIDE))
+            {
+                // widget no longer hidden -> update root frame's properties
+                if(root) setFlag(root->m_flags, FLAGS::UPDATE);
+            }
         }
 
-        if(!checkFlag(m_flags, FLAGS::TRANSPARENT)) resetFlag(m_flags, FLAGS::ALPHAREDUCED);
+        if(!checkFlag(m_flags, FLAGS::TRANSPARENT) && !root_is_transparent) resetFlag(m_flags, FLAGS::ALPHAREDUCED);
         else setFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
     else
@@ -941,20 +953,33 @@ void Widget::updateMouseState(const sf::Event& event, sf::Vector2i mouse_positio
         {
             resetFlag(m_flags,  FLAGS::HOVERED);
             if(m_losehoverCallBack) m_losehoverCallBack(event);
+            if(checkFlag(m_flags, FLAGS::AUTOHIDE))
+            {
+                // widget is now hidden -> update root frame's properties
+                if(root) setFlag(root->m_flags, FLAGS::UPDATE);
+            }
         }
 
-        bool root_hidden = false;
-        if(Frame* root = m_master.getFramePtr()) root_hidden = root->isFlag(FLAGS::ALPHAREDUCED);
-
         // root is transparent or transparent flag is set => become transparent
-        if(checkFlag(m_flags, FLAGS::AUTOTRANSPARENT | FLAGS::TRANSPARENT) || root_hidden) setFlag(m_flags, FLAGS::ALPHAREDUCED);
+        if(checkFlag(m_flags, FLAGS::AUTOTRANSPARENT | FLAGS::TRANSPARENT) || root_is_transparent) setFlag(m_flags, FLAGS::ALPHAREDUCED);
         else resetFlag(m_flags, FLAGS::ALPHAREDUCED);
     }
+
+    // full check for a hidden widget
+    return m_isHidden = checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED) || m_isRootHidden && *m_isRootHidden;
+
 }
 
 void Widget::checkQueue()
 {
+    // block multiple checks at the same loop because of Frame
+    if(m_loopGuard) return;
+    m_loopGuard = true;
+    
     if(checkFlag(m_flags, FLAGS::BLOCKED)) return;
+
+    // key event restriction
+    if(m_restrictEvent && m_restrictEvent->advance()) m_restrictEvent.reset();
 
     // queue
     if(!m_events.empty())
@@ -962,18 +987,13 @@ void Widget::checkQueue()
         if(m_events.front().advance()) m_events.pop_front();
     }
 
-    // routines, all checked at once
-    /*
-    * remove_if moves all routines that return true to the
-    * end side of the vector then returns an iterator to their
-    * first element.
-    * 
-    * then erase comes in and removes elements starting from that
-    * iterator til .end() position
-    */
-    m_repeatEvents.erase(std::remove_if(m_repeatEvents.begin(), m_repeatEvents.end(), //!< range
-                            [](W_RepeatEvent& e){return e.advance();}),               //!< condition
-                            m_repeatEvents.end());                                    //!< end position
+    // routine
+    if(!m_repeatEvents.empty())
+    {
+        m_repeatEvents.erase(std::remove_if(m_repeatEvents.begin(), m_repeatEvents.end(), //!< range
+                                [](W_RepeatEvent& e){return e.advance();}),               //!< condition
+                                m_repeatEvents.end());                                    //!< end position
+    }
 }
 
 void Widget::updateDimensions()
@@ -1098,6 +1118,10 @@ void Widget::unfocusWidget(Widget& w, std::optional<sf::Event> event) noexcept
 
 void Widget::updateFocus()
 {
+    // free mouse & key events for the next loop
+    s_mouseEventUsed = false;
+    s_keyEventUsed = false;
+
     if(!s_FrequestFocusUpdate) return; //!< no changes? just return
 
     if(s_widgetToFocusPtr) //!< check if a widget is demanding the resource

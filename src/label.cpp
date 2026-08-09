@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../include/label.hpp"
+#include "label.hpp"
 
 namespace sfml_widgets
 {

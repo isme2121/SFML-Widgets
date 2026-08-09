@@ -1,4 +1,5 @@
-#include "../include/entry.hpp"
+#include "entry.hpp"
+#include <iostream>
 
 namespace sfml_widgets // entry
 {
@@ -35,6 +36,9 @@ m_renderTexture(sf::Vector2u(size)), m_sprite(m_renderTexture.getTexture()), m_t
 
 void Entry::setText(const sf::String& text)
 {
+    m_textBuffer = "";
+    m_cursorIndex = 0;
+
     if(m_inputFilter)
     {
         // filter input
@@ -43,9 +47,12 @@ void Entry::setText(const sf::String& text)
         for(std::size_t idx{0}; idx < size; idx++)
         {
             char32_t c = text[idx];
-            if(m_inputFilter(&c)) result += c;
+            if(m_inputFilter(&c))
+            {
+                ++m_cursorIndex;
+                m_textBuffer += c;
+            }
         }
-        m_textBuffer = result;
     }
     else
     {
@@ -53,7 +60,6 @@ void Entry::setText(const sf::String& text)
         m_textBuffer = text.substring(0, std::min(text.getSize(), m_inputLimit));
     }
 
-    m_cursorIndex = m_textBuffer.getSize(); //!< shift to last
     writeToEntry(); //!< update front end
 }
 
@@ -572,16 +578,12 @@ void Entry::drawCursorLine()
 
 void Entry::moveCursorIndex(float x_pos)
 {
-    // considering panning + scrolling offsets
-    float offset_x = x_pos + m_currentPanOffset + m_textOffsetRatio * m_size.y;
-
-    // finding the smallest diff, starting with index 0
-    float smallest_distance  = std::abs(m_text.findCharacterPos(0).x - offset_x);
-    
+    float smallest_distance = 10000.f;
     std::size_t text_length = m_textBuffer.getSize();
-    for(std::size_t idx{1}; idx <= text_length; idx++)
+    for(std::size_t idx{0}; idx <= text_length; idx++)
     {
-        float dist = std::abs(m_text.findCharacterPos(idx).x - offset_x);
+        // finding the smallest diff, starting with index 0
+        float dist = std::abs(m_text.findCharacterPos(idx).x - x_pos);
         if(dist < smallest_distance)
         {
             smallest_distance  = dist;

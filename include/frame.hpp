@@ -255,17 +255,26 @@ private:
     void updateRotation() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates frame's colors to match current state alongside
-    /// shaders, called in `Widget::Draw`
+    /// @brief Updates frame's visuals based on the current state, managed
+    /// by base class
     ///
     ///////////////////////////////////////////////////////////////////
     void updateState() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Syncs shared theme with widget
+    /// @brief Syncs shared theme with widget, managed by base class
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Calls any assigned queue or routine event for this frame
+    /// and it's child widgets, managed by base class
+    ///
+    /// @see `addToQueue`, `addRoutine`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void checkQueue() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks whether a child widget is currently visible
@@ -338,6 +347,7 @@ private:
     /// @param new_widget reference to the same widget after moving
     ///
     ///////////////////////////////////////////////////////////////////
+    [[deprecated("Widgets can no longer be moved in memory.")]]
     void updateWidget(Widget& old_widget, Widget& new_widget);
 
     ///////////////////////////////////////////////////////////////////

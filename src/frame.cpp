@@ -1,4 +1,5 @@
-#include "../include/frame.hpp"
+#include "frame.hpp"
+#include "widget.hpp"
 
 namespace sfml_widgets // Frame
 {
@@ -55,6 +56,7 @@ Frame::~Frame()
         {
             w->m_master.setWindowPtr(m_window);
             w->m_master.setFramePtr(nullptr);
+            w->m_isRootHidden = nullptr;
         }
     }
 }
@@ -65,7 +67,7 @@ void Frame::setGrid(sf::Vector2u grid_mapping)
     // check if non of the grids is 0
     if(m_gridMapping.x * m_gridMapping.y) 
     {
-        setFlag(m_flags, FLAGS::GRID | FLAGS::SET);
+        setFlag(m_flags, FLAGS::GRID | FLAGS::UPDATE);
         return;
     }
     resetFlag(m_flags, FLAGS::GRID);
@@ -226,27 +228,12 @@ bool Frame::preProcessKeyEvents(const sf::Event& event)
 
 void Frame::drawWidget()
 {
-    /* 
-    * if LONGSKIP is set --> child widget will call the necessary methods
-    * to update the frame's texture and such and is skipped within the base class
-    * 
-    * if LONGSKIP is reset --> there are no child widgets, and base class has already
-    * called the necessary methods before this section is processed
-    */
-   if(checkFlag(m_flags, FLAGS::SET))
+   if(checkFlag(m_flags, FLAGS::UPDATE))
    {
         updateGrid();
         updateFrameHeight();
-        resetFlag(m_flags, FLAGS::SET);
+        resetFlag(m_flags, FLAGS::UPDATE);
    }
-
-    if(checkFlag(m_flags, FLAGS::LONGSKIP))
-    {
-        for(Widget* w : m_childWidgets)
-        {
-            if(isVisible(w)) w->draw();
-        }
-    }
 
     if(m_processHolder)
     {
@@ -256,12 +243,17 @@ void Frame::drawWidget()
         m_processHolder.reset();
     }
 
+    for(Widget* w : m_childWidgets)
+    {
+        if(isVisible(w)) w->draw();
+    }
+
     display();
 }
 
 void Frame::config(FLAGS mask)
 {
-    mask &= (FLAGS::HIDDEN | FLAGS::BLOCKED | FLAGS::RESIZE);
+    mask &= (FLAGS::BLOCKED | FLAGS::RESIZE);
     for(Widget* w : m_childWidgets) w->configure(mask);
 }
 
@@ -285,7 +277,7 @@ void Frame::updateSize()
     m_sprite.setOrigin(m_size / 2.f);
 
     // update grid & max view height
-    setFlag(m_flags, FLAGS::SET);
+    setFlag(m_flags, FLAGS::UPDATE);
 
     // shader scales with size
     updateClipShader();
@@ -357,6 +349,16 @@ void Frame::updateTheme()
     }
 }
 
+void Frame::checkQueue()
+{
+    Widget::checkQueue();
+    for(Widget* w : m_childWidgets)
+    {
+        w->checkQueue();
+        if(m_isHidden) w->m_loopGuard = false;
+    }
+}
+
 bool Frame::isVisible(const Widget* w)
 {
     sf::FloatRect view_bounds
@@ -379,7 +381,7 @@ void Frame::updateGrid()
     // skip hidden widgets
     for(Widget* w : m_childWidgets)
     {
-        if(w->isFlag(FLAGS::HIDDEN)) continue;
+        if(w->isHidden()) continue;
         sorted_by_position.emplace_back(w);
     }
 
@@ -422,7 +424,7 @@ void Frame::drawSeparators()
 
     for(Widget* w : m_childWidgets)
     {
-        if(w->isFlag(FLAGS::HIDDEN)) continue;
+        if(w->isHidden()) continue;
         sorted_by_position.emplace_back(w);
     }
 
@@ -494,10 +496,16 @@ void Frame::drawSeparators()
 
 void Frame::display()
 {
-    if(checkFlag(m_flags, FLAGS::HIDDEN)) return;
+    if(m_isHidden) return;
 
-    resetFlag(m_flags, FLAGS::DRAWING | FLAGS::MODIFIED);
-    
+    /* 
+    * if LONGSKIP is set --> this process was skipped initially, this could happen if
+    * child widgets were manually drawn without calling draw from root Frame object
+    * 
+    * if LONGSKIP is reset --> this process was not skipped initially, this happens
+    * since this frame has no child widgets currently and is drawn as a widget instead
+    * of a container
+    */
     drawSeparators();
 
     m_texture.display();
@@ -508,10 +516,8 @@ void Frame::display()
 
 void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
 {
-    // prevent refreshing at each call
     if(!checkFlag(m_flags, FLAGS::DRAWING))
     {
-        // this is processed after the first child widget is drawn
         setFlag(m_flags, FLAGS::DRAWING);
         checkQueue();
         updateTheme();
@@ -524,7 +530,8 @@ void Frame::drawChildWidget(const sf::Drawable& w, const sf::RenderStates state)
 void Frame::addWidget(Widget& w)
 {
     m_childWidgets.emplace_back(&w);
-    setFlag(m_flags, FLAGS::LONGSKIP | FLAGS::SET); //!< skip initial drawing part (child widget handles it) and call for view update
+    w.m_isRootHidden = &m_isHidden;
+    setFlag(m_flags, FLAGS::UPDATE); //!< skip initial drawing part (child widget handles it) and call for view update
 
     /*
     * At this point, w only ran it's Widget constructor so the V table
@@ -541,9 +548,7 @@ void Frame::removeWidget(Widget& w)
     if(it != m_childWidgets.end()) 
     {
         m_childWidgets.erase(it);
-        setFlag(m_flags, FLAGS::SET); //!< call for view update
-        
-        if(m_childWidgets.empty()) resetFlag(m_flags, FLAGS::LONGSKIP); //!< not skipping essential updates as no child widget handles it
+        setFlag(m_flags, FLAGS::UPDATE); //!< call for view update
     }
 }
 

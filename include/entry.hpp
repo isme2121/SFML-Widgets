@@ -58,8 +58,8 @@ public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Sets an input filter for entered characters
     ///
-    /// Function must accept a `char32_t` type as a parameter and return
-    /// a boolean value to validate input.
+    /// Function must accept a `char32_t*` type as a parameter and return
+    /// a boolean value to validate input, The filter runs on text input only.
     ///
     /// Set func to nullptr type to remove the filter.
     ///

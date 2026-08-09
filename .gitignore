@@ -1,8 +1,10 @@
 .vscode/
+.cache/
 build/
 build-windows/
-test/
 example/
+executables/
+test/
 lib/
 SFML/
 cache/
@@ -14,3 +16,6 @@ main
 testexe.exe
 README.md
 docs
+SFMLGUI/
+GLEW/
+IMGUI/
