@@ -1,11 +1,12 @@
 #pragma once
+#include "widget_themes.hpp"
+#ifdef WIDGETS_HPP
+
 #include <deque>
 #include <mutex>
 #include <unordered_map>
-#include "widget_themes.hpp"
 #include "tooltip.hpp"
 
-#ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
 ///////////////////////////////////////////////////////////////////
@@ -18,6 +19,7 @@ class Widget : protected sf::Shape
 {
     friend class Frame;
     friend class WidgetGroup;
+    friend class ImGuiWrapper;
 
 protected:
     struct ImageCache;
@@ -913,7 +915,7 @@ private:
 
     // memory
     std::optional<sf::Mouse::Button> m_memButton{std::nullopt};                     //!< Memorizes recently clicked mouse button
-    std::optional<bool> m_skipAfterPreProcess{true};                            //!< Option for frame: nullopt->normal; false->skip callbacks; true->return
+    std::optional<bool> m_skipAfterPreProcess{true};                                //!< Option for frame: nullopt->normal; false->skip callbacks; true->return
 
     // bind callbacks
     std::unordered_map<sf::Mouse::Button, MouseCallback> m_pressEvents;             //!< Stores assigned mouse press events
@@ -929,6 +931,16 @@ private:
 ///////////////////////////////////////////////////////////////////
 // Static Methods
 ///////////////////////////////////////////////////////////////////
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates event ID
+    ///
+    /// Call this function to declare the beginning of the event loop
+    /// for widgets, otherwise, events would fail to properly execute.
+    ///
+    ///////////////////////////////////////////////////////////////////
+    static void beginEventLoop();
+
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Handles resizing of widgets during a resize event, called
@@ -997,13 +1009,16 @@ private:
 
     inline static std::optional<sf::Event> s_memFocusEvent{std::nullopt};           //!< Cached event for widget focus event
     inline static std::optional<sf::Event> s_memUnfocusEvent{std::nullopt};         //!< Cached event for widget unfocus event
-
-    inline static bool s_FfoundFocusedWidget{false};                                //!< Tells widget to bother updating the focused widget
-    inline static bool s_FrequestUnfocus{false};                                    //!< Requests for the focused widget to lose the resource
-    inline static bool s_FrequestFocusUpdate{false};                                //!< Requests for a new widget to obtain the resource
-
-    inline static bool s_mouseEventUsed{false};                                     //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
-    inline static bool s_keyEventUsed{false};                                       //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
+    
+    inline static std::size_t s_eventID{0};                                         //!< Current event ID for pulled `sf::Event` object
+    inline static std::size_t s_mouseEventID{constants::KSTALE};                    //!< Last registered event ID for mouse events
+    inline static std::size_t s_keyEventID{constants::KSTALE};                      //!< Last registered event ID for key events
+    inline static bool s_foundFocusedWidget{false};                                 //!< Tells widget to bother updating the focused widget
+    inline static bool s_requestUnfocus{false};                                     //!< Requests for the focused widget to lose the resource
+    inline static bool s_requestFocusUpdate{false};                                 //!< Requests for a new widget to obtain the resource
+    inline static bool s_mouseEventUsed{true};                                      //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
+    inline static bool s_keyEventUsed{true};                                        //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
+    inline static bool s_externalEventUsed{false};                                  //!< External event coming from `ImGuiWrapper` class, prevents any widget event if set
     inline static bool s_setOriginals{true};                                        //!< Widgets update their original dimensions if set, otherwise skips the process
 
 public:

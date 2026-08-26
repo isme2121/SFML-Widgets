@@ -302,7 +302,7 @@ void Frame::updateState()
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
     }
-    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;

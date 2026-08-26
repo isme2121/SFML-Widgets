@@ -126,7 +126,7 @@ CheckboxStyle& CheckBox::style()
     return m_style;
 }
 
-bool CheckBox::getState()
+bool CheckBox::getState() const
 {
     return checkFlag(m_flags, FLAGS::SET);
 }
@@ -217,7 +217,7 @@ void CheckBox::updateState()
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
-        else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
         {
             m_opacity = 0.2f;
             m_currentBgColorPtr->a = m_style.fill_trasnparent_color.a;
@@ -250,7 +250,7 @@ void CheckBox::updateState()
             m_currentOutlineColorPtr = &m_style.outline_blocked_color;
             m_currentTextColorPtr = &m_style.text_blocked_color;
         }
-        else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+        else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
         {
             m_opacity = 0.2f;
             m_currentBgColorPtr = &m_style.fill_trasnparent_color;

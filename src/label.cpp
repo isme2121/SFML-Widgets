@@ -223,7 +223,7 @@ void Label::updateState()
         m_currentOutlineThicknessPtr = &m_style.text_outline_blocked_thickness;
         m_text.setFillColor(m_style.text_blocked_color);
     }
-    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.25f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;

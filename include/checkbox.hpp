@@ -193,7 +193,7 @@ public:
     /// @see `Widget::isFlag`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] bool getState();
+    [[nodiscard]] bool getState() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current character size in text

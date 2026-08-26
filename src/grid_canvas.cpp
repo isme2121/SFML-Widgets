@@ -163,12 +163,12 @@ std::optional<sf::Vector2u> GridCanvas::mapCoordinates(sf::Vector2i mouse_positi
     return coordinates;
 }
 
-Cell* GridCanvas::getSelectedCellPtr() 
+Cell* GridCanvas::getSelectedCellPtr() const
 {
     return m_selectedCell;
 }
 
-Cell* GridCanvas::getClickedCellPtr() 
+Cell* GridCanvas::getClickedCellPtr() const
 {
     return m_clickedCell;
 }
@@ -362,7 +362,7 @@ void GridCanvas::updateState()
         m_currentOutlineColorPtr = &m_style.outline_blocked_color;
         m_currentOutlineThicknessPtr = &m_style.outline_blocked_thickness;
     }
-    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.1f;
         m_currentBgColorPtr = &m_style.fill_transparent_color;

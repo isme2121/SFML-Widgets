@@ -183,7 +183,7 @@ public:
     /// @see `getClickedCellPtr`
     ///
     ///////////////////////////////////////////////////////////////////
-    Cell* getSelectedCellPtr(); 
+    Cell* getSelectedCellPtr() const; 
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a pointer to last clicked cell, or null if no
@@ -195,7 +195,7 @@ public:
     /// @see `getSelectedCellPtr`
     ///
     ///////////////////////////////////////////////////////////////////
-    Cell* getClickedCellPtr();
+    Cell* getClickedCellPtr() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns currently existing cells in canvas

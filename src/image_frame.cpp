@@ -360,7 +360,7 @@ void ImageFrame::updateState()
         this->setOutlineColor(m_style.outline_blocked_color);  
         this->setOutlineThickness(m_style.outline_blocked_thickness); 
     }
-    else if(!m_stale && checkFlag(m_flags, FLAGS::TRANSPARENT))
+    else if(!m_stale && checkFlag(m_flags, FLAGS::ALPHAREDUCED))
     {
         m_opacity = 0.2f;
         this->setFillColor(m_style.fill_transparent_color);

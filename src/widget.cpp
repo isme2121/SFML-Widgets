@@ -1,4 +1,3 @@
-#include "widgets.hpp"
 #include "frame.hpp"
 #include <cmath>
 #include <iostream>
@@ -16,7 +15,6 @@ m_originalPosition(position), m_originalSize(sf::Vector2f(size))
     s_widgets.emplace_back(this);
     // original window size
     m_windowSize = sf::Vector2f(root.getSize());
-    // for any derived checks
 }
 
 Widget::Widget(Frame& root, sf::Vector2f position, sf::Vector2u size) : m_master(root), m_size(size), m_position(position),
@@ -106,6 +104,8 @@ void Widget::configure(FLAGS flags)
     
     /* flags that should be immediately updated */
 
+    if(checkFlag(m_flags, FLAGS::HIDDEN)) m_isHidden = true;
+
     // apply transparency if flag was just set
     if(checkFlag(m_flags, FLAGS::TRANSPARENT))
         setFlag(m_flags, FLAGS::ALPHAREDUCED);
@@ -181,8 +181,15 @@ void Widget::setWidgetRotation(float new_angle)
 
 bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector2i> mouse_position)
 {
-    // hidden or blocked widgets can't trigger mouse events
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || updateMouseState(event, mouse_position)) return false;
+    // reset if new event ID pulled
+    if (s_mouseEventID != s_eventID)
+    {
+        s_mouseEventUsed = false;
+        s_mouseEventID = s_eventID;
+    }
+
+    // hidden or blocked widgets can't trigger mouse events, or the external signal is set for this loop
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || updateMouseState(event, mouse_position) || s_externalEventUsed) return false;
 
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
@@ -329,10 +336,18 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
 
 bool Widget::captureKeyEvents(const sf::Event& event)
 {    
+    // reset if new event ID is pulled
+    if (s_keyEventID != s_eventID)
+    {
+        s_keyEventUsed = false;
+        s_keyEventID = s_eventID;
+    }
+
     // key event won't trigger if:
     if(s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
        checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) ||                                        //!< widget is either blocked or restricted
       !checkFlag(m_flags, FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;                       //!< widget is neither selected, always selected
+    // external event currently not considered for now since it's only trigger from mouse events anyways
     
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
@@ -967,7 +982,6 @@ bool Widget::updateMouseState(const sf::Event& event, std::optional<sf::Vector2i
 
     // full check for a hidden widget
     return m_isHidden = checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED) || m_isRootHidden && *m_isRootHidden;
-
 }
 
 void Widget::checkQueue()
@@ -1034,6 +1048,11 @@ sf::Vector2f Widget::getPoint(std::size_t index) const {
 /// Static methods
 ///////////////////////////////////////////////////////////////////
 
+void Widget::beginEventLoop()
+{
+    ++s_eventID;
+}
+
 void Widget::resizeWidgets(const sf::RenderWindow* win_ptr, const sf::Event::Resized& event)
 {
     sf::Vector2f win_size = sf::Vector2f(event.size);
@@ -1095,12 +1114,12 @@ void Widget::focusWidget(Widget& w, std::optional<sf::Event> event) noexcept
     // this is called whenever a widget is pressed with any mouse button
 
     // if a widget is already assigned and parameters block multiple selections then we return
-    if(s_FfoundFocusedWidget && s_GUARD_EVENT) return;
+    if(s_foundFocusedWidget && s_GUARD_EVENT) return;
 
     s_widgetToFocusPtr = &w;
     s_memFocusEvent.emplace(*event);
-    s_FfoundFocusedWidget = true; //!< no more checking unless macro is set
-    s_FrequestFocusUpdate = true; //!< `focusUpdate` method will run now
+    s_foundFocusedWidget = true; //!< no more checking unless macro is set
+    s_requestFocusUpdate = true; //!< `focusUpdate` method will run now
 }
 
 void Widget::unfocusWidget(Widget& w, std::optional<sf::Event> event) noexcept
@@ -1110,19 +1129,15 @@ void Widget::unfocusWidget(Widget& w, std::optional<sf::Event> event) noexcept
     // only process if widget currently has the resource
     if(s_focusedWidgetPtr == &w)
     {
-        s_FrequestUnfocus = true;
+        s_requestUnfocus = true;
         s_memUnfocusEvent.emplace(*event);
-        s_FrequestFocusUpdate = true;
+        s_requestFocusUpdate = true;
     }
 }
 
 void Widget::updateFocus()
 {
-    // free mouse & key events for the next loop
-    s_mouseEventUsed = false;
-    s_keyEventUsed = false;
-
-    if(!s_FrequestFocusUpdate) return; //!< no changes? just return
+    if(!s_requestFocusUpdate) return; //!< no changes? just return
 
     if(s_widgetToFocusPtr) //!< check if a widget is demanding the resource
     {
@@ -1171,7 +1186,7 @@ void Widget::updateFocus()
 
     }
 
-    else if(s_FrequestUnfocus && s_focusedWidgetPtr) //!< unfocus event
+    else if(s_requestUnfocus && s_focusedWidgetPtr) //!< unfocus event
     {
         /* prev lose focus and no new widget demands the resource (clicked on non-widget space)*/
         
@@ -1189,9 +1204,9 @@ void Widget::updateFocus()
     s_widgetToFocusPtr = nullptr;
     s_memFocusEvent.reset();
     s_memUnfocusEvent.reset();
-    s_FrequestUnfocus = false;
-    s_FfoundFocusedWidget = false;
-    s_FrequestFocusUpdate = false;
+    s_requestUnfocus = false;
+    s_foundFocusedWidget = false;
+    s_requestFocusUpdate = false;
 }
 }
 
