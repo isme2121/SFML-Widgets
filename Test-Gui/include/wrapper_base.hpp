@@ -85,8 +85,8 @@ protected:
     ///////////////////////////////////////////////////////////////////
     virtual void renderWidgets() = 0;
 
-private:
     sf::RenderWindow& m_window;     //!< root window
+private:
     sf::Clock m_deltaClock;         //!< internal update clock
     std::string m_title;            //!< frame title
     unsigned int m_ID{0};           //!< unique frame ID

@@ -2,6 +2,20 @@
 #ifdef WRAPPER_DEFINED
 #include <stdexcept>
 
+///////////////////////////////////////////////////////////////////
+/// @brief Overall a mouse event
+///
+///////////////////////////////////////////////////////////////////
+bool is_mouse_event(const sf::Event& event)
+{
+    return event.is<sf::Event::MouseButtonPressed>() ||
+           event.is<sf::Event::MouseButtonReleased>() ||
+           event.is<sf::Event::MouseMoved>() ||
+           event.is<sf::Event::MouseWheelScrolled>() ||
+           event.is<sf::Event::MouseEntered>() ||
+           event.is<sf::Event::MouseLeft>();
+}
+
 namespace sfml_widgets
 {
 ImGuiWrapper::ImGuiWrapper(sf::RenderWindow& window, const std::string& title) : m_window(window), m_title(title)
@@ -38,22 +52,22 @@ bool ImGuiWrapper::captureEvents(const sf::Event& event)
     if(!m_guiVisible)
     {
         Widget::s_externalEventUsed = false;
-        return false;
-    }
-
-    ImGui::SFML::ProcessEvent(m_window, event);
-    if(event.is<sf::Event::MouseButtonPressed>() && m_hovered)
-    {
-        // widgets cannot capture this event nor update their states for this loop
-        Widget::s_externalEventUsed = true;
-        return true;
     }
     else
     {
-        Widget::s_externalEventUsed = false;
+        ImGui::SFML::ProcessEvent(m_window, event);
+        if(m_hovered && is_mouse_event(event))
+        {
+            // widgets cannot capture this event nor update their states for this loop
+            Widget::s_externalEventUsed = true;
+        }
+        else
+        {
+            Widget::s_externalEventUsed = false;
+        }
     }
 
-    return processEvents(event);
+    return processEvents(event) || Widget::s_externalEventUsed;
 }
 
 void ImGuiWrapper::setTitle(const std::string& title)
