@@ -1,6 +1,7 @@
 #pragma once
 #include "info_base.hpp"
 #include <iostream>
+#include <map>
 
 #if defined(WIDGETS_HPP) && defined(COMPILE_TESTS)
 
@@ -71,9 +72,10 @@ public:
     ///////////////////////////////////////////////////////////////////
     std::optional<Accessed_t> get(const std::string& key) const
     {
-        auto it = m_lookup.find(key);
-        if(it == m_lookup.end() || !it->second.getter) return std::nullopt;
-        return it->second.getter(*m_widget);
+        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
+            [&](const accessor_ptr<WidgetT>& e) { return e.key == key; });
+        if(it == m_lookup.end() || !it->getter) return std::nullopt;
+        return it->getter(*m_widget);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -83,8 +85,13 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool set(const std::string& key, Accessed_t v)
     {
-        auto it = m_lookup.find(key);
-        if(it != m_lookup.end() && it->second.setter) return it->second.setter(*m_widget, v);
+        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
+            [&](const accessor_ptr<WidgetT>& e)
+            {
+                return e.key == key;
+            });
+
+        if(it != m_lookup.end() && it->setter) return it->setter(*m_widget, v);
         return false;
     }
 
@@ -95,8 +102,8 @@ public:
     std::map<std::string, Accessed_t> getValues() const
     {
         std::map<std::string, Accessed_t> tmp;
-        for(const auto& [key, funcs] : m_lookup)
-            if(funcs.getter) tmp.emplace(key, funcs.getter(*m_widget));
+        for(const auto& accessor_val : m_lookup)
+            if(accessor_val.getter) tmp.emplace(accessor_val.key, accessor_val.getter(*m_widget));
         return tmp;
     }
 
@@ -110,12 +117,13 @@ public:
     {
         data.clear();
         data.reserve(m_lookup.size());
-        for(const auto& [key, funcs] : m_lookup)
+        for(const auto& accessor_val : m_lookup)
         {
             Info info;
-            info.info_key = key;
-            info.info_has_setter = static_cast<bool>(funcs.setter);
-            if(funcs.getter) info.info_val = funcs.getter(*m_widget);
+            info.info_key = accessor_val.key;
+            info.info_section = accessor_val.section;
+            info.info_has_setter = static_cast<bool>(accessor_val.setter);
+            if(accessor_val.getter) info.info_val = accessor_val.getter(*m_widget);
             data.emplace_back(std::move(info));
         }
     }
@@ -132,15 +140,20 @@ public:
         {
             if(!info.info_val.has_value()) continue;
 
-            auto accessor_it = m_lookup.find(info.info_key);
-            if(accessor_it != m_lookup.end() && accessor_it->second.getter)
-                info.info_val = accessor_it->second.getter(*m_widget);
+        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
+            [&](const accessor_ptr<WidgetT>& e)
+            {
+                return e.key == info.info_key;
+            });
+
+            if(it != m_lookup.end() && it->getter)
+                info.info_val = it->getter(*m_widget);
         }
     }
 
 private:
     WidgetT* m_widget;                  // main widget
-    LookupMap_t<WidgetT> m_lookup;      // accessor lookup
+    LookupVec_t<WidgetT> m_lookup;      // accessor lookup
     bool m_isManaged{false};            // true = widget memory is managed externally, false = widget memory is managed by class
 };
 
@@ -353,20 +366,63 @@ public:
 
                 std::visit([this](auto& w)
                 {
-                    // this applies to all types
                     using ActualT = std::decay_t<decltype(w)>;
                     Widget* widget_ptr = &w;
+                    BuiltinBindFlags& flags = m_bindMem[widget_ptr];
 
-                    // selecting the widget event
+                    /* Reserved events */
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusSet, [this, &w](std::optional<sf::Event>)
                     {
                         selectWidget<ActualT>(&w);
                     });
-
-                    // unselecting the widget event
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusLost, [this, widget_ptr](std::optional<sf::Event>)
                     {
                         if(m_selected.widget_ptr == widget_ptr) unselectWidget();
+                    });
+
+
+                    /* Bind events */
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &flags](std::optional<sf::Event> e)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
+                        {
+                            std::cout << "Pressed (Drag event)\n";
+                        }
+                    });
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &flags](std::optional<sf::Event> e)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::RightClickDelete))
+                        {
+                            std::cout << "Pressed (Delete event)\n";
+                        }
+                    }, sf::Mouse::Button::Right);
+                    w.bindMouseEvent(Widget::W_MouseEventType::Hold, [this, &flags](std::optional<sf::Event>)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
+                        {
+                            std::cout << "Held (Drag event)\n";
+                        }
+                    });
+                    w.bindMouseEvent(Widget::W_MouseEventType::Scroll, [this, &flags](std::optional<sf::Event> e)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::ScrollResize))
+                        {
+                            std::cout << "Scrolled (resize event)\n";
+                        }
+                    });
+                    w.bindMouseEvent(Widget::W_MouseEventType::HoverSet, [this, &flags](std::optional<sf::Event>)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
+                        {
+                            std::cout << "Hovered (highlight event)\n";
+                        }
+                    });
+                    w.bindMouseEvent(Widget::W_MouseEventType::HoverLost, [this, &flags](std::optional<sf::Event>)
+                    {
+                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
+                        {
+                            std::cout << "Not Hovered (highlight event)\n";
+                        }
                     });
                 }, *widget);
 
@@ -404,6 +460,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void unselectWidget()
     {
+        if(m_selected.widget_ptr && m_selected.widget_ptr->isFlag(FLAGS::HIDDEN | FLAGS::AUTOHIDE | FLAGS::BLOCKED))
+        {
+            // prevent soft-locking a widget
+            FLAGS reset_before_its_too_late;
+            if(m_selected.widget_ptr->isFlag(FLAGS::HIDDEN)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::HIDDEN;
+            if(m_selected.widget_ptr->isFlag(FLAGS::AUTOHIDE)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::AUTOHIDE;
+            if(m_selected.widget_ptr->isFlag(FLAGS::BLOCKED)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::BLOCKED;
+            m_selected.widget_ptr->configure(reset_before_its_too_late);
+        }
         m_selected.widget_info_ptr.reset();
         m_selected.widget_ptr = nullptr;
         m_selected.enable_if_frame_ptr = nullptr;
@@ -434,36 +499,19 @@ private:
     /// @brief Updates ImGui interface, triggers when a new widget is selected
     ///
     ///////////////////////////////////////////////////////////////////
-    void refreshUI(); // rebuildRows
+    void refreshUI();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Displays info data as widgets in ImGui interface
+    /// @brief Render a header in ImGui interface
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderRow(Info&);
+    void textHeader(const char*, bool = true, bool = true, ImVec4 = ImVec4(1.f, 1.f, 1.f, 1.f)) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Attempt to set a value after an update
     ///
     ///////////////////////////////////////////////////////////////////
     void trySetFromText(const std::string& key, const std::string& text);
-
-    template<typename EnumT, std::size_t N>
-    static bool renderIndexedEnum(EnumT& value, const std::array<const char*, N>& names)
-    {
-        int idx = std::clamp(static_cast<int>(value), 0, static_cast<int>(N) - 1);
-
-        ImGui::SetNextItemWidth(100.f);
-        bool changed = ImGui::InputInt("##key", &idx);
-        if (changed)
-        {
-            idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
-            value = static_cast<EnumT>(idx);
-        }
-        ImGui::SameLine();
-        ImGui::Text("%s selected", names[static_cast<std::size_t>(idx)]);
-        return changed;
-    }
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Processing external events
@@ -478,6 +526,42 @@ private:
     void renderWidgets() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Renders "Edit" section in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderEditSection();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders FPS in "Edit" section
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderFps() const;
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders "Flags" section in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderFlagsSection();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders widget attributes in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderAccessorSections();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders a single key attribute in accessor section
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderRow(Info&);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders "Bindings" section in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderBindsSection();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Selected widget information
     ///
     ///////////////////////////////////////////////////////////////////
@@ -490,12 +574,13 @@ private:
     
     static constexpr std::size_t s_MAX_WIDGET_COUNT{10};
 
-    std::vector<Info> m_rows;   //!< selected widget accessor data
+    std::vector<Info> m_rows;                                           //!< selected widget accessor data
     std::array<std::optional<Widget_t>, s_MAX_WIDGET_COUNT> m_widgets;  //!< managed widgets
-    unsigned int m_widgetsCount{0}; //!< active widgets count
-    unsigned int m_selectToken{0};  //!< context switch between selections to prevent value inheritence
-    SelectedWidget m_selected;      //!< selected widget
-    bool m_revealFps{false};        //!< fps toggle
+    std::unordered_map<Widget*, BuiltinBindFlags> m_bindMem;            //!< memory for bindings
+    unsigned int m_widgetsCount{0};                                     //!< active widgets count
+    unsigned int m_selectToken{0}; //!< context switch between selections to prevent value inheritence
+    SelectedWidget m_selected;                                          //!< selected widget
+    bool m_revealFps{false};                                            //!< fps toggle
 };
 }
 

@@ -5,6 +5,13 @@
 
 #ifdef WRAPPER_DEFINED
 
+namespace
+{
+    constexpr ImVec4 HEADER_1{0.65f, 0.65f, 0.65f, 1.0f};   // gray
+    constexpr ImVec4 HEADER_2{0.35f, 0.85f, 0.45f, 1.0f};   // green
+    constexpr ImVec4 HEADER_3{0.55f, 0.75f, 1.0f, 1.0f};    // blue
+}
+
 namespace sfml_widgets
 {
 InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title)
@@ -20,7 +27,15 @@ void InfoWrapper::enableFps(bool show_fps)
 void InfoWrapper::resetUI()
 {
     unselectWidget();
-    for(std::optional<Widget_t>& widget : m_widgets) widget.reset();
+    for(std::optional<Widget_t>& widget : m_widgets)
+    {
+        if(widget.has_value())
+        {
+            m_bindMem.erase(get_base_widget(*widget));
+            widget.reset();
+        }
+    }
+    m_widgetsCount = 0;
 }
 
 void InfoWrapper::deleteSelectedWidget()
@@ -34,12 +49,98 @@ void InfoWrapper::deleteSelectedWidget()
         // address compare
         if(get_base_widget(*widget) == m_selected.widget_ptr)
         {
+            m_bindMem.erase(m_selected.widget_ptr);
             unselectWidget();
             widget.reset();
             --m_widgetsCount;
             return;
         }
     }
+}
+
+void InfoWrapper::refreshValues()
+{
+    if(!m_selected.widget_info_ptr) return;
+    m_selected.widget_info_ptr.info_Update(m_selected.widget_info_ptr.m_wrappedWidget, m_rows); //!< only value refreshed for each key with getter
+}
+
+void InfoWrapper::refreshUI()
+{
+    if(!m_selected.widget_info_ptr) return;
+    m_selected.widget_info_ptr.info_Fetch(m_selected.widget_info_ptr.m_wrappedWidget, m_rows);  //!< m_rows fully refreshed
+}
+
+void InfoWrapper::textHeader(const char* title, bool add_space, bool add_sep, ImVec4 color) const
+{
+    if(add_space) ImGui::Spacing();
+    if(add_sep) ImGui::Separator();
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+    ImGui::TextUnformatted(title);
+    ImGui::PopStyleColor();
+    if(add_sep) ImGui::Separator();
+    if(add_space) ImGui::Spacing();
+}
+
+void InfoWrapper::trySetFromText(const std::string& key, const std::string& text)
+{
+    // attempt to call setter with unknown accessor type
+    auto try_set_from_val = [&](Accessed_t v) -> bool
+    {
+        if(!m_selected.widget_info_ptr.info_Set(m_selected.widget_info_ptr.m_wrappedWidget, key, std::move(v))) return false;
+        refreshValues();
+        return true;
+    };
+
+    /* Attempt to match type section */
+
+    // bool type
+    if(text == "true" || text == "false")
+        if(try_set_from_val(Accessed_t(text == "true"))) return;
+
+    // sf::Vector type
+    {
+        // try match with hard-coded formats
+        unsigned int ux, uy;
+        if(std::sscanf(text.c_str(), "%u , %u", &ux, &uy) == 2 || std::sscanf(text.c_str(), "%u %u", &ux, &uy) == 2)
+            if(try_set_from_val(Accessed_t(sf::Vector2u(ux, uy)))) return;
+        int ix, iy;
+        if(std::sscanf(text.c_str(), "%d , %d", &ix, &iy) == 2 || std::sscanf(text.c_str(), "%d %d", &ix, &iy) == 2)
+            if(try_set_from_val(Accessed_t(sf::Vector2i(ix, iy)))) return;
+        float fx, fy;
+        if(std::sscanf(text.c_str(), "%f , %f", &fx, &fy) == 2 || std::sscanf(text.c_str(), "%f %f", &fx, &fy) == 2)
+            if(try_set_from_val(Accessed_t(sf::Vector2f(fx, fy)))) return;
+    }
+
+    // unsigned int types
+    if(!text.empty())
+    {
+        char* is_valid = nullptr;
+        long val = std::strtol(text.c_str(), &is_valid, 10);
+        if(is_valid && *is_valid == '\0')
+        {
+            if(try_set_from_val(Accessed_t(static_cast<unsigned int>(val)))) return;
+            if(try_set_from_val(Accessed_t(static_cast<std::size_t>(val)))) return;
+        }
+    }
+
+    // float type
+    if(!text.empty())
+    {
+        char* is_valid = nullptr;
+        float val = std::strtof(text.c_str(), &is_valid);
+        if(is_valid && *is_valid == '\0')
+            if(try_set_from_val(Accessed_t(val))) return;
+    }
+
+    // char type
+    if(text.size() == 1)
+        if(try_set_from_val(Accessed_t(text[0]))) return;
+
+    // string types
+    if(try_set_from_val(Accessed_t(std::string(text)))) return;
+    try_set_from_val(Accessed_t(sf::String(text)));
+
+    return;
 }
 
 bool InfoWrapper::processEvents(const sf::Event& event)
@@ -95,18 +196,30 @@ void InfoWrapper::renderWidgets()
     }
 
     /* Edit section */
-    ImGui::Text("Edit");
+    renderEditSection();
 
-    // fps
-    if(m_revealFps)
-    {
-        char fpsText[12];
-        std::snprintf(fpsText, sizeof(fpsText), "FPS: %.1f", ImGui::GetIO().Framerate);
-        float textWidth = ImGui::CalcTextSize(fpsText).x;
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - textWidth);
-        ImGui::TextUnformatted(fpsText);
-    }
+    /* Selected widget section */
+    if(!m_selected.widget_ptr) return;
+
+    textHeader("Selected Widget Section", true, true, HEADER_1);
+    ImGui::PushID(m_selectToken);   //!< avoids value inheritence between previous and new selected widgets
+    
+    // rendered in order
+    renderFlagsSection();
+    renderAccessorSections();
+    renderBindsSection();
+    ImGui::PopID();
+}
+
+void InfoWrapper::renderEditSection()
+{
+    ImGui::Separator();
+    ImGui::PushStyleColor(ImGuiCol_Text, HEADER_1);
+    ImGui::TextUnformatted("Edit Section");
+    ImGui::PopStyleColor();
+    renderFps();
+    ImGui::Separator();
+    ImGui::Spacing();
 
     if(ImGui::Button("Add Button"))
     {
@@ -189,60 +302,170 @@ void InfoWrapper::renderWidgets()
 
     ImGui::SameLine();
     if(ImGui::Button("Refresh")) refreshUI();
+}
 
-
-    /* Selected widget section */
-    if(!m_selected.widget_ptr) return;
-
-    ImGui::Separator();
-    ImGui::Text("Selected Widget");
-
-    ImGui::PushID(m_selectToken);   //!< avoids value inheritence between previous and new selected widgets
-
-    // building child window
-    float row_height = ImGui::GetTextLineHeightWithSpacing() * 2.2f; // label line + input line, roughly
-    float desired = m_rows.empty() ? row_height : static_cast<float>(m_rows.size()) * row_height;
-    float child_height = std::min(desired, 260.f);
-    
-    ImGui::BeginChild("info_scroll", ImVec2(0, child_height), true);
-    for(Info& row : m_rows)
+void InfoWrapper::renderFps() const
+{
+    if(m_revealFps)
     {
-        ImGui::PushID(row.info_key.c_str());
-        ImGui::TextUnformatted(row.info_key.c_str());
-        renderRow(row);
-        ImGui::Spacing();
-        ImGui::PopID(); // for key
+        ImGui::SameLine();
+        char fps_text[12];
+        std::snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(fps_text).x);
+        ImGui::TextUnformatted(fps_text);
     }
-    ImGui::EndChild();  // bye child
-
-    ImGui::PopID(); // for token
 }
 
-void InfoWrapper::refreshUI()
+void InfoWrapper::renderFlagsSection()
 {
-    if(!m_selected.widget_info_ptr) return;
-    m_selected.widget_info_ptr.info_Fetch(m_selected.widget_info_ptr.m_wrappedWidget, m_rows);  //!< m_rows fully refreshed
+    textHeader("Flags", true, false, HEADER_2);
+
+    /* Flags Grid */
+    ImGui::BeginGroup();
+    textHeader("Active Flags:", false, false, HEADER_3);
+
+    constexpr std::size_t N_FLAGS = enum_literals::FLAG_BITS_LITERAL.size();
+    constexpr unsigned int N_ROWS = 6;
+    constexpr unsigned int N_COLS = (static_cast<unsigned int>(N_FLAGS) + N_ROWS - 1) / N_ROWS;
+    constexpr float CELL_BASE = 18.f;
+    constexpr float CELL_PADDING = 2.f;
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 initial_pos = ImGui::GetCursorScreenPos();
+
+
+    for(unsigned int i{0}; i < N_FLAGS; ++i)
+    {
+        // position
+        unsigned int col = i / N_ROWS;
+        unsigned int row = i % N_ROWS;
+
+        ImVec2 p0(initial_pos.x + col * (CELL_BASE + CELL_PADDING), initial_pos.y + row * (CELL_BASE + CELL_PADDING));
+        ImVec2 p1(p0.x + CELL_BASE, p0.y + CELL_BASE);
+
+        // color
+        bool is_set = m_selected.widget_ptr->isFlag(enum_literals::FLAG_BITS_LITERAL[i].get<1>());
+        ImU32 fill_color =  is_set ? 
+                     IM_COL32(80, 200, 120, 255) : 
+                     IM_COL32(70, 70, 70, 255);
+
+        draw_list->AddRectFilled(p0, p1, fill_color, 3.f);
+        draw_list->AddRect(p0, p1, IM_COL32(20, 20, 20, 255), 3.f);
+
+        // tooltip
+        ImGui::SetCursorScreenPos(p0);
+        ImGui::InvisibleButton(enum_literals::FLAG_BITS_LITERAL[i].get<0>(), ImVec2(CELL_BASE, CELL_BASE));
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip("bit %u: %s = %s", i, enum_literals::FLAG_BITS_LITERAL[i].get<0>(), is_set ? "true" : "false");
+    }
+
+    // end
+    ImGui::SetCursorScreenPos(ImVec2(initial_pos.x, initial_pos.y + N_ROWS * (CELL_BASE + CELL_PADDING)));
+    ImGui::Dummy(ImVec2(N_COLS * (CELL_BASE + CELL_PADDING), 0));
+    ImGui::EndGroup();
+
+    // space
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(12.f, 0.f));
+    ImGui::SameLine();
+
+    /* Configurable flags */
+
+    ImGui::BeginGroup();
+    textHeader("Configurable Flags:", false, false, HEADER_3);
+
+    if(ImGui::BeginTable("config_flags", 3, ImGuiTableFlags_SizingStretchSame))
+    {
+        for(const auto& flag_literal : enum_literals::FLAG_BITS_LITERAL)
+        {
+            if(!flag_literal.get<2>()) continue;    //!< not modifiable
+
+            ImGui::TableNextColumn();
+            bool state = m_selected.widget_ptr->isFlag(flag_literal.get<1>());
+            if(ImGui::Checkbox(flag_literal.get<0>(), &state)) m_selected.widget_ptr->configure(flag_literal.get<1>());
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndGroup();
 }
 
-void InfoWrapper::refreshValues()
+void InfoWrapper::renderAccessorSections()
 {
-    if(!m_selected.widget_info_ptr) return;
-    m_selected.widget_info_ptr.info_Update(m_selected.widget_info_ptr.m_wrappedWidget, m_rows); //!< only value refreshed for each key with getter
+    textHeader("Attributes", true, false, HEADER_2);
+
+    const float TAKEN_WIDTH = ImGui::GetContentRegionAvail().x;
+    const float RIGHT_COL_START_X = ImGui::GetCursorPosX() + TAKEN_WIDTH * (1 - 0.48f);
+    
+    float curr_y = ImGui::GetCursorPosY();
+    float max_bottom_y = curr_y;
+    unsigned int section_count = 0;
+
+    for(const auto& section_literal : enum_literals::ENUM_SECTION_LITERAL)
+    {
+        // check if any keys are initialized with current section
+        // avoids leaving a dangling section
+        bool has_keys = std::any_of(m_rows.begin(), m_rows.end(),
+            [&](const Info& row)
+            {
+                return row.info_section == section_literal.get<1>();
+            });
+
+        if(!has_keys) continue;
+
+        if(section_count % 2 == 1)
+        {
+            ImGui::SetCursorPos(ImVec2(RIGHT_COL_START_X, curr_y));
+        }
+        else
+        {
+            // new y
+            ImGui::SetCursorPosY(max_bottom_y);
+            curr_y = ImGui::GetCursorPosY();
+        }
+
+        float initial_y = ImGui::GetCursorPosY();
+
+        ImGui::BeginGroup();
+        ImGui::Separator();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.75f, 1.0f, 1.0f));
+        ImGui::TextUnformatted(section_literal.get<0>());
+        ImGui::PopStyleColor();
+
+        for(Info& row : m_rows)
+        {
+            if(row.info_section != section_literal.get<1>()) continue;
+            ImGui::PushID(row.info_key.c_str());
+            ImGui::TextUnformatted(row.info_key.c_str());
+            renderRow(row);
+            ImGui::PopID();
+        }
+
+        ImGui::EndGroup();
+
+        float section_final_y = ImGui::GetCursorPosY() + 6.f; // 6 for spacing
+
+        // start new row from largest y
+        if(section_count % 2 == 0) max_bottom_y = section_final_y;
+        else max_bottom_y = std::max(max_bottom_y, section_final_y);
+
+        ++section_count;
+    }
+
+    ImGui::SetCursorPosY(max_bottom_y);
 }
 
 void InfoWrapper::renderRow(Info& row)
 {
-    constexpr float input_default_width = 100.f;
-    constexpr float input_vector_width = 160.f;
-    constexpr float input_text_width   = 220.f;
-    const bool modifiable_value = row.info_has_setter;
+    constexpr float INPUT_DEFAULT_WIDTH = 100.f;
+    constexpr float INPUT_VECTOR_WIDTH = 160.f;
+    constexpr float INPUT_TEXT_WIDTH   = 220.f;
+    const bool CAN_BE_MODIFIED = row.info_has_setter;
 
     // for rows with a setter only
-    if(!row.info_val.has_value() && modifiable_value)
+    if(!row.info_val.has_value() && CAN_BE_MODIFIED)
     {
         // there is no getter to display the current value (control method like .remove, .insert, ect...)
         // so we return here either way
-        ImGui::SetNextItemWidth(input_text_width);
+        ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
         if(ImGui::InputTextWithHint("##key", "Any Value", row.info_text.data(), row.info_text.size(),
                 ImGuiInputTextFlags_EnterReturnsTrue))  //!< only evaluate after pressing Enter
         {
@@ -251,15 +474,15 @@ void InfoWrapper::renderRow(Info& row)
         return;
     }
 
-    bool modified = false;
+    bool was_modified = false;
 
-    if(!modifiable_value) ImGui::BeginDisabled();
+    if(!CAN_BE_MODIFIED) ImGui::BeginDisabled();
 
     // display/modify values
     std::visit(visitor{
         [&](bool& v)
         {
-            modified = ImGui::Checkbox("##key", &v);
+            was_modified = ImGui::Checkbox("##key", &v);
         },
         [&](char& v)
         {
@@ -269,104 +492,162 @@ void InfoWrapper::renderRow(Info& row)
             if(ImGui::InputText("##key", row.info_text.data(), 2))
             {
                 v = row.info_text[0];
-                modified = true;
+                was_modified = true;
             }
         },
         [&](float& v)
         {
-            ImGui::SetNextItemWidth(input_default_width);
-            modified = ImGui::InputFloat("##key", &v);
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
+            was_modified = ImGui::InputFloat("##key", &v);
         },
         [&](unsigned int& v)
         {
-            ImGui::SetNextItemWidth(input_default_width);
-            modified = ImGui::InputScalar("##key", ImGuiDataType_U32, &v);
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
+            was_modified = ImGui::InputScalar("##key", ImGuiDataType_U32, &v);
         },
         [&](std::size_t& v)
         {
-            ImGui::SetNextItemWidth(input_default_width);
-            modified = ImGui::InputScalar("##key", ImGuiDataType_U64, &v);
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
+            was_modified = ImGui::InputScalar("##key", ImGuiDataType_U64, &v);
         },
         [&](std::string& v)
         {
             std::snprintf(row.info_text.data(), row.info_text.size(), "%s", v.c_str());
-            ImGui::SetNextItemWidth(input_text_width);
+            ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
             if(ImGui::InputText("##key", row.info_text.data(), row.info_text.size()))
             {
                 v = row.info_text.data();
-                modified = true;
+                was_modified = true;
             }
         },
         [&](Button::SIDE& v)
         {
-            static constexpr std::array<const char*, 3> names{"Center", "Left", "Right"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::BUTTON_SIDE_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<Button::SIDE>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::BUTTON_SIDE_LITERAL[static_cast<std::size_t>(idx)].get<0>());
+
         },
         [&](Frame::F_SeparatorType& v)
         {
-            static constexpr std::array<const char*, 3> names{"NoSeparator", "Horizontal", "Vertical"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::SEPARATOR_TYPE_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<Frame::F_SeparatorType>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::SEPARATOR_TYPE_LITERAL[static_cast<std::size_t>(idx)].get<0>());
+
         },
         [&](Frame::F_AfterPreProcess& v)
         {
-            static constexpr std::array<const char*, 3> names{"NO_SKIP", "SKIP_CALLBACK", "SKIP_ALL"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::AFTER_PREPROCESS_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<Frame::F_AfterPreProcess>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::AFTER_PREPROCESS_LITERAL[static_cast<std::size_t>(idx)].get<0>());
+
         },
         [&](DIRECTION& v)
         {
-            static constexpr std::array<const char*, 4> names{"TOP", "BOTTOM", "LEFT", "RIGHT"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::DIRECTION_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<DIRECTION>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::DIRECTION_LITERAL[static_cast<std::size_t>(idx)].get<0>());
+
         },
         [&](Label::HAlign& v)
         {
-            static constexpr std::array<const char*, 3> names{"Left", "Center", "Right"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::HALIGN_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<Label::HAlign>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::HALIGN_LITERAL[static_cast<std::size_t>(idx)].get<0>());
+
         },
         [&](Label::VAlign& v)
         {
-            static constexpr std::array<const char*, 3> names{"Top", "Middle", "Bottom"};
-            modified = renderIndexedEnum(v, names);
+            constexpr std::size_t N = enum_literals::VALIGN_LITERAL.size();
+            int idx = std::clamp(static_cast<int>(v), 0, static_cast<int>(N) - 1);
+
+            ImGui::SetNextItemWidth(100.f);
+            if (ImGui::InputInt("##key", &idx))
+            {
+                idx = std::clamp(idx, 0, static_cast<int>(N) - 1);
+                v = static_cast<Label::VAlign>(idx);
+                was_modified = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text("%s selected", enum_literals::VALIGN_LITERAL[static_cast<std::size_t>(idx)].get<0>());
         },
         [&](sf::Text::Style& v)
         {
             int flags = static_cast<int>(v);
-            bool is_modified = false;
-            is_modified |= ImGui::CheckboxFlags("Bold", &flags, sf::Text::Bold);
-            ImGui::SameLine();
-            is_modified |= ImGui::CheckboxFlags("Italic", &flags, sf::Text::Italic);
-            ImGui::SameLine();
-            is_modified |= ImGui::CheckboxFlags("Underlined", &flags, sf::Text::Underlined);
-            ImGui::SameLine();
-            is_modified |= ImGui::CheckboxFlags("StrikeThrough", &flags, sf::Text::StrikeThrough);
-
-            if(is_modified)
+            std::size_t N = enum_literals::TEXT_STYLE_LITERAL.size();
+            for(std::size_t i = 0; i < N; ++i)
             {
-                v = static_cast<sf::Text::Style>(flags);
-                modified = true;
+                was_modified |= ImGui::CheckboxFlags(enum_literals::TEXT_STYLE_LITERAL[i].get<0>(), &flags, static_cast<int>(enum_literals::TEXT_STYLE_LITERAL[i].get<1>()));
+                if(i + 1 < N) ImGui::SameLine();
             }
+            if(was_modified) v = static_cast<sf::Text::Style>(flags);
         },
         [&](Frame::F_SeparatorInfo& v)
         {
             static constexpr std::array<const char*, 3> names{"NoSeparator", "Horizontal", "Vertical"};
             int type_idx = std::clamp(static_cast<int>(v.type), 0, static_cast<int>(names.size()) - 1);
 
-            ImGui::SetNextItemWidth(input_default_width);
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
             if(ImGui::InputInt("##sep_type", &type_idx))
             {
                 type_idx = std::clamp(type_idx, 0, static_cast<int>(names.size()) - 1);
                 v.type = static_cast<Frame::F_SeparatorType>(type_idx);
-                modified = true;
+                was_modified = true;
             }
             ImGui::SameLine();
             ImGui::Text("%s selected", names[static_cast<std::size_t>(type_idx)]);
 
-            ImGui::SetNextItemWidth(input_default_width);
-            if(ImGui::InputFloat("##sep_ratio", &v.ratio)) modified = true;
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
+            if(ImGui::InputFloat("##sep_ratio", &v.ratio)) was_modified = true;
             ImGui::SameLine();
             ImGui::TextUnformatted("ratio");
 
-            ImGui::SetNextItemWidth(input_default_width);
-            if(ImGui::InputFloat("##sep_dist", &v.dist)) modified = true;
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
+            if(ImGui::InputFloat("##sep_dist", &v.dist)) was_modified = true;
             ImGui::SameLine();
             ImGui::TextUnformatted("dist");
         },
@@ -379,11 +660,11 @@ void InfoWrapper::renderRow(Info& row)
         {
             std::string str = v.toAnsiString();
             std::snprintf(row.info_text.data(), row.info_text.size(), "%s", str.c_str());
-            ImGui::SetNextItemWidth(input_text_width);
+            ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
             if(ImGui::InputText("##key", row.info_text.data(), row.info_text.size()))
             {
                 v = sf::String(row.info_text.data());
-                modified = true;
+                was_modified = true;
             }
         },
         [&](sf::FloatRect& v)
@@ -393,122 +674,80 @@ void InfoWrapper::renderRow(Info& row)
         [&](sf::Angle& v)
         {
             float d = v.asDegrees();
-            ImGui::SetNextItemWidth(input_default_width);
+            ImGui::SetNextItemWidth(INPUT_DEFAULT_WIDTH);
             if(ImGui::InputFloat("##key (deg)", &d))
             {
                 v = sf::degrees(d);
-                modified = true;
+                was_modified = true;
             }
         },
         [&](sf::Vector2f& v)
         {
             float xy[2]{v.x, v.y};
-            ImGui::SetNextItemWidth(input_vector_width);
-            if(ImGui::InputFloat2("##key", xy))
+            ImGui::SetNextItemWidth(INPUT_VECTOR_WIDTH);
+            if(ImGui::InputFloat2("##key", xy, "%.1f"))
             {
                 v = sf::Vector2f(xy[0], xy[1]);
-                modified = true;
+                was_modified = true;
             }
         },
         [&](sf::Vector2u& v)
         {
             int xy[2]{static_cast<int>(v.x), static_cast<int>(v.y)};
-            ImGui::SetNextItemWidth(input_vector_width);
+            ImGui::SetNextItemWidth(INPUT_VECTOR_WIDTH);
             if(ImGui::InputInt2("##key", xy))
             {
                 v = sf::Vector2u(static_cast<unsigned int>(std::max(0, xy[0])),
                                  static_cast<unsigned int>(std::max(0, xy[1])));
-                modified = true;
+                was_modified = true;
             }
         },
         [&](sf::Vector2i& v)
         {
             int xy[2]{v.x, v.y};
-            ImGui::SetNextItemWidth(input_vector_width);
+            ImGui::SetNextItemWidth(INPUT_VECTOR_WIDTH);
             if(ImGui::InputInt2("##key", xy))
             {
                 v = sf::Vector2i(xy[0], xy[1]);
-                modified = true;
+                was_modified = true;
             }
         },
         [&](std::optional<sf::Vector2u>& v)
         {
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
-            else ImGui::TextUnformatted("(none)");
+            else ImGui::TextUnformatted("Nan");
         }
         },*row.info_val);
     
-    if(!modifiable_value) ImGui::EndDisabled();
+    if(!CAN_BE_MODIFIED) ImGui::EndDisabled();
 
 
-    // value was updated
-    if(modified && modifiable_value)
+    // value was updated?
+    if(was_modified && CAN_BE_MODIFIED)
     {
         m_selected.widget_info_ptr.info_Set(m_selected.widget_info_ptr.m_wrappedWidget, row.info_key, *row.info_val);
         refreshValues();
     }
 }
 
-void InfoWrapper::trySetFromText(const std::string& key, const std::string& text)
+void InfoWrapper::renderBindsSection()
 {
-    // attempt to call setter with unknown accessor type
-    auto try_set_from_val = [&](Accessed_t v) -> bool
+    textHeader("Bindings", true, true, HEADER_2);
+
+    auto it = m_bindMem.find(m_selected.widget_ptr);
+    if(it == m_bindMem.end()) return;   //!< just in case
+
+    BuiltinBindFlags& flags_ref = it->second;
+    for(const auto& bind_literal : enum_literals::QUICK_BINDINGS_LITERAL)
     {
-        if(!m_selected.widget_info_ptr.info_Set(m_selected.widget_info_ptr.m_wrappedWidget, key, std::move(v))) return false;
-        refreshValues();
-        return true;
-    };
-
-    /* Attempt to match type section */
-
-    // bool type
-    if(text == "true" || text == "false")
-        if(try_set_from_val(Accessed_t(text == "true"))) return;
-
-    // sf::Vector type
-    {
-        // try match with hard-coded formats
-        unsigned int ux, uy;
-        if(std::sscanf(text.c_str(), "%u , %u", &ux, &uy) == 2 || std::sscanf(text.c_str(), "%u %u", &ux, &uy) == 2)
-            if(try_set_from_val(Accessed_t(sf::Vector2u(ux, uy)))) return;
-        int ix, iy;
-        if(std::sscanf(text.c_str(), "%d , %d", &ix, &iy) == 2 || std::sscanf(text.c_str(), "%d %d", &ix, &iy) == 2)
-            if(try_set_from_val(Accessed_t(sf::Vector2i(ix, iy)))) return;
-        float fx, fy;
-        if(std::sscanf(text.c_str(), "%f , %f", &fx, &fy) == 2 || std::sscanf(text.c_str(), "%f %f", &fx, &fy) == 2)
-            if(try_set_from_val(Accessed_t(sf::Vector2f(fx, fy)))) return;
-    }
-
-    // unsigned int types
-    if(!text.empty())
-    {
-        char* is_valid = nullptr;
-        long val = std::strtol(text.c_str(), &is_valid, 10);
-        if(is_valid && *is_valid == '\0')
+        // is flag set?
+        bool state = isBuiltinFlagSet(flags_ref, bind_literal.get<1>());
+        if(ImGui::Checkbox(bind_literal.get<0>(), &state))
         {
-            if(try_set_from_val(Accessed_t(static_cast<unsigned int>(val)))) return;
-            if(try_set_from_val(Accessed_t(static_cast<std::size_t>(val)))) return;
+            flags_ref = state ? (flags_ref | bind_literal.get<1>()) :   // set
+                                (flags_ref & ~bind_literal.get<1>());   // reset
         }
     }
-
-    // float type
-    if(!text.empty())
-    {
-        char* is_valid = nullptr;
-        float val = std::strtof(text.c_str(), &is_valid);
-        if(is_valid && *is_valid == '\0')
-            if(try_set_from_val(Accessed_t(val))) return;
-    }
-
-    // char type
-    if(text.size() == 1)
-        if(try_set_from_val(Accessed_t(text[0]))) return;
-
-    // string types
-    if(try_set_from_val(Accessed_t(std::string(text)))) return;
-    try_set_from_val(Accessed_t(sf::String(text)));
-
-    return;
 }
 }
 
