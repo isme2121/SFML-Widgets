@@ -63,7 +63,7 @@ void Widget::draw()
     /* Draw section */
 
     // check if it's hidden
-    if(m_isHidden) return;
+    if(isHidden()) return;
 
     setFlag(m_flags, FLAGS::DRAWING);
 
@@ -189,7 +189,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     }
 
     // hidden or blocked widgets can't trigger mouse events, or the external signal is set for this loop
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || updateMouseState(event, mouse_position) || s_externalEventUsed) return false;
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || s_externalEventUsed || updateMouseState(event, mouse_position)) return false;
 
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
@@ -824,7 +824,7 @@ bool Widget::isFlags(FLAGS bits) const
 
 bool Widget::isHidden() const
 {
-    return m_isHidden;
+    return m_isHidden = checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED) || m_isRootHidden && *m_isRootHidden;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -981,7 +981,7 @@ bool Widget::updateMouseState(const sf::Event& event, std::optional<sf::Vector2i
     }
 
     // full check for a hidden widget
-    return m_isHidden = checkFlag(m_flags, FLAGS::HIDDEN) || checkFlag(m_flags, FLAGS::AUTOHIDE) && !checkFlag(m_flags, FLAGS::HOVERED) || m_isRootHidden && *m_isRootHidden;
+    return isHidden();
 }
 
 void Widget::checkQueue()

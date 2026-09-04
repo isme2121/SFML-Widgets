@@ -892,7 +892,7 @@ protected:
     FLAGS m_flags{FLAGS::MODIFIED};                                                 //!< Stores internal and external states of the widget, start with MODIFIED for initial style assignment
     bool m_stale{false};                                                            //!< Blocks visual updates for widget while set
     bool m_loopGuard{false};                                                        //!< Blocks checking queue events multiple times during a single loop
-    bool m_isHidden{false};                                                         //!< Cached state for widget visibility state
+    mutable bool m_isHidden{false};                                                         //!< Cached state for widget visibility state
     const bool* m_isRootHidden{nullptr};                                            //!< Points to root frame's hidden state, important to indicate whether a child widget is visible or not without copying the root's flags
 
     // numeric members

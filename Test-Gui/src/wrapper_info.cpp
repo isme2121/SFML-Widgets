@@ -31,7 +31,7 @@ void InfoWrapper::resetUI()
     {
         if(widget.has_value())
         {
-            m_bindMem.erase(get_base_widget(*widget));
+            m_widgetMem.erase(get_base_widget(*widget));
             widget.reset();
         }
     }
@@ -49,7 +49,7 @@ void InfoWrapper::deleteSelectedWidget()
         // address compare
         if(get_base_widget(*widget) == m_selected.widget_ptr)
         {
-            m_bindMem.erase(m_selected.widget_ptr);
+            m_widgetMem.erase(m_selected.widget_ptr);
             unselectWidget();
             widget.reset();
             --m_widgetsCount;
@@ -208,6 +208,7 @@ void InfoWrapper::renderWidgets()
     renderFlagsSection();
     renderAccessorSections();
     renderBindsSection();
+    renderThemeSection();
     ImGui::PopID();
 }
 
@@ -381,8 +382,13 @@ void InfoWrapper::renderFlagsSection()
 
             ImGui::TableNextColumn();
             bool state = m_selected.widget_ptr->isFlag(flag_literal.get<1>());
-            if(ImGui::Checkbox(flag_literal.get<0>(), &state)) m_selected.widget_ptr->configure(flag_literal.get<1>());
+            if(ImGui::Checkbox(flag_literal.get<0>(), &state))
+            {
+                m_selected.widget_ptr->configure(flag_literal.get<1>());
+            }
         }
+
+        refreshValues();
         ImGui::EndTable();
     }
     ImGui::EndGroup();
@@ -455,9 +461,9 @@ void InfoWrapper::renderAccessorSections()
 
 void InfoWrapper::renderRow(Info& row)
 {
-    constexpr float INPUT_DEFAULT_WIDTH = 100.f;
-    constexpr float INPUT_VECTOR_WIDTH = 160.f;
-    constexpr float INPUT_TEXT_WIDTH   = 220.f;
+    constexpr float INPUT_DEFAULT_WIDTH = 80.f;
+    constexpr float INPUT_VECTOR_WIDTH = 120.f;
+    constexpr float INPUT_TEXT_WIDTH   = 160.f;
     const bool CAN_BE_MODIFIED = row.info_has_setter;
 
     // for rows with a setter only
@@ -466,8 +472,9 @@ void InfoWrapper::renderRow(Info& row)
         // there is no getter to display the current value (control method like .remove, .insert, ect...)
         // so we return here either way
         ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
-        if(ImGui::InputTextWithHint("##key", "Any Value", row.info_text.data(), row.info_text.size(),
-                ImGuiInputTextFlags_EnterReturnsTrue))  //!< only evaluate after pressing Enter
+        
+        if(ImGui::InputTextWithHint("##key", row.info_hint.has_value() ? (*row.info_hint).c_str() : "Any Value",
+                row.info_text.data(), row.info_text.size(), ImGuiInputTextFlags_EnterReturnsTrue))  //!< only evaluate after pressing Enter
         {
             trySetFromText(row.info_key, row.info_text.data());
         }
@@ -734,10 +741,10 @@ void InfoWrapper::renderBindsSection()
 {
     textHeader("Bindings", true, true, HEADER_2);
 
-    auto it = m_bindMem.find(m_selected.widget_ptr);
-    if(it == m_bindMem.end()) return;   //!< just in case
+    auto it = m_widgetMem.find(m_selected.widget_ptr);
+    if(it == m_widgetMem.end()) return;   //!< just in case
 
-    BuiltinBindFlags& flags_ref = it->second;
+    BuiltinBindFlags& flags_ref = it->second.flags;
     for(const auto& bind_literal : enum_literals::QUICK_BINDINGS_LITERAL)
     {
         // is flag set?
@@ -748,6 +755,67 @@ void InfoWrapper::renderBindsSection()
                                 (flags_ref & ~bind_literal.get<1>());   // reset
         }
     }
+}
+
+void InfoWrapper::renderThemeSection()
+{
+    textHeader("Theme", true, true, HEADER_2);
+
+    auto it = m_widgetMem.find(m_selected.widget_ptr);
+    if(it == m_widgetMem.end()) return;
+
+    constexpr std::size_t N_THEMES = enum_literals::THEME_LITERAL.size();
+    std::shared_ptr<WidgetTheme>& curr_theme = it->second.theme;
+    int curr_theme_idx = -1;
+
+    // get cached theme
+    for(std::size_t i = 0; i < N_THEMES; ++i)
+    {
+        if(enum_literals::THEME_LITERAL[i].get<1>() == curr_theme)
+        {
+            curr_theme_idx = static_cast<int>(i); 
+            break; 
+        }
+    }
+
+    const char* theme_label = (curr_theme_idx >= 0) ?
+                enum_literals::THEME_LITERAL[static_cast<std::size_t>(curr_theme_idx)].get<0>() :
+                "None";
+
+    ImGui::SetNextItemWidth(200.f);
+    if(ImGui::BeginCombo("##theme_select", theme_label))
+    {
+        // selected None option
+        if(ImGui::Selectable("None", curr_theme_idx == -1))
+        {
+            if(curr_theme)
+            {
+                m_selected.widget_ptr->unlinkTheme();
+                curr_theme.reset();
+            }
+        }
+
+        // other options
+        for(std::size_t i = 0; i < N_THEMES; ++i)
+        {
+            bool is_selected = (static_cast<int>(i) == curr_theme_idx);
+            if(ImGui::Selectable(enum_literals::THEME_LITERAL[i].get<0>(), is_selected))
+            {
+                // prevent re-linking
+                if(enum_literals::THEME_LITERAL[i].get<1>() != curr_theme)
+                {
+                    m_selected.widget_ptr->linkTheme(enum_literals::THEME_LITERAL[i].get<1>());
+                    curr_theme = enum_literals::THEME_LITERAL[i].get<1>();
+                }
+            }
+            // select
+            if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::SameLine();
+    ImGui::TextDisabled(curr_theme ? "Theme Linked" : "No theme is currently linked");
 }
 }
 

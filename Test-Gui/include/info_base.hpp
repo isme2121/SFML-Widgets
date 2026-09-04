@@ -175,6 +175,23 @@ constexpr auto QUICK_BINDINGS_LITERAL = std::array<VecN<const char*, BuiltinBind
     {"Right-click delete", BuiltinBindFlags::RightClickDelete},
     {"Highlight on hover", BuiltinBindFlags::HighlightOnHover}}
 };
+
+const auto THEME_LITERAL = std::array<VecN<const char*, std::shared_ptr<WidgetTheme>>, 14>{
+    {{"Dark", Theme::dark_theme},
+    {"Light", Theme::light_theme},
+    {"Stale Violet", Theme::stale_violet_theme},
+    {"Carbon Cyan", Theme::carbon_cyan_theme},
+    {"Midnight Rose", Theme::midnight_rose_theme},
+    {"Obsidian Ember", Theme::obsidian_ember_theme},
+    {"Emerald Forest", Theme::emerald_forest_theme},
+    {"Golden Amber", Theme::golden_amber_theme},
+    {"Crimson Ash", Theme::crimson_ash_theme},
+    {"Steel Graphite", Theme::steel_graphite_theme},
+    {"Lavender Dusk", Theme::lavender_dusk_theme},
+    {"Sky Azure", Theme::sky_azure_theme},
+    {"Arctic Frost", Theme::arctic_frost_theme},
+    {"Sandstone Dune", Theme::sandstone_dune_theme}
+}};
 }
 
 // All accessor types collapsed here
@@ -198,6 +215,7 @@ struct accessor_ptr
     using Setter_t = bool (*)(WidgetT&, const Accessed_t&);      //!< Setter lambda pointer type
     
     std::string key;                        //!< lookup key
+    std::optional<std::string> hint{std::nullopt};
     Getter_t getter{nullptr};
     Setter_t setter{nullptr};
     EnumSection section{EnumSection::Any};
@@ -232,6 +250,7 @@ using LookupVec_t = std::vector<accessor_ptr<WidgetT>>;
 struct Info
 {
     std::string info_key;                               //!< indentifier
+    std::optional<std::string> info_hint{std::nullopt}; //!< hint for setter only keys
     EnumSection info_section{EnumSection::Any};         //!< section in UI
     std::array<char, 128> info_text{};                  //!< temporary data storage
     std::optional<Accessed_t> info_val{std::nullopt};   //!< value available if getter provided
@@ -241,6 +260,19 @@ struct Info
     {
         return info_key == other;
     }
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Memory attributes for any widget
+///
+/// These attributes can't be obtained from the widget itself, so they
+/// are stored and maintained externally, used in `InfoWrapper` class.
+///
+///////////////////////////////////////////////////////////////////
+struct CachedAttributes
+{
+    BuiltinBindFlags flags{BuiltinBindFlags::None};
+    std::shared_ptr<WidgetTheme> theme{nullptr};
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -258,7 +290,8 @@ struct Info
 ///
 ///////////////////////////////////////////////////////////////////
 template<typename WidgetT, typename Fn>
-void set_lookup(LookupVec_t<WidgetT>& vec, const std::string& key, EnumSection section, Fn&& fn)
+void set_lookup(LookupVec_t<WidgetT>& vec, const std::string& key,
+                EnumSection section, Fn&& fn, const std::string& hint = "")
 {
     auto it = std::find_if(vec.begin(), vec.end(),
         [&](const accessor_ptr<WidgetT>& w)
@@ -277,6 +310,7 @@ void set_lookup(LookupVec_t<WidgetT>& vec, const std::string& key, EnumSection s
         accessor_ptr<WidgetT> accessor;
         accessor.key = key;
         accessor.section = section;
+        if(!hint.empty()) accessor.hint = hint;
         accessor.assign(std::forward<Fn>(fn));
         vec.push_back(std::move(accessor));
     }
@@ -338,31 +372,31 @@ struct BaseAccessorsLink
 {
     static_assert(is_widget_type_v<WidgetT>, "Template type does not match any supported widget derived type.");
 
-    static void link(LookupVec_t<WidgetT>& map)
+    static void link(LookupVec_t<WidgetT>& vec)
     {
         /* Getters */
-        set_lookup<WidgetT>(map, "position", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetPosition();});
-        set_lookup<WidgetT>(map, "absolute_position", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsolutePosition();});
-        set_lookup<WidgetT>(map, "size", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetSize();});
-        set_lookup<WidgetT>(map, "rotation", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetRotation();});
-        set_lookup<WidgetT>(map, "bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getBounds();});
-        set_lookup<WidgetT>(map, "absolute_bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsoluteBounds();});
-        set_lookup<WidgetT>(map, "is_hidden", EnumSection::State,+ [](const WidgetT& w) -> Accessed_t {return w.isHidden();});
+        set_lookup<WidgetT>(vec, "position", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetPosition();});
+        set_lookup<WidgetT>(vec, "absolute_position", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsolutePosition();});
+        set_lookup<WidgetT>(vec, "size", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetSize();});
+        set_lookup<WidgetT>(vec, "rotation", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetRotation();});
+        set_lookup<WidgetT>(vec, "bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getBounds();});
+        set_lookup<WidgetT>(vec, "absolute_bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsoluteBounds();});
+        set_lookup<WidgetT>(vec, "is_hidden", EnumSection::State,+ [](const WidgetT& w) -> Accessed_t {return w.isHidden();});
 
         /* Setters */
-        set_lookup<WidgetT>(map, "position", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
+        set_lookup<WidgetT>(vec, "position", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
         {
             if(const sf::Vector2f* p = std::get_if<sf::Vector2f>(&v))
                 return invoke_setter([&]{return w.setWidgetPosition(*p);});
             return false;
         });
-        set_lookup<WidgetT>(map, "size", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
+        set_lookup<WidgetT>(vec, "size", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
         {
             if(const sf::Vector2f* p = std::get_if<sf::Vector2f>(&v))
                 return invoke_setter([&]{return w.setWidgetSize(*p);});
             return false;
         });
-        set_lookup<WidgetT>(map, "rotation", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
+        set_lookup<WidgetT>(vec, "rotation", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
         {
             if(const sf::Angle* p = std::get_if<sf::Angle>(&v))
                 return invoke_setter([&]{return w.setWidgetRotation(p->asDegrees());});
@@ -383,6 +417,12 @@ struct AccessorsLink<Button>
         /* Getters */
         set_lookup<Button>(vec, "text", EnumSection::Text, + [](const Button& w) -> Accessed_t  {return w.getText();});
         set_lookup<Button>(vec, "text_size", EnumSection::Text, + [](const Button& w) -> Accessed_t {return w.getTextSize();});
+        set_lookup<Button>(vec, "text_size_ratio", EnumSection::Text, +[](Button& w, const Accessed_t& v) -> bool
+        {
+            if(const float* f = std::get_if<float>(&v))
+                return invoke_setter([&]{return w.setTextSize(*f);});
+            return false;
+        }, "Float [0.f, 1.f]");
         set_lookup<Button>(vec, "text_limit", EnumSection::Text, + [](const Button& w) -> Accessed_t {return w.getTextLimit();});
         set_lookup<Button>(vec, "text_position", EnumSection::Text, + [](const Button& w) -> Accessed_t {return w.getTextPosition();});
         set_lookup<Button>(vec, "icon_path", EnumSection::Image, + [](const Button& w) -> Accessed_t {return w.getIconPath();});
@@ -397,11 +437,11 @@ struct AccessorsLink<Button>
         });
         set_lookup<Button>(vec, "text_size", EnumSection::Text, +[](Button& w, const Accessed_t& v) -> bool
         {
-            if(const float* f = std::get_if<float>(&v))
+            if(const unsigned int* f = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextSize(*f);});
             return false;
         });
-        set_lookup<Button>(vec, "text_size", EnumSection::Text, +[](Button& w, const Accessed_t& v) -> bool
+        set_lookup<Button>(vec, "text_limit", EnumSection::Text, +[](Button& w, const Accessed_t& v) -> bool
         {
             if(const unsigned int* f = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextLimit(*f);});
@@ -429,46 +469,46 @@ struct AccessorsLink<Button>
 template<>
 struct AccessorsLink<Frame>
 {
-    static void link(LookupVec_t<Frame>& map)
+    static void link(LookupVec_t<Frame>& vec)
     {
         /* Getters */
-        set_lookup<Frame>(map, "child_count", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getChildCount();});
-        set_lookup<Frame>(map, "scroll_offset", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getScrollOffset();});
-        set_lookup<Frame>(map, "scroll_speed", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getScrollSpeed();});
-        set_lookup<Frame>(map, "separator_info", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getSeparatorInfo();});
-        set_lookup<Frame>(map, "process_mode", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getProcessMode();});
+        set_lookup<Frame>(vec, "child_count", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getChildCount();});
+        set_lookup<Frame>(vec, "scroll_offset", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getScrollOffset();});
+        set_lookup<Frame>(vec, "scroll_speed", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getScrollSpeed();});
+        set_lookup<Frame>(vec, "separator_info", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getSeparatorInfo();});
+        set_lookup<Frame>(vec, "process_mode", EnumSection::State, + [](const Frame& w) -> Accessed_t {return w.getProcessMode();});
 
         /* Setters */
-        set_lookup<Frame>(map, "grid", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
+        set_lookup<Frame>(vec, "grid", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::Vector2u>(&v))
                 return invoke_setter([&]{return w.setGrid(*s);});
             return false;
-        });
-        set_lookup<Frame>(map, "separator_info", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
+        }, "Vector2u{rows, cols}");
+        set_lookup<Frame>(vec, "separator_info", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<Frame::F_SeparatorInfo>(&v))
                 return invoke_setter([&]{return w.setSeparators((*s).type, (*s).ratio, (*s).dist);});
             return false;
         });
-        set_lookup<Frame>(map, "process_mode", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
+        set_lookup<Frame>(vec, "process_mode", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<Frame::F_AfterPreProcess>(&v))
                 return invoke_setter([&]{return w.setProcessMode(*s);});
             return false;
         });
-        set_lookup<Frame>(map, "scroll_speed", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
+        set_lookup<Frame>(vec, "scroll_speed", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setScrollSpeed(*s);});
             return false;
         });
-        set_lookup<Frame>(map, "scroll", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
+        set_lookup<Frame>(vec, "scroll", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.scroll(*s);});
             return false;
-        });
+        }, "Float");
     }
 };
 
@@ -479,41 +519,47 @@ struct AccessorsLink<Frame>
 template<>
 struct AccessorsLink<CheckBox>
 {
-    static void link(LookupVec_t<CheckBox>& map)
+    static void link(LookupVec_t<CheckBox>& vec)
     {
         /* Getters */
-        set_lookup<CheckBox>(map, "state", EnumSection::State ,+ [](const CheckBox& w) -> Accessed_t {return w.getState();});
-        set_lookup<CheckBox>(map, "text_size", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextSize();});
-        set_lookup<CheckBox>(map, "text_limit", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextLimit();});
-        set_lookup<CheckBox>(map, "text_padding", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextPadding();});
-        set_lookup<CheckBox>(map, "text_position", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextPosition();});
+        set_lookup<CheckBox>(vec, "state", EnumSection::State ,+ [](const CheckBox& w) -> Accessed_t {return w.getState();});
+        set_lookup<CheckBox>(vec, "text_size", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextSize();});
+        set_lookup<CheckBox>(vec, "text_size_ratio", EnumSection::Text, +[](CheckBox& w, const Accessed_t& v) -> bool
+        {
+            if(const float* f = std::get_if<float>(&v))
+                return invoke_setter([&]{return w.setTextSize(*f);});
+            return false;
+        }, "Float [0.f, 1.f]");
+        set_lookup<CheckBox>(vec, "text_limit", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextLimit();});
+        set_lookup<CheckBox>(vec, "text_padding", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextPadding();});
+        set_lookup<CheckBox>(vec, "text_position", EnumSection::Text ,+ [](const CheckBox& w) -> Accessed_t {return w.getTextPosition();});
 
         /* Setters */
-        set_lookup<CheckBox>(map, "text", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
+        set_lookup<CheckBox>(vec, "text", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::String>(&v))
                 return invoke_setter([&]{return w.setText(*s);});
             return false;
-        });
-        set_lookup<CheckBox>(map, "text_size", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
+        }, "String");
+        set_lookup<CheckBox>(vec, "text_size", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<float>(&v))
+            if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextSize(*s);});
             return false;
         });
-        set_lookup<CheckBox>(map, "text_limit", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
+        set_lookup<CheckBox>(vec, "text_limit", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextLimit(*s);});
             return false;
         });
-        set_lookup<CheckBox>(map, "text_position", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
+        set_lookup<CheckBox>(vec, "text_position", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<DIRECTION>(&v))
                 return invoke_setter([&]{return w.setTextPosition(*s);});
             return false;
         });
-        set_lookup<CheckBox>(map, "text_padding", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
+        set_lookup<CheckBox>(vec, "text_padding", EnumSection::Text ,+[](CheckBox& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setTextPadding(*s);});
@@ -529,70 +575,76 @@ struct AccessorsLink<CheckBox>
 template<>
 struct AccessorsLink<Entry>
 {
-    static void link(LookupVec_t<Entry>& map)
+    static void link(LookupVec_t<Entry>& vec)
     {
         /* Getters */
-        set_lookup<Entry>(map, "text", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getText();});
-        set_lookup<Entry>(map, "text_size", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextSize();});
-        set_lookup<Entry>(map, "text_limit", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextLimit();});
-        set_lookup<Entry>(map, "background_text", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getBackGroundText();});
-        set_lookup<Entry>(map, "blink_ratio", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getBlinkUpRatio();});
-        set_lookup<Entry>(map, "cursor_index", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getCursorIndex();});
-        set_lookup<Entry>(map, "placeholder_char", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getPlaceholderChar();});
-        set_lookup<Entry>(map, "text_offset", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextOffsetRatio();});
-        set_lookup<Entry>(map, "cursor_width", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getCursorWidth();});
-        set_lookup<Entry>(map, "scroll_offset", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getScrollOffset();});
+        set_lookup<Entry>(vec, "text", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getText();});
+        set_lookup<Entry>(vec, "text_size", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextSize();});
+        set_lookup<Entry>(vec, "text_size_ratio", EnumSection::Text, +[](Entry& w, const Accessed_t& v) -> bool
+        {
+            if(const float* f = std::get_if<float>(&v))
+                return invoke_setter([&]{return w.setTextSize(*f);});
+            return false;
+        }, "Float [0.f, 1.f]");
+        set_lookup<Entry>(vec, "text_limit", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextLimit();});
+        set_lookup<Entry>(vec, "background_text", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getBackGroundText();});
+        set_lookup<Entry>(vec, "blink_ratio", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getBlinkUpRatio();});
+        set_lookup<Entry>(vec, "cursor_index", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getCursorIndex();});
+        set_lookup<Entry>(vec, "placeholder_char", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getPlaceholderChar();});
+        set_lookup<Entry>(vec, "text_offset", EnumSection::Text ,+ [](const Entry& w) -> Accessed_t {return w.getTextOffsetRatio();});
+        set_lookup<Entry>(vec, "cursor_width", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getCursorWidth();});
+        set_lookup<Entry>(vec, "scroll_offset", EnumSection::State ,+ [](const Entry& w) -> Accessed_t {return w.getScrollOffset();});
 
         /* Setters */
-        set_lookup<Entry>(map, "text", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "text", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::String>(&v))
                 return invoke_setter([&]{return w.setText(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "text_size", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "text_size", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<float>(&v))
+            if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextSize(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "text_limit", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "text_limit", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<unsigned int>(&v))
+            if(const auto* s = std::get_if<std::size_t>(&v))
                 return invoke_setter([&]{return w.setTextLimit(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "background_text", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "background_text", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::String>(&v))
                 return invoke_setter([&]{return w.setBackGroundText(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "blink_ratio", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "blink_ratio", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setBLinkUpRatio(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "cursor_index", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "cursor_index", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setCursorIndex(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "placeholder_char", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "placeholder_char", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<char>(&v))
                 return invoke_setter([&]{return w.setPlaceholderChar(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "text_offset", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "text_offset", EnumSection::Text ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setTextOffsetRatio(*s);});
             return false;
         });
-        set_lookup<Entry>(map, "cursor_width", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
+        set_lookup<Entry>(vec, "cursor_width", EnumSection::State ,+[](Entry& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setCursorWidth(*s);});
@@ -608,11 +660,11 @@ struct AccessorsLink<Entry>
 template<>
 struct AccessorsLink<ImageFrame>
 {
-    static void link(LookupVec_t<ImageFrame>& map)
+    static void link(LookupVec_t<ImageFrame>& vec)
     {
         /* Getters */
-        set_lookup<ImageFrame>(map, "image_path", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getImagePath();});
-        set_lookup<ImageFrame>(map, "image_size", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getOriginalImageSize();});
+        set_lookup<ImageFrame>(vec, "image_path", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getImagePath();});
+        set_lookup<ImageFrame>(vec, "image_size", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getOriginalImageSize();});
         /* Setters */
     }
 };
@@ -624,69 +676,75 @@ struct AccessorsLink<ImageFrame>
 template<>
 struct AccessorsLink<Label>
 {
-    static void link(LookupVec_t<Label>& map)
+    static void link(LookupVec_t<Label>& vec)
     {
         /* Getters */
-        set_lookup<Label>(map, "text", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getText();});
-        set_lookup<Label>(map, "text_size", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextSize();});
-        set_lookup<Label>(map, "text_limit", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextLimit();});
-        set_lookup<Label>(map, "text_style", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextStyle();});
-        set_lookup<Label>(map, "h_align", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getHorizontalAlignment();});
-        set_lookup<Label>(map, "v_align", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getVerticalAlignment();});
-        set_lookup<Label>(map, "line_spacing", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getLineSpacing();});
-        set_lookup<Label>(map, "letter_spacing", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getLetterSpacing();});
-        set_lookup<Label>(map, "padding_ratio", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getPaddingRatio();});
+        set_lookup<Label>(vec, "text", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getText();});
+        set_lookup<Label>(vec, "text_size", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextSize();});
+        set_lookup<Label>(vec, "text_size_ratio", EnumSection::Text, +[](Label& w, const Accessed_t& v) -> bool
+        {
+            if(const float* f = std::get_if<float>(&v))
+                return invoke_setter([&]{return w.setTextSize(*f);});
+            return false;
+        }, "Float [0.f, 1.f]");
+        set_lookup<Label>(vec, "text_limit", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextLimit();});
+        set_lookup<Label>(vec, "text_style", EnumSection::Text ,+ [](const Label& w) -> Accessed_t {return w.getTextStyle();});
+        set_lookup<Label>(vec, "h_align", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getHorizontalAlignment();});
+        set_lookup<Label>(vec, "v_align", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getVerticalAlignment();});
+        set_lookup<Label>(vec, "line_spacing", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getLineSpacing();});
+        set_lookup<Label>(vec, "letter_spacing", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getLetterSpacing();});
+        set_lookup<Label>(vec, "padding_ratio", EnumSection::State ,+ [](const Label& w) -> Accessed_t {return w.getPaddingRatio();});
 
         /* Setters */
-        set_lookup<Label>(map, "text", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "text", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::String>(&v))
                 return invoke_setter([&]{return w.setText(*s);});
             return false;
         });
-        set_lookup<Label>(map, "text_limit", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "text_limit", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<unsigned int>(&v))
+            if(const auto* s = std::get_if<std::size_t>(&v))
                 return invoke_setter([&]{return w.setTextLimit(*s);});
             return false;
         });
-        set_lookup<Label>(map, "text_size", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "text_size", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<float>(&v))
+            if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextSize(*s);});
             return false;
         });
-        set_lookup<Label>(map, "text_style", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "text_style", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::Text::Style>(&v))
                 return invoke_setter([&]{return w.setTextStyle(*s);});
             return false;
         });
-        set_lookup<Label>(map, "h_align", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "h_align", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<Label::HAlign>(&v))
                 return invoke_setter([&]{return w.setHorizontalAlignment(*s);});
             return false;
         });
-        set_lookup<Label>(map, "v_align", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "v_align", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<Label::VAlign>(&v))
                 return invoke_setter([&]{return w.setVerticalAlignment(*s);});
             return false;
         });
-        set_lookup<Label>(map, "line_spacing", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "line_spacing", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setLineSpacing(*s);});
             return false;
         });
-        set_lookup<Label>(map, "letter_spacing", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "letter_spacing", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setLetterSpacing(*s);});
             return false;
         });
-        set_lookup<Label>(map, "padding_ratio", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
+        set_lookup<Label>(vec, "padding_ratio", EnumSection::State ,+[](Label& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setPaddingRatio(*s);});
@@ -702,42 +760,42 @@ struct AccessorsLink<Label>
 template<>
 struct AccessorsLink<GridCanvas>
 {
-    static void link(LookupVec_t<GridCanvas>& map)
+    static void link(LookupVec_t<GridCanvas>& vec)
     {
         /* Getters */
-        set_lookup<GridCanvas>(map, "local_pixel", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getLocalPixel(sf::Mouse::getPosition(*w.getRootWindow()));});
-        set_lookup<GridCanvas>(map, "view_pixel", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getViewPixel(sf::Mouse::getPosition(*w.getRootWindow()));});
-        set_lookup<GridCanvas>(map, "local_to_view", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.mapLocalToView(w.getLocalPixel(sf::Mouse::getPosition(*w.getRootWindow())));});
-        set_lookup<GridCanvas>(map, "coordinates", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.mapCoordinates(sf::Mouse::getPosition(*w.getRootWindow()));});
-        set_lookup<GridCanvas>(map, "selected_cell", EnumSection::Pointer ,+ [](const GridCanvas& w) -> Accessed_t {return w.getSelectedCellPtr();});
-        set_lookup<GridCanvas>(map, "clicked_cell", EnumSection::Pointer ,+ [](const GridCanvas& w) -> Accessed_t {return w.getClickedCellPtr();});
-        set_lookup<GridCanvas>(map, "cell_count", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getCellsCount();});
+        set_lookup<GridCanvas>(vec, "local_pixel", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getLocalPixel(sf::Mouse::getPosition(*w.getRootWindow()));});
+        set_lookup<GridCanvas>(vec, "view_pixel", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getViewPixel(sf::Mouse::getPosition(*w.getRootWindow()));});
+        set_lookup<GridCanvas>(vec, "local_to_view", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.mapLocalToView(w.getLocalPixel(sf::Mouse::getPosition(*w.getRootWindow())));});
+        set_lookup<GridCanvas>(vec, "coordinates", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.mapCoordinates(sf::Mouse::getPosition(*w.getRootWindow()));});
+        set_lookup<GridCanvas>(vec, "selected_cell", EnumSection::Pointer ,+ [](const GridCanvas& w) -> Accessed_t {return w.getSelectedCellPtr();});
+        set_lookup<GridCanvas>(vec, "clicked_cell", EnumSection::Pointer ,+ [](const GridCanvas& w) -> Accessed_t {return w.getClickedCellPtr();});
+        set_lookup<GridCanvas>(vec, "cell_count", EnumSection::State ,+ [](const GridCanvas& w) -> Accessed_t {return w.getCellsCount();});
 
         /* Setters */
-        set_lookup<GridCanvas>(map, "insert", EnumSection::Any ,+[](GridCanvas& w, const Accessed_t& v) -> bool
+        set_lookup<GridCanvas>(vec, "insert", EnumSection::Any ,+[](GridCanvas& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::Vector2u>(&v))
                 return invoke_setter([&]{return w.insert(*s);});
             return false;
-        });
-        set_lookup<GridCanvas>(map, "remove", EnumSection::Any ,+[](GridCanvas& w, const Accessed_t& v) -> bool
+        }, "Vector2u{row, col}");
+        set_lookup<GridCanvas>(vec, "remove", EnumSection::Any ,+[](GridCanvas& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::Vector2u>(&v))
                 return invoke_setter([&]{return w.remove(*s);});
             return false;
-        });
-        set_lookup<GridCanvas>(map, "dead_zone", EnumSection::State ,+[](GridCanvas& w, const Accessed_t& v) -> bool
+        }, "Vector2u{row, col}");
+        set_lookup<GridCanvas>(vec, "dead_zone", EnumSection::State ,+[](GridCanvas& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return w.setDeadZone(*s);});
             return false;
-        });
-        set_lookup<GridCanvas>(map, "is_taken", EnumSection::State ,+[](GridCanvas& w, const Accessed_t& v) -> bool
+        }, "Float [0.f, 0.1f]");
+        set_lookup<GridCanvas>(vec, "is_taken", EnumSection::State ,+[](GridCanvas& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<sf::Vector2u>(&v))
                 return invoke_setter([&]{return w.isTaken(*s);});
             return false;
-        });
+        }, "Vector2u{row, col}");
     }
 };
 }

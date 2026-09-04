@@ -123,6 +123,7 @@ public:
             info.info_key = accessor_val.key;
             info.info_section = accessor_val.section;
             info.info_has_setter = static_cast<bool>(accessor_val.setter);
+            if(accessor_val.hint.has_value()) info.info_hint.emplace(*accessor_val.hint);
             if(accessor_val.getter) info.info_val = accessor_val.getter(*m_widget);
             data.emplace_back(std::move(info));
         }
@@ -368,7 +369,7 @@ public:
                 {
                     using ActualT = std::decay_t<decltype(w)>;
                     Widget* widget_ptr = &w;
-                    BuiltinBindFlags& flags = m_bindMem[widget_ptr];
+                    BuiltinBindFlags& flags = m_widgetMem[widget_ptr].flags;
 
                     /* Reserved events */
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusSet, [this, &w](std::optional<sf::Event>)
@@ -460,12 +461,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     void unselectWidget()
     {
-        if(m_selected.widget_ptr && m_selected.widget_ptr->isFlag(FLAGS::HIDDEN | FLAGS::AUTOHIDE | FLAGS::BLOCKED))
+        if(m_selected.widget_ptr && m_selected.widget_ptr->isFlag(FLAGS::HIDDEN | FLAGS::BLOCKED))
         {
             // prevent soft-locking a widget
             FLAGS reset_before_its_too_late;
             if(m_selected.widget_ptr->isFlag(FLAGS::HIDDEN)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::HIDDEN;
-            if(m_selected.widget_ptr->isFlag(FLAGS::AUTOHIDE)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::AUTOHIDE;
             if(m_selected.widget_ptr->isFlag(FLAGS::BLOCKED)) reset_before_its_too_late = reset_before_its_too_late | FLAGS::BLOCKED;
             m_selected.widget_ptr->configure(reset_before_its_too_late);
         }
@@ -562,6 +562,12 @@ private:
     void renderBindsSection();
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Renders "Theme" section in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderThemeSection();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Selected widget information
     ///
     ///////////////////////////////////////////////////////////////////
@@ -576,7 +582,7 @@ private:
 
     std::vector<Info> m_rows;                                           //!< selected widget accessor data
     std::array<std::optional<Widget_t>, s_MAX_WIDGET_COUNT> m_widgets;  //!< managed widgets
-    std::unordered_map<Widget*, BuiltinBindFlags> m_bindMem;            //!< memory for bindings
+    std::unordered_map<Widget*, CachedAttributes> m_widgetMem;          //!< memory for bindings
     unsigned int m_widgetsCount{0};                                     //!< active widgets count
     unsigned int m_selectToken{0}; //!< context switch between selections to prevent value inheritence
     SelectedWidget m_selected;                                          //!< selected widget
