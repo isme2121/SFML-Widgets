@@ -2,7 +2,7 @@
 #include "entry.hpp"
 #include "frame.hpp"
 #include "image_frame.hpp"
-#include "libtinyfiledialogs/tinyfiledialogs.h"
+#include "tinyfiledialogs.h"
 #include "base.hpp"
 #include <filesystem>
 #include <algorithm>
@@ -197,10 +197,9 @@ void open_dialog(DialogThread& dialog)
 {
     const char* dir_path = tinyfd_selectFolderDialog("Open Folder", "");
 
-    std::string str_path = dir_path ? std::string(dir_path) : std::string();
     {
         std::lock_guard<std::mutex> lock(dialog.guard);
-        dialog.directory_path = std::move(str_path);
+        dialog.directory_path = dir_path ? dir_path : "";
     }
     dialog.path_found.store(true);
     dialog.is_open.store(false);

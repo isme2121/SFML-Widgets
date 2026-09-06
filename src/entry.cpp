@@ -43,7 +43,7 @@ void Entry::setText(const sf::String& text)
     {
         // filter input
         sf::String result;
-        std::size_t size = std::min(text.getSize(), m_inputLimit);
+        std::size_t size = std::min(static_cast<unsigned int>(text.getSize()), m_inputLimit);
         for(std::size_t idx{0}; idx < size; idx++)
         {
             char32_t c = text[idx];
@@ -57,7 +57,7 @@ void Entry::setText(const sf::String& text)
     else
     {
         // cut string if surpasses limit
-        m_textBuffer = text.substring(0, std::min(text.getSize(), m_inputLimit));
+        m_textBuffer = text.substring(0, std::min(static_cast<unsigned int>(text.getSize()), m_inputLimit));
     }
 
     writeToEntry(); //!< update front end
@@ -74,7 +74,7 @@ void Entry::setTextFilter(std::function<bool(char32_t*)> func)
     m_inputFilter = func;
 }
 
-void Entry::setTextLimit(std::size_t max_chars)
+void Entry::setTextLimit(unsigned int max_chars)
 {
     m_inputLimit = max_chars;
 
@@ -208,7 +208,7 @@ unsigned int Entry::getTextSize() const
     return m_charSize;
 }
 
-std::size_t Entry::getTextLimit() const
+unsigned int Entry::getTextLimit() const
 {
     return m_inputLimit;
 }

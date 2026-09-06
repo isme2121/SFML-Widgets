@@ -17,6 +17,9 @@ set(IMGUI_TEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/Test-Gui/include")
 set(IMGUI_TEST_SOURCE_DIR "${PROJECT_SOURCE_DIR}/Test-Gui/src")
 set(IMGUI_TEST_LIB_DIR "${PROJECT_SOURCE_DIR}/libs/Test-Gui")
 
+# libtinyfiledialogs path
+set(TINYDIALOGS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/tinyfiledialogs-src")
+
 #======Fetch and setup third party sources=======================================
 
 enable_language(C)
@@ -66,8 +69,17 @@ if(NOT EXISTS "${GLEW_INCLUDE_DIR}/GL" OR NOT EXISTS "${GLEW_SRC_DIR}")
     file(COPY "${glew_SOURCE_DIR}/src/" DESTINATION "${GLEW_SRC_DIR}")
 endif()
 
-#======Building third party libraries=======================================
+#======libtinyfiledialogs setup=======================================
+FetchContent_Declare(
+    tinyfiledialogs
+    GIT_REPOSITORY https://github.com/native-toolkit/libtinyfiledialogs.git
+    GIT_TAG master
+)
 
+FetchContent_MakeAvailable(tinyfiledialogs)
+file(COPY "${tinyfiledialogs_SOURCE_DIR}" DESTINATION "${PROJECT_SOURCE_DIR}")
+
+#======Building third party libraries=======================================
 #======Dear ImGui build=======================================
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${IMGUI_LIB_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${IMGUI_LIB_DIR}")
@@ -123,9 +135,14 @@ add_library(imgui-test STATIC
 )
 
 target_include_directories(imgui-test PUBLIC
+    "${TINYDIALOGS_SOURCE_DIR}"
     "${IMGUI_TEST_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"
     "${WIDGET_INCLUDE_DIR}"
+)
+
+target_sources(imgui-test PRIVATE
+    "${TINYDIALOGS_SOURCE_DIR}/tinyfiledialogs.c"
 )
 
 target_link_libraries(imgui-test PUBLIC

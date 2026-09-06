@@ -10,6 +10,8 @@ namespace
     constexpr ImVec4 HEADER_1{0.65f, 0.65f, 0.65f, 1.0f};   // gray
     constexpr ImVec4 HEADER_2{0.35f, 0.85f, 0.45f, 1.0f};   // green
     constexpr ImVec4 HEADER_3{0.55f, 0.75f, 1.0f, 1.0f};    // blue
+    constexpr const char* IMG_EXTENSIONS[] = {"*.png", "*.jpg", "*.jpeg"};
+    constexpr const char* SHADER_EXTENSIONS[] = {"*.frag", "*.glsl"};
 }
 
 namespace sfml_widgets
@@ -17,6 +19,11 @@ namespace sfml_widgets
 InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title)
     : ImGuiWrapper(window, title)
 {
+}
+
+InfoWrapper::~InfoWrapper()
+{
+    if(m_dialog.thread.joinable()) m_dialog.thread.join();
 }
 
 void InfoWrapper::enableFps(bool show_fps)
@@ -183,6 +190,8 @@ bool InfoWrapper::processEvents(const sf::Event& event)
 
 void InfoWrapper::renderWidgets()
 {
+    pullDialogPath();
+
     for(std::optional<Widget_t>& widget : m_widgets)
     {
         if(widget.has_value())
@@ -207,6 +216,7 @@ void InfoWrapper::renderWidgets()
     // rendered in order
     renderFlagsSection();
     renderAccessorSections();
+    renderShadersSection();
     renderBindsSection();
     renderThemeSection();
     ImGui::PopID();
@@ -469,14 +479,26 @@ void InfoWrapper::renderRow(Info& row)
     // for rows with a setter only
     if(!row.info_val.has_value() && CAN_BE_MODIFIED)
     {
-        // there is no getter to display the current value (control method like .remove, .insert, ect...)
-        // so we return here either way
-        ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
-        
+        ImGui::SetNextItemWidth(row.info_is_path ? INPUT_TEXT_WIDTH + 90.f : INPUT_TEXT_WIDTH);
         if(ImGui::InputTextWithHint("##key", row.info_hint.has_value() ? (*row.info_hint).c_str() : "Any Value",
-                row.info_text.data(), row.info_text.size(), ImGuiInputTextFlags_EnterReturnsTrue))  //!< only evaluate after pressing Enter
+                row.info_text.data(), row.info_text.size(),
+                            row.info_is_path ? ImGuiInputTextFlags_EnterReturnsTrue : ImGuiInputTextFlags_None));
         {
             trySetFromText(row.info_key, row.info_text.data());
+        }
+        if(row.info_is_path)
+        {
+            ImGui::SameLine();
+            ImGui::BeginDisabled(m_dialog.is_open.load());
+            if(ImGui::Button("...##browse")) openFileDialog(row.info_key, "Open Image", IMG_EXTENSIONS, 3, "Image files");
+            ImGui::EndDisabled();
+
+            if(m_dialogResultPath && row.info_key == m_dialog.req_key && m_selectToken == m_dialog.req_token)
+            {
+                std::snprintf(row.info_text.data(), row.info_text.size(), "%s", m_dialogResultPath->c_str());
+                trySetFromText(row.info_key, row.info_text.data());
+                m_dialogResultPath.reset();
+            }
         }
         return;
     }
@@ -667,11 +689,26 @@ void InfoWrapper::renderRow(Info& row)
         {
             std::string str = v.toAnsiString();
             std::snprintf(row.info_text.data(), row.info_text.size(), "%s", str.c_str());
-            ImGui::SetNextItemWidth(INPUT_TEXT_WIDTH);
-            if(ImGui::InputText("##key", row.info_text.data(), row.info_text.size()))
+            ImGui::SetNextItemWidth(row.info_is_path ? INPUT_TEXT_WIDTH + 90.f : INPUT_TEXT_WIDTH);
+            if(ImGui::InputText("##key", row.info_text.data(), row.info_text.size()), 
+                            row.info_is_path ? ImGuiInputTextFlags_EnterReturnsTrue : ImGuiInputTextFlags_None)
             {
                 v = sf::String(row.info_text.data());
                 was_modified = true;
+            }
+            if(row.info_is_path)
+            {
+                ImGui::SameLine();
+                ImGui::BeginDisabled(m_dialog.is_open.load());
+                if(ImGui::Button("...##browse")) openFileDialog(row.info_key, "Open Image", IMG_EXTENSIONS, 3, "Image files");
+                ImGui::EndDisabled();
+
+                if(m_dialogResultPath && row.info_key == m_dialog.req_key && m_selectToken == m_dialog.req_token)
+                {
+                    v = sf::String(*m_dialogResultPath);
+                    was_modified = true;
+                    m_dialogResultPath.reset();
+                }
             }
         },
         [&](sf::FloatRect& v)
@@ -816,6 +853,92 @@ void InfoWrapper::renderThemeSection()
 
     ImGui::SameLine();
     ImGui::TextDisabled(curr_theme ? "Theme Linked" : "No theme is currently linked");
+}
+
+
+void InfoWrapper::openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc)
+{
+    if(m_dialog.is_open.load()) return;
+    if(m_dialog.thread.joinable()) m_dialog.thread.join();
+
+    m_dialog.req_key = key;
+    m_dialog.req_token = m_selectToken;
+    m_dialog.is_open = true;
+
+    m_dialog.thread = std::thread([this, title, filters, filter_count, filter_desc]()
+    {
+        const char* result = tinyfd_openFileDialog(title, "", filter_count, filters, filter_desc, 0);
+        {
+            std::lock_guard<std::mutex> lock(m_dialog.guard);
+            m_dialog.directory_path = result ? result : "";
+        }
+        m_dialog.path_found.store(result != nullptr);
+        m_dialog.is_open.store(false);
+    });
+}
+
+void InfoWrapper::pullDialogPath()
+{
+    if(m_dialog.path_found.exchange(false))
+    {
+        std::lock_guard<std::mutex> lock(m_dialog.guard);
+        m_dialogResultPath = m_dialog.directory_path;
+        m_dialog.directory_path.clear();
+    }
+}
+
+void InfoWrapper::renderShadersSection()
+{
+    textHeader("Shaders", true, true, HEADER_2);
+    auto it = m_widgetMem.find(m_selected.widget_ptr);
+    if(it == m_widgetMem.end()) return;
+
+    renderShaderControl("Clip Shader", "clip_shader", it->second.clip_shader_ui,
+                         &Widget::loadClipShader, &Widget::resetClipShader);
+    ImGui::Spacing();
+    renderShaderControl("Color Shader", "color_shader", it->second.color_shader_ui,
+                         &Widget::loadColorShader, &Widget::resetColorShader);
+}
+
+void InfoWrapper::renderShaderControl(const char* label, const char* id_suffix, ShaderUiState& state,
+                                       bool (Widget::*loadFn)(const std::string_view&, Widget::W_LoadType),
+                                       void (Widget::*resetFn)(const std::string_view&, Widget::W_LoadType))
+{
+    ImGui::PushID(id_suffix);
+    ImGui::TextUnformatted(label);
+
+    ImGui::TextUnformatted("Available in Memory:");
+    for(std::size_t i = 0; i < enum_literals::BUILTIN_SHADERS_LITERAL.size(); ++i)
+    {
+        ImGui::SameLine();
+        if(ImGui::Button(enum_literals::BUILTIN_SHADERS_LITERAL[i].get<0>()))
+            (m_selected.widget_ptr->*loadFn)(enum_literals::BUILTIN_SHADERS_LITERAL[i].get<1>(), Widget::W_LoadType::Memory);
+    }
+
+    ImGui::TextUnformatted("From file:");
+    ImGui::SetNextItemWidth(200.f);
+    ImGui::InputTextWithHint("##path", "shader file path", state.file_path.data(), state.file_path.size(), ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(m_dialog.is_open.load());
+    if(ImGui::Button("...##browse")) openFileDialog(id_suffix, "Open Shader", SHADER_EXTENSIONS, 2, "Shader files");
+    ImGui::EndDisabled();
+
+    if(m_dialogResultPath && m_dialog.req_key == id_suffix && m_selectToken == m_dialog.req_token)
+    {
+        std::snprintf(state.file_path.data(), state.file_path.size(), "%s", m_dialogResultPath->c_str());
+        m_dialogResultPath.reset();
+    }
+
+    bool has_path = state.file_path[0] != '\0';
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!has_path);
+    if(ImGui::Button("Load##file")) (m_selected.widget_ptr->*loadFn)(std::string_view(state.file_path.data()), Widget::W_LoadType::File);
+    ImGui::EndDisabled();
+
+    ImGui::Spacing();
+    if(ImGui::Button("Reset")) (m_selected.widget_ptr->*resetFn)("", Widget::W_LoadType::File);
+
+    ImGui::PopID();
 }
 }
 

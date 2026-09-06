@@ -3,58 +3,83 @@
 
 namespace sfml_widgets
 {
-ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!(!m_imagePath.isEmpty() && setImage(m_imagePath))) writeText();
+    if(image_path.isEmpty() || !setImage(image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
+
 }
 
-ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!setImage(image)) writeText();
+    if(!setImage(image, image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!(!m_imagePath.isEmpty() && setImage(m_imagePath))) writeText();
+    if(!setImage(ref_texture, image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!(!m_imagePath.isEmpty() && setImage(m_imagePath))) writeText();
+    if(image_path.isEmpty() || setImage(image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!setImage(image)) writeText();
+    if(!setImage(image, image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const std::string& image_path) : Widget(root, position, size), m_imagePath(image_path)
+ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
-    if(!setImage(ref_texture)) writeText();
+    if(!setImage(ref_texture, image_path)) writeText();
+
+    setWidgetPosition(m_position);
+    setWidgetSize(m_size);
+    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
 
     // no need for background texture
-    initWidget(FLAGS::NOBGIMAGE);
+    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
 ImageFrame::~ImageFrame()
@@ -119,6 +144,8 @@ bool ImageFrame::setImage(const sf::String& image_path, const std::string_view& 
     // allocate clip shader if provided
     if(!shader.empty() && !m_clipShaderPtr) loadClipShader(shader, loading_type);
 
+    resetExternal();
+
     {
         std::lock_guard<std::mutex> lock(m_guard);
         // free text memory
@@ -171,6 +198,8 @@ bool ImageFrame::setImage(const sf::Image& image, const sf::String& ref_path, co
 
     // allocate clip shader if provided
     if(!shader.empty() && !m_clipShaderPtr) loadClipShader(shader, loading_type);
+
+    resetExternal();
 
     {
         std::lock_guard<std::mutex> lock(m_guard);
@@ -283,9 +312,7 @@ TextureStyle& ImageFrame::style()
 
 void ImageFrame::drawWidget()
 {
-    {
-        std::lock_guard<std::mutex> lock(m_guard);
-    }
+    std::lock_guard<std::mutex> lock(m_guard);
 
     if(checkFlag(m_flags, FLAGS::RESET) && m_extImagePtr.expired()) resetExternal();
 
@@ -401,16 +428,6 @@ void ImageFrame::updateTheme()
         m_generationToken = synced_token;
         setTheme(t->getStyle<ImageFrame>());
     }
-}
-
-void ImageFrame::initWidget(FLAGS initial_flags)
-{
-    setWidgetPosition(m_position);
-    setWidgetSize(m_size);
-    loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
-
-    // no need for background texture
-    setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
 void ImageFrame::resetExternal()

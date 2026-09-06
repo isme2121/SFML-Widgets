@@ -31,7 +31,7 @@ m_text(font)
 
 void Label::setText(const sf::String& text)
 {
-    m_text.setString(text.substring(0, std::min(m_charLimit, text.getSize())));
+    m_text.setString(text.substring(0, std::min(m_charLimit, static_cast<unsigned int>(text.getSize()))));
 
     if(!m_text.getString().isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);
@@ -42,7 +42,7 @@ void Label::setText(const sf::String& text)
 void Label::setTextLimit(unsigned int char_limit)
 {
     m_charLimit = char_limit;
-    m_text.setString(m_text.getString().substring(0, std::min(m_charLimit, m_text.getString().getSize())));
+    m_text.setString(m_text.getString().substring(0, std::min(m_charLimit, static_cast<unsigned int>(m_text.getString().getSize()))));
 }
 
 
@@ -133,7 +133,7 @@ const sf::String& Label::getText() const
     return m_text.getString();
 }
 
-std::size_t Label::getTextLimit() const
+unsigned int Label::getTextLimit() const
 {
     return m_charLimit;
 }

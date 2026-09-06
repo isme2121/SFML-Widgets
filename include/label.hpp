@@ -210,7 +210,7 @@ public:
     /// default is `parameters::CHAR_LIMIT`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] std::size_t getTextLimit() const;
+    [[nodiscard]] unsigned int getTextLimit() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current text size
@@ -329,7 +329,7 @@ private:
     std::unique_ptr<const sf::Font> m_font;                     //!< Reference for internal font
     sf::Text m_text;                                            //!< Label's text
 
-    std::size_t m_charLimit{parameters::CHAR_LIMIT};            //!< Max number of characters
+    unsigned int m_charLimit{parameters::CHAR_LIMIT};            //!< Max number of characters
     unsigned int m_charSize{parameters::CHAR_SIZE};             //!< Default character size
     float m_textSizeRatio{0.f};                                 //!< Default character size ratio (disabled initially)
     float m_paddingRatio{0.f};                                  //!< Default padding, set from 0 to 1 and scales with alignment

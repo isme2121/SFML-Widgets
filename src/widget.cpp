@@ -474,12 +474,12 @@ void Widget::unbindMouseEvent(W_MouseEventType event_type, std::optional<sf::Mou
     }
 }
 
-void Widget::bindKeyEvent(const std::string& tag, Sequence key_sequence, SequenceFunction callback)
+void Widget::bindKeyEvent(const sf::String& tag, Sequence key_sequence, SequenceFunction callback)
 {
     m_binds.addSequence(tag, key_sequence, callback);
 }
 
-void Widget::unbindKeyEvent(const std::string& tag)
+void Widget::unbindKeyEvent(const sf::String& tag)
 {
     m_binds.deleteSequence(tag);
 }
@@ -547,7 +547,7 @@ void Widget::resetColorShader(const std::string_view& shader, W_LoadType loading
     if(!shader.empty()) loadColorShader(shader, loading_type);
 }
 
-bool Widget::setBackgroundTexture(const std::string& file_path, const std::string_view& shader, W_LoadType loading_type)
+bool Widget::setBackgroundTexture(const sf::String& file_path, const std::string_view& shader, W_LoadType loading_type)
 {
     if(checkFlag(m_flags, FLAGS::NOBGIMAGE)) return false;
 
@@ -790,6 +790,11 @@ const sf::Vector2f Widget::getAbsolutePosition() const
 sf::Angle Widget::getWidgetRotation() const
 {
     return this->getRotation();
+}
+
+float Widget::getCornerRadius() const
+{
+    return m_radius;
 }
 
 const sf::FloatRect Widget::getBounds() const

@@ -224,7 +224,7 @@ public:
     /// @see `captureKeyEvents`, `unbindKeyEvent`
     ///
     ///////////////////////////////////////////////////////////////////
-    void bindKeyEvent(const std::string& tag, Sequence key_sequence, SequenceFunction callback);
+    void bindKeyEvent(const sf::String& tag, Sequence key_sequence, SequenceFunction callback);
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears callback and event key sequence from widget.
@@ -234,7 +234,7 @@ public:
     /// @see `captureKeyEvents`, `bindKeyEvent`
     ///
     ///////////////////////////////////////////////////////////////////
-    void unbindKeyEvent(const std::string& tag);
+    void unbindKeyEvent(const sf::String& tag);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Loads a shader for sprites
@@ -320,7 +320,7 @@ public:
     /// @see `loadColorShader`, `clearBackgroundTexture`, `refreshBackgroundTexture`
     ///
     ///////////////////////////////////////////////////////////////////    
-    bool setBackgroundTexture(const std::string& file_path, const std::string_view& shader = TEXTURE_SHADER_FRAG, W_LoadType loading_type = W_LoadType::Memory);
+    bool setBackgroundTexture(const sf::String& file_path, const std::string_view& shader = TEXTURE_SHADER_FRAG, W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////    
     /// @brief Clears Background image texture from memory
@@ -579,12 +579,18 @@ public:
     const sf::Vector2f getAbsolutePosition() const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief returns the current rotation angle of the widget
+    /// @brief Returns the current rotation angle of the widget
     ///
     /// @see `setWidgetRotation`, `rotateWidget`
     ///
     ///////////////////////////////////////////////////////////////////
     sf::Angle getWidgetRotation() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current corner radius
+    ///
+    ///////////////////////////////////////////////////////////////////
+    float getCornerRadius() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns widget bounds relative to root view

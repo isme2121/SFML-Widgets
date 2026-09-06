@@ -16,7 +16,7 @@ public:
     /// @param image_path path to the displayed image
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::String& image_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `sf::RenderWindow`
@@ -24,11 +24,11 @@ public:
     /// @param root window to draw on
     /// @param position frame's initial position
     /// @param size frame's initial size
-    /// @param image `sf::Image` object reference
-    /// @param image_path path to the displayed image
+    /// @param image `sf::Image` object reference (copy data)
+    /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path = "");
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const sf::String& ref_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `sf::RenderWindow`
@@ -36,11 +36,11 @@ public:
     /// @param root window to draw on
     /// @param position frame's initial position
     /// @param size frame's initial size
-    /// @param ref_texture shared pointer to a read only `sf::Texture` object
-    /// @param image_path path to the displayed image
+    /// @param texture_ptr shared pointer to a read only `sf::Texture` object, texture memory must remain alive until no `ImageFrame` is using it
+    /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ref, const std::string& image_path = "");
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ptr, const sf::String& ref_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `Frame`
@@ -51,7 +51,7 @@ public:
     /// @param image_path path to the displayed image
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const std::string& image_path = "");
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::String& image_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `Frame`
@@ -59,11 +59,11 @@ public:
     /// @param root window to draw on
     /// @param position frame's initial position
     /// @param size frame's initial size
-    /// @param image `sf::Image` object reference
-    /// @param image_path path to the displayed image
+    /// @param image `sf::Image` object reference (copy data)
+    /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const std::string& image_path = "");
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Image& image, const sf::String& ref_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `Frame`
@@ -71,11 +71,11 @@ public:
     /// @param root window to draw on
     /// @param position frame's initial position
     /// @param size frame's initial size
-    /// @param ref_texture shared pointer to a read only `sf::Texture` object
-    /// @param image_path path to the displayed image
+    /// @param texture_ptr shared pointer to a read only `sf::Texture` object, texture memory must remain alive until no `ImageFrame` is using it
+    /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const std::string& image_path = "");
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ptr, const sf::String& ref_path = "");
 
     ImageFrame(ImageFrame&& other) = delete;
     ImageFrame& operator=(ImageFrame&& other) = delete;
@@ -108,8 +108,8 @@ public:
     /// Takes a reference to an existing image and creates a resized copy for the widget,
     /// can also take a shader for clipping the image (already loaded by default).
     /// 
-    /// @param image `sf::Image` object reference
-    /// @param ref_path string path for reference
+    /// @param image `sf::Image` object reference (copy data)
+    /// @param ref_path string path for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     /// @param shader path to shader or the shader content itself, or an empty string
     /// @param loading_type choose the appropriate loading type based on shader parameter
     ///
@@ -126,8 +126,8 @@ public:
     /// Takes a reference to a pre-loaded texture, the texture must remain valid
     /// as long as an image frame is using it.
     /// 
-    /// @param ref_texture shared pointer to a read only `sf::Texture` object
-    /// @param ref_path string path for reference
+    /// @param ref_texture shared pointer to a read only `sf::Texture` object, texture memory must remain alive until no `ImageFrame` is using it
+    /// @param ref_path string path for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     /// @param shader path to shader or the shader content itself, or an empty string
     /// @param loading_type choose the appropriate loading type based on shader parameter
     ///
@@ -241,12 +241,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void updateTheme() override;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Constructor process for image frame
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void initWidget(FLAGS initial_flags);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears weak reference to external texture

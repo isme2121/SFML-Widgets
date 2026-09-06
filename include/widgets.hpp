@@ -261,11 +261,11 @@ class CaptureSequence
 ///////////////////////////////////////////////////////////////////
 struct SequenceEntry
 {
-    std::string tag;
+    sf::String tag;
     Sequence sequence;
     SequenceFunction callback;
     
-    bool operator==(const std::string& other_tag);
+    bool operator==(const sf::String& other_tag);
     bool operator==(const SequenceEntry& other);
 };
 
@@ -283,7 +283,7 @@ public:
     /// @param callback sequence's function, must not accept any parameters
     ///
     ///////////////////////////////////////////////////////////////////
-    void addSequence(const std::string& name, Sequence sequence, SequenceFunction callback);
+    void addSequence(const sf::String& name, Sequence sequence, SequenceFunction callback);
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Remove a sequence from memory
@@ -294,7 +294,7 @@ public:
     /// @param name string name used when assigning the sequence
     ///
     ///////////////////////////////////////////////////////////////////
-    void deleteSequence(const std::string& name);
+    void deleteSequence(const sf::String& name);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks and fires the callback if a sequence matches
@@ -554,9 +554,9 @@ constexpr FLAGS MODIFIABLE{FLAGS::INDICATOR | FLAGS::HIDDEN | FLAGS::BLOCKED | F
                                 FLAGS::NOBGIMAGE | FLAGS::NOCLIPSHADER | FLAGS::NOCOLORSHADER};
 
 
-constexpr std::size_t CHAR_LIMIT{15};                                       //!< Limit of characters in widgets with text
+constexpr unsigned int CHAR_LIMIT{15};                                       //!< Limit of characters in widgets with text
 constexpr unsigned int CHAR_SIZE{18};                                       //!< Default character size for text used by widgets
-constexpr std::size_t MAX_STACK_IMAGE_SIZE{256 * 256 * 4};                  //!< Max size in bytes used by `resize_image` function to store an image on the stack
+constexpr unsigned int MAX_STACK_IMAGE_SIZE{256 * 256 * 4};                  //!< Max size in bytes used by `resize_image` function to store an image on the stack
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////          Fonts              ///////////////////

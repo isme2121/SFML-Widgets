@@ -21,7 +21,7 @@ namespace sfml_widgets // resize_image
         const sf::Vector2u current_size = source.getSize();
         const std::uint8_t* source_data = source.getPixelsPtr();
         
-        std::size_t output_size = target_size.x * target_size.y * 4;
+        unsigned int output_size = target_size.x * target_size.y * 4;
 
         std::uint8_t stack_buffer[parameters::MAX_STACK_IMAGE_SIZE];
         std::vector<std::uint8_t> heap_buffer;
@@ -172,18 +172,18 @@ namespace sfml_widgets // Key
 
 namespace sfml_widgets // CaptureSequence
 {
-void CaptureSequence::addSequence(const std::string& name, Sequence sequence, SequenceFunction callback)
+void CaptureSequence::addSequence(const sf::String& name, Sequence sequence, SequenceFunction callback)
 {
     std::size_t sequence_length = sequence.size();
     if(sequence_length == 0)
     {
-        BIND_ERROR(name, "Sequence of invalid length 0");
+        BIND_ERROR(name.toAnsiString(), "Sequence of invalid length 0");
         return;
     }
     // name tag already exists
     if(std::find(m_sequences.begin(), m_sequences.end(), name) != m_sequences.end())
     {
-        BIND_ERROR(name, "Tag already taken");
+        BIND_ERROR(name.toAnsiString(), "Tag already taken");
         return;
     }
 
@@ -201,7 +201,7 @@ void CaptureSequence::addSequence(const std::string& name, Sequence sequence, Se
     m_max_sequence = std::max(m_max_sequence, sequence_length);
 }
 
-void CaptureSequence::deleteSequence(const std::string& name)
+void CaptureSequence::deleteSequence(const sf::String& name)
 {
     std::vector<SequenceEntry>::iterator it = std::find(m_sequences.begin(), m_sequences.end(), name);
     
@@ -261,7 +261,7 @@ inline bool CaptureSequence::compareSequence()
     return false;
 }
 
-bool CaptureSequence::SequenceEntry::operator==(const std::string& other_tag)
+bool CaptureSequence::SequenceEntry::operator==(const sf::String& other_tag)
 {
     return tag == other_tag;
 }

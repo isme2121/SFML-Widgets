@@ -43,7 +43,7 @@ void CheckBox::unbindToggleEvent()
 
 void CheckBox::setText(const sf::String& text)
 {
-    m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, text.getSize())));
+    m_text.setString(text.substring(0, std::min(parameters::CHAR_LIMIT, static_cast<unsigned int>(text.getSize()))));
 
     if(!text.isEmpty()) setFlag(m_flags, FLAGS::TEXT);
     else resetFlag(m_flags, FLAGS::TEXT);

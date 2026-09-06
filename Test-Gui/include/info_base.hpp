@@ -12,6 +12,10 @@
 #include <type_traits>
 #include <utility>
 #include <tuple>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <iostream>
 
 /*
 *   TYPES: Widget_t, Accessed_t, accessor_ptr::Getter_t, accessor_ptr::Setter_t, LookupVec_t
@@ -53,6 +57,35 @@ enum class EnumSection : std::uint8_t
     Text,
     Image,
     Pointer
+};
+
+enum class UIWidget : std::uint8_t
+{
+    None,
+    Text,
+    TextUnformatted,
+    TextColored,
+    TextDisabled,
+    LabelText,
+    BulletText,
+    Button,
+    Checkbox,
+    ProgressBar,
+    Combo,
+    DragFloat,
+    DragFloat2,
+    DragInt,
+    DragInt2,
+    SliderFloat,
+    SliderFloat2,
+    SliderInt,
+    SliderInt2,
+    InputText,
+    InputTextWithHint,
+    InputFloat,
+    InputFloat2,
+    InputInt,
+    InputInt2
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -140,7 +173,8 @@ constexpr auto VALIGN_LITERAL = std::array<VecN<const char*>, 3>{"Top", "Middle"
 
 constexpr auto TEXT_STYLE_LITERAL = std::array<VecN<const char*, sf::Text::Style>, 4>{
         {{"Bold", sf::Text::Bold}, {"Italic", sf::Text::Italic},
-        {"Underlined", sf::Text::Underlined}, {"StrikeThrough", sf::Text::StrikeThrough}}};
+        {"Underlined", sf::Text::Underlined}, {"StrikeThrough", sf::Text::StrikeThrough}}
+};
 
 constexpr auto FLAG_BITS_LITERAL = std::array<VecN<const char*, FLAGS, bool>, 32>{
     {{"IDLE", FLAGS::IDLE, false}, {"MODIFIED", FLAGS::MODIFIED, false},
@@ -158,7 +192,8 @@ constexpr auto FLAG_BITS_LITERAL = std::array<VecN<const char*, FLAGS, bool>, 32
     {"NoBgImage", FLAGS::NOBGIMAGE, true}, {"NoClipShader", FLAGS::NOCLIPSHADER, true},
     {"NoColorShader", FLAGS::NOCOLORSHADER, true}, {"Indicator", FLAGS::INDICATOR, true},
     {"Grid", FLAGS::GRID, true}, {"Scroll", FLAGS::SCROLL, true},
-    {"Zoom", FLAGS::ZOOM, true}, {"Pan", FLAGS::PAN, true}}};
+    {"Zoom", FLAGS::ZOOM, true}, {"Pan", FLAGS::PAN, true}}
+};
 
 constexpr auto ENUM_SECTION_LITERAL = std::array<VecN<const char*, EnumSection>, 6>{
         {{"Base", EnumSection::Base},
@@ -190,8 +225,14 @@ const auto THEME_LITERAL = std::array<VecN<const char*, std::shared_ptr<WidgetTh
     {"Lavender Dusk", Theme::lavender_dusk_theme},
     {"Sky Azure", Theme::sky_azure_theme},
     {"Arctic Frost", Theme::arctic_frost_theme},
-    {"Sandstone Dune", Theme::sandstone_dune_theme}
-}};
+    {"Sandstone Dune", Theme::sandstone_dune_theme}}
+};
+
+constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::string_view>, 3>{
+    {{"Button Shader", BUTTON_SHADER_FRAG},
+     {"Sprite Shader", SPRITE_SHADER_FRAG},
+     {"Texture Shader", TEXTURE_SHADER_FRAG}}
+};
 }
 
 // All accessor types collapsed here
@@ -219,6 +260,7 @@ struct accessor_ptr
     Getter_t getter{nullptr};
     Setter_t setter{nullptr};
     EnumSection section{EnumSection::Any};
+    bool is_path{false};
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a lambda to the proper class type
@@ -255,6 +297,7 @@ struct Info
     std::array<char, 128> info_text{};                  //!< temporary data storage
     std::optional<Accessed_t> info_val{std::nullopt};   //!< value available if getter provided
     bool info_has_setter{false};
+    bool info_is_path{false};
 
     bool operator==(const std::string& other)
     {
@@ -273,6 +316,24 @@ struct CachedAttributes
 {
     BuiltinBindFlags flags{BuiltinBindFlags::None};
     std::shared_ptr<WidgetTheme> theme{nullptr};
+    ShaderUiState clip_shader_ui;
+    ShaderUiState color_shader_ui;
+};
+
+struct ShaderUiState
+{
+    std::array<char, 256> file_path{};
+};
+
+struct DialogThread
+{
+    std::thread thread;
+    std::mutex guard;
+    std::string directory_path;
+    std::atomic<bool> is_open{false};
+    std::atomic<bool> path_found{false};
+    std::string req_key;
+    unsigned int req_token{0};
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -291,7 +352,7 @@ struct CachedAttributes
 ///////////////////////////////////////////////////////////////////
 template<typename WidgetT, typename Fn>
 void set_lookup(LookupVec_t<WidgetT>& vec, const std::string& key,
-                EnumSection section, Fn&& fn, const std::string& hint = "")
+                EnumSection section, Fn&& fn, const std::string& hint = "", bool is_path = false)
 {
     auto it = std::find_if(vec.begin(), vec.end(),
         [&](const accessor_ptr<WidgetT>& w)
@@ -310,6 +371,7 @@ void set_lookup(LookupVec_t<WidgetT>& vec, const std::string& key,
         accessor_ptr<WidgetT> accessor;
         accessor.key = key;
         accessor.section = section;
+        accessor.is_path = is_path;
         if(!hint.empty()) accessor.hint = hint;
         accessor.assign(std::forward<Fn>(fn));
         vec.push_back(std::move(accessor));
@@ -379,6 +441,7 @@ struct BaseAccessorsLink
         set_lookup<WidgetT>(vec, "absolute_position", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsolutePosition();});
         set_lookup<WidgetT>(vec, "size", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetSize();});
         set_lookup<WidgetT>(vec, "rotation", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getWidgetRotation();});
+        set_lookup<WidgetT>(vec, "corner_radius", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getCornerRadius();});
         set_lookup<WidgetT>(vec, "bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getBounds();});
         set_lookup<WidgetT>(vec, "absolute_bounds", EnumSection::Base,+ [](const WidgetT& w) -> Accessed_t {return w.getAbsoluteBounds();});
         set_lookup<WidgetT>(vec, "is_hidden", EnumSection::State,+ [](const WidgetT& w) -> Accessed_t {return w.isHidden();});
@@ -402,6 +465,19 @@ struct BaseAccessorsLink
                 return invoke_setter([&]{return w.setWidgetRotation(p->asDegrees());});
             return false;
         });
+        set_lookup<WidgetT>(vec, "corner_radius", EnumSection::Base,+ [](WidgetT& w, const Accessed_t& v) -> bool
+        {
+            if(const float* p = std::get_if<float>(&v))
+                return invoke_setter([&]{return w.setCornerRadius(*p);});
+            return false;
+        });
+        set_lookup<WidgetT>(vec, "background_texture", EnumSection::Image,
+            +[](WidgetT& w, const Accessed_t& v) -> bool
+            {
+                if(const auto* s = std::get_if<sf::String>(&v))
+                    return invoke_setter([&]{ return w.setBackgroundTexture(*s); });
+                return false;
+            }, "Path to image", true);
     }
 };
 
@@ -425,7 +501,10 @@ struct AccessorsLink<Button>
         }, "Float [0.f, 1.f]");
         set_lookup<Button>(vec, "text_limit", EnumSection::Text, + [](const Button& w) -> Accessed_t {return w.getTextLimit();});
         set_lookup<Button>(vec, "text_position", EnumSection::Text, + [](const Button& w) -> Accessed_t {return w.getTextPosition();});
-        set_lookup<Button>(vec, "icon_path", EnumSection::Image, + [](const Button& w) -> Accessed_t {return w.getIconPath();});
+        set_lookup<Button>(vec, "icon_path", EnumSection::Image, + [](const Button& w) -> Accessed_t {return w.getIconPath();},
+                            "Image path", true);
+
+        
         set_lookup<Button>(vec, "icon_position", EnumSection::Image, + [](const Button& w) -> Accessed_t {return w.getIconPosition();});
 
         /* Setters */
@@ -451,6 +530,12 @@ struct AccessorsLink<Button>
         {
             if(const Button::SIDE* side = std::get_if<Button::SIDE>(&v))
                 return invoke_setter([&]{return w.setTextPosition(*side);});
+            return false;
+        });
+        set_lookup<Button>(vec, "icon_path", EnumSection::Image, +[](Button& w, const Accessed_t& v) -> bool
+        {
+            if(const auto* s = std::get_if<sf::String>(&v))
+                return invoke_setter([&]{return w.setIcon(*s);});
             return false;
         });
         set_lookup<Button>(vec, "icon_position", EnumSection::Image, +[](Button& w, const Accessed_t& v) -> bool
@@ -484,7 +569,7 @@ struct AccessorsLink<Frame>
             if(const auto* s = std::get_if<sf::Vector2u>(&v))
                 return invoke_setter([&]{return w.setGrid(*s);});
             return false;
-        }, "Vector2u{rows, cols}");
+        }, "Vector2u{cols, rows}");
         set_lookup<Frame>(vec, "separator_info", EnumSection::State, +[](Frame& w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<Frame::F_SeparatorInfo>(&v))
@@ -663,9 +748,17 @@ struct AccessorsLink<ImageFrame>
     static void link(LookupVec_t<ImageFrame>& vec)
     {
         /* Getters */
-        set_lookup<ImageFrame>(vec, "image_path", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getImagePath();});
+        set_lookup<ImageFrame>(vec, "image_path", EnumSection::Image,
+                            + [](const ImageFrame& w) -> Accessed_t {return w.getImagePath();},
+                            "Image path", true);
         set_lookup<ImageFrame>(vec, "image_size", EnumSection::Image ,+ [](const ImageFrame& w) -> Accessed_t {return w.getOriginalImageSize();});
         /* Setters */
+        set_lookup<ImageFrame>(vec, "image_path", EnumSection::Image, +[](ImageFrame& w, const Accessed_t& v) -> bool
+        {
+            if(const auto* s = std::get_if<sf::String>(&v))
+                return invoke_setter([&]{return w.setImage(*s);});
+            return false;
+        });
     }
 };
 
@@ -704,7 +797,7 @@ struct AccessorsLink<Label>
         });
         set_lookup<Label>(vec, "text_limit", EnumSection::Text ,+[](Label& w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<std::size_t>(&v))
+            if(const auto* s = std::get_if<unsigned int>(&v))
                 return invoke_setter([&]{return w.setTextLimit(*s);});
             return false;
         });

@@ -1,5 +1,6 @@
 #pragma once
 #include "info_base.hpp"
+#include "tinyfiledialogs.h"
 #include <iostream>
 #include <map>
 
@@ -122,6 +123,7 @@ public:
             Info info;
             info.info_key = accessor_val.key;
             info.info_section = accessor_val.section;
+            info.info_is_path = accessor_val.is_path;
             info.info_has_setter = static_cast<bool>(accessor_val.setter);
             if(accessor_val.hint.has_value()) info.info_hint.emplace(*accessor_val.hint);
             if(accessor_val.getter) info.info_val = accessor_val.getter(*m_widget);
@@ -324,7 +326,7 @@ public:
     InfoWrapper(InfoWrapper&&)                 = delete;
     InfoWrapper& operator=(InfoWrapper&&)      = delete;
 
-    ~InfoWrapper() override = default;
+    ~InfoWrapper() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Toggles FPS text in GUI
@@ -473,7 +475,6 @@ public:
         m_selected.widget_ptr = nullptr;
         m_selected.enable_if_frame_ptr = nullptr;
         m_rows.clear();
-        ++m_selectToken;
     }
 
 private:
@@ -568,6 +569,46 @@ private:
     void renderThemeSection();
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Opens a file dialog on a separate thread
+    ///
+    /// Used for file loader keys
+    ///
+    /// @param key accessor key
+    /// @param title dialog title
+    /// @param filters allowed file extensions
+    /// @param filter_count number of extensions listed on filters
+    /// @param filter_desc description in dialog
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs file dialog returned path with internal path
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void pullDialogPath();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders a single shader type in the UI
+    ///
+    /// @param label shader label
+    /// @param is_suffix Widget ID
+    /// @param state current selected path
+    /// @param loadFn `Widget` class function for loading the shader
+    /// @param resetFn `Widget` class function for resetting the shader
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderShaderControl(const char* label, const char* is_suffix, ShaderUiState& state,
+                             bool (Widget::*loadFn)(const std::string_view&, Widget::W_LoadType),
+                             void (Widget::*resetFn)(const std::string_view&, Widget::W_LoadType));
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders "Shaders" section in ImGui interface
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderShadersSection();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Selected widget information
     ///
     ///////////////////////////////////////////////////////////////////
@@ -587,6 +628,8 @@ private:
     unsigned int m_selectToken{0}; //!< context switch between selections to prevent value inheritence
     SelectedWidget m_selected;                                          //!< selected widget
     bool m_revealFps{false};                                            //!< fps toggle
+    DialogThread m_dialog;
+    std::optional<std::string> m_dialogResultPath;
 };
 }
 

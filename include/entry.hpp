@@ -75,7 +75,7 @@ public:
     /// @see `getTextLimit`
     ///
     ///////////////////////////////////////////////////////////////////
-    void setTextLimit(std::size_t max_chars);
+    void setTextLimit(unsigned int max_chars);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates character size based on the height of the widget,
@@ -245,7 +245,7 @@ public:
     /// @see `getTextLimit`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] std::size_t getTextLimit() const;
+    [[nodiscard]] unsigned int getTextLimit() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current text padding ratio
@@ -432,7 +432,7 @@ private:
     std::function<bool(char32_t*)> m_inputFilter{nullptr};              //!< Active input filter for entry, this include `set_input` method as well
 
     // parameters
-    std::size_t m_inputLimit{parameters::CHAR_LIMIT};                   //!< Max possible number of characters, default is `parameters::CHAR_LIMIT`
+    unsigned int m_inputLimit{parameters::CHAR_LIMIT};                   //!< Max possible number of characters, default is `parameters::CHAR_LIMIT`
     float m_textSizeRatio{0.5f};                                        //!< Entry determines char size based on it's height, default is `0.5f`, `range=[0.f, 1.f[`
     float m_textOffsetRatio{0.05f};                                     //!< Left offset for text, default is `0.05f`, `range=[0.f, 1.f[`
     unsigned int m_charSize{parameters::CHAR_SIZE};                     //!< Entry's char size, default is `parameters::CHAR_SIZE`
