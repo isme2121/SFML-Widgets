@@ -312,8 +312,8 @@ public:
     /// @note this process is skipped if `FLAGS::NOBGIMAGE` flag is set
     ///
     /// @param file_path path to image
-    /// @param shader fragment file path or content from memory
-    /// @param loading_type appropriate loading type based on shader parameter
+    /// @param shader optional fragment file path or content from memory
+    /// @param loading_type appropriate loading type affecting the optional shader parameter only
     ///
     /// @return true if loading was successful, otherwise false.
     ///

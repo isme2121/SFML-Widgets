@@ -1,8 +1,6 @@
 #pragma once
 #include "info_base.hpp"
-#include "tinyfiledialogs.h"
 #include <iostream>
-#include <map>
 
 #if defined(WIDGETS_HPP) && defined(COMPILE_TESTS)
 
@@ -73,10 +71,9 @@ public:
     ///////////////////////////////////////////////////////////////////
     std::optional<Accessed_t> get(const std::string& key) const
     {
-        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
-            [&](const accessor_ptr<WidgetT>& e) { return e.key == key; });
+        auto it = std::find(m_lookup.begin(), m_lookup.end(), key);
         if(it == m_lookup.end() || !it->getter) return std::nullopt;
-        return it->getter(*m_widget);
+        return it->getter(static_cast<void*>(m_widget));
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -86,13 +83,20 @@ public:
     ///////////////////////////////////////////////////////////////////
     bool set(const std::string& key, Accessed_t v)
     {
-        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
-            [&](const accessor_ptr<WidgetT>& e)
-            {
-                return e.key == key;
-            });
+        auto it = std::find(m_lookup.begin(), m_lookup.end(), key);
+        if(it != m_lookup.end() && it->setter) return it->setter(static_cast<void*>(m_widget), v);
+        return false;
+    }
 
-        if(it != m_lookup.end() && it->setter) return it->setter(*m_widget, v);
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Calls the proper setter based on `key` string, `v` must
+    /// match the proper type of the setter
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool reset(const std::string& key)
+    {
+        auto it = std::find(m_lookup.begin(), m_lookup.end(), key);
+        if(it != m_lookup.end() && it->resetter) return it->resetter(static_cast<void*>(m_widget));
         return false;
     }
 
@@ -100,63 +104,39 @@ public:
     /// @brief Returns all the current getter results with their pair keys
     ///
     ///////////////////////////////////////////////////////////////////
-    std::map<std::string, Accessed_t> getValues() const
+    std::unordered_map<std::string, Accessed_t> getValues() const
     {
-        std::map<std::string, Accessed_t> tmp;
+        std::unordered_map<std::string, Accessed_t> tmp;
         for(const auto& accessor_val : m_lookup)
-            if(accessor_val.getter) tmp.emplace(accessor_val.key, accessor_val.getter(*m_widget));
+            if(accessor_val.getter) tmp.emplace(accessor_val.key, accessor_val.getter(static_cast<void*>(m_widget)));
         return tmp;
     }
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Fills data vector with row information for each key
     ///
-    /// @param data vector reference received from `InfoWrapper` base object
-    ///
     ///////////////////////////////////////////////////////////////////
-    void fetchData(std::vector<Info>& data) const
+    LookupVec_t* fetchData()
     {
-        data.clear();
-        data.reserve(m_lookup.size());
-        for(const auto& accessor_val : m_lookup)
-        {
-            Info info;
-            info.info_key = accessor_val.key;
-            info.info_section = accessor_val.section;
-            info.info_is_path = accessor_val.is_path;
-            info.info_has_setter = static_cast<bool>(accessor_val.setter);
-            if(accessor_val.hint.has_value()) info.info_hint.emplace(*accessor_val.hint);
-            if(accessor_val.getter) info.info_val = accessor_val.getter(*m_widget);
-            data.emplace_back(std::move(info));
-        }
+        return &m_lookup;
     }
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the value attribute of the current data vector
     ///
-    /// @param data vector reference received from `InfoWrapper` base object
-    ///
     ///////////////////////////////////////////////////////////////////
-    void updateValues(std::vector<Info>& data) const
+    void updateValues()
     {
-        for(Info& info : data)
+        for(Accessor_ptr& element : m_lookup)
         {
-            if(!info.info_val.has_value()) continue;
-
-        auto it = std::find_if(m_lookup.begin(), m_lookup.end(),
-            [&](const accessor_ptr<WidgetT>& e)
-            {
-                return e.key == info.info_key;
-            });
-
-            if(it != m_lookup.end() && it->getter)
-                info.info_val = it->getter(*m_widget);
+            if(!element.getter) continue;
+            element.attrib.val = element.getter(static_cast<void*>(m_widget));
         }
     }
 
 private:
     WidgetT* m_widget;                  // main widget
-    LookupVec_t<WidgetT> m_lookup;      // accessor lookup
+    LookupVec_t m_lookup;               // accessor lookup
     bool m_isManaged{false};            // true = widget memory is managed externally, false = widget memory is managed by class
 };
 
@@ -174,17 +154,19 @@ class info_ptr
     friend class InfoWrapper;
     using GetFn_t = std::optional<Accessed_t> (*)(void*, const std::string&);
     using SetFn_t = bool (*)(void*, const std::string&, Accessed_t);
-    using FetchFn_t = void (*)(void*, std::vector<Info>&);
-    using UpdateFn_t = void (*)(void*, std::vector<Info>&);
-    using GetValsFn_t = std::map<std::string, Accessed_t> (*)(void*);
+    using ResetFn_t = bool (*)(void*, const std::string&);
+    using FetchFn_t = LookupVec_t* (*)(void*);
+    using UpdateFn_t = void (*)(void*);
+    using GetValsFn_t = std::unordered_map<std::string, Accessed_t> (*)(void*);
     using DeleterFn_t = void (*)(void*);
 
 public:
     info_ptr() = default;
 
-    info_ptr(void* w, GetFn_t getter, SetFn_t setter, FetchFn_t fetch_data, UpdateFn_t update_data, GetValsFn_t get_all, DeleterFn_t del) : m_wrappedWidget(w),
+    info_ptr(void* w, GetFn_t getter, SetFn_t setter, ResetFn_t resetter, FetchFn_t fetch_data, UpdateFn_t update_data, GetValsFn_t get_all, DeleterFn_t del) : m_wrappedWidget(w),
     info_Get(getter),
     info_Set(setter),
+    info_Reset(resetter),
     info_Fetch(fetch_data),
     info_Update(update_data),
     info_GetAll(get_all),
@@ -196,6 +178,7 @@ public:
     info_ptr(info_ptr&& other) noexcept : m_wrappedWidget(other.m_wrappedWidget),
     info_Get(other.info_Get),
     info_Set(other.info_Set),
+    info_Reset(other.info_Reset),
     info_Fetch(other.info_Fetch),
     info_Update(other.info_Update),
     info_GetAll(other.info_GetAll),
@@ -212,6 +195,7 @@ public:
             m_wrappedWidget = other.m_wrappedWidget;
             info_Get = other.info_Get;
             info_Set = other.info_Set;
+            info_Reset = other.info_Reset;
             info_Fetch= other.info_Fetch;
             info_Update = other.info_Update;
             info_GetAll = other.info_GetAll;
@@ -259,27 +243,31 @@ public:
 
         return info_ptr(
             new InfoWidget<WidgetT>(w),
-            +[](void* w, const std::string& key) -> std::optional<Accessed_t> // get
+            +[](void* iw, const std::string& key) -> std::optional<Accessed_t>
             {
-                return static_cast<InfoWidget<WidgetT>*>(w)->get(key);
+                return static_cast<InfoWidget<WidgetT>*>(iw)->get(key);
             },
-            +[](void* w, const std::string& key, Accessed_t val) -> bool // set
+            +[](void* iw, const std::string& key, Accessed_t val) -> bool
             {
-                return static_cast<InfoWidget<WidgetT>*>(w)->set(key, val);
+                return static_cast<InfoWidget<WidgetT>*>(iw)->set(key, val);
             },
-            +[](void* w, std::vector<Info>& data) -> void // fetch
+            +[](void* iw, const std::string& key) -> bool
             {
-                return static_cast<InfoWidget<WidgetT>*>(w)->fetchData(data);
+                return static_cast<InfoWidget<WidgetT>*>(iw)->reset(key);
             },
-            +[](void* w, std::vector<Info>& data) -> void // update
+            +[](void* iw) -> LookupVec_t*
             {
-                return static_cast<InfoWidget<WidgetT>*>(w)->updateValues(data);
+                return static_cast<InfoWidget<WidgetT>*>(iw)->fetchData();
             },
-            +[](void* w) -> std::map<std::string, Accessed_t> // get values
+            +[](void* iw) -> void
             {
-                return static_cast<InfoWidget<WidgetT>*>(w)->getValues();
+                return static_cast<InfoWidget<WidgetT>*>(iw)->updateValues();
             },
-            +[](void* p) -> void // delete
+            +[](void* iw) -> std::unordered_map<std::string, Accessed_t>
+            {
+                return static_cast<InfoWidget<WidgetT>*>(iw)->getValues();
+            },
+            +[](void* p) -> void
             {
                 delete static_cast<InfoWidget<WidgetT>*>(p);
             }
@@ -295,9 +283,10 @@ public:
         m_wrappedWidget = nullptr;
         info_Get = nullptr;
         info_Set = nullptr;
+        info_Reset = nullptr;
         info_Delete = nullptr;
         info_Fetch = nullptr;
-        info_Update= nullptr;
+        info_Update = nullptr;
         info_GetAll = nullptr;
         info_Delete = nullptr;
     }
@@ -306,6 +295,7 @@ private:
     void* m_wrappedWidget{nullptr};         //!< `InfoWidget<T>` pointer
     GetFn_t info_Get{nullptr};              //!< `get` method lambda wrapper
     SetFn_t info_Set{nullptr};              //!< `set` method lambda wrapper
+    ResetFn_t info_Reset{nullptr};          //!< `reset` method lambda wrapper
     FetchFn_t info_Fetch{nullptr};          //!< `fetchData` method lambda wrapper
     UpdateFn_t info_Update{nullptr};        //!< `updateValues` method lambda wrapper
     GetValsFn_t info_GetAll{nullptr};       //!< `getValues` method lambda wrapper
@@ -318,13 +308,15 @@ private:
 ///////////////////////////////////////////////////////////////////
 class InfoWrapper : public ImGuiWrapper
 {
+    enum class ShaderType : int;
+
 public:
     explicit InfoWrapper(sf::RenderWindow&, const std::string& = "");
 
-    InfoWrapper(const InfoWrapper&)            = delete;
+    InfoWrapper(const InfoWrapper&) = delete;
     InfoWrapper& operator=(const InfoWrapper&) = delete;
-    InfoWrapper(InfoWrapper&&)                 = delete;
-    InfoWrapper& operator=(InfoWrapper&&)      = delete;
+    InfoWrapper(InfoWrapper&&) = delete;
+    InfoWrapper& operator=(InfoWrapper&&) = delete;
 
     ~InfoWrapper() override;
 
@@ -369,14 +361,15 @@ public:
 
                 std::visit([this](auto& w)
                 {
-                    using ActualT = std::decay_t<decltype(w)>;
+                    using Derived_t = std::decay_t<decltype(w)>;
                     Widget* widget_ptr = &w;
-                    BuiltinBindFlags& flags = m_widgetMem[widget_ptr].flags;
+                    BuiltinBindFlags& flags = m_cache[widget_ptr].flags;
+                    sf::Vector2f& grab_offset = m_cache[widget_ptr].grab_offset;
 
                     /* Reserved events */
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusSet, [this, &w](std::optional<sf::Event>)
                     {
-                        selectWidget<ActualT>(&w);
+                        selectWidget<Derived_t>(&w);
                     });
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusLost, [this, widget_ptr](std::optional<sf::Event>)
                     {
@@ -385,34 +378,58 @@ public:
 
 
                     /* Bind events */
-                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &flags](std::optional<sf::Event> e)
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &flags, &grab_offset](std::optional<sf::Event> e)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
                         {
-                            std::cout << "Pressed (Drag event)\n";
+                            if(const sf::Event::MouseButtonPressed* pressed = e->getIf<sf::Event::MouseButtonPressed>())
+                            {
+                                if(const Frame* frame = w.getRootFrame())
+                                    grab_offset = frame->mapPixelToCoords(pressed->position) - w.getBounds().position;
+                                else
+                                    grab_offset = sf::Vector2f(pressed->position) - w.getBounds().position;
+                            }
                         }
                     });
-                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &flags](std::optional<sf::Event> e)
+
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &flags](std::optional<sf::Event> e)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::RightClickDelete))
                         {
-                            std::cout << "Pressed (Delete event)\n";
+                            if(&w == m_selected.widget_ptr) m_selected.to_be_deleted = true;
                         }
                     }, sf::Mouse::Button::Right);
-                    w.bindMouseEvent(Widget::W_MouseEventType::Hold, [this, &flags](std::optional<sf::Event>)
+
+                    w.bindMouseEvent(Widget::W_MouseEventType::Hold, [this, &w, &flags, &grab_offset](std::optional<sf::Event>)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
                         {
-                            std::cout << "Held (Drag event)\n";
+                            sf::Vector2f current;
+                            const sf::Vector2i window_pixel = sf::Mouse::getPosition(m_window);
+                            if(const Frame* frame = w.getRootFrame())
+                                current = frame->mapPixelToCoords(window_pixel);
+                            else
+                                current = sf::Vector2f(window_pixel);
+
+                            w.setWidgetPosition(current - grab_offset);
                         }
                     });
-                    w.bindMouseEvent(Widget::W_MouseEventType::Scroll, [this, &flags](std::optional<sf::Event> e)
+
+                    w.bindMouseEvent(Widget::W_MouseEventType::Scroll, [this, &w, &flags](std::optional<sf::Event> e)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::ScrollResize))
                         {
-                            std::cout << "Scrolled (resize event)\n";
+                            if(e)
+                            {
+                                if(const auto* scrolled = e->getIf<sf::Event::MouseWheelScrolled>())
+                                {
+                                    sf::Vector2f current_size = w.getWidgetSize();
+                                    w.setWidgetSize({current_size.x + 5.f * scrolled->delta, current_size.y + 5.f * scrolled->delta});
+                                }
+                            }
                         }
                     });
+
                     w.bindMouseEvent(Widget::W_MouseEventType::HoverSet, [this, &flags](std::optional<sf::Event>)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
@@ -420,6 +437,7 @@ public:
                             std::cout << "Hovered (highlight event)\n";
                         }
                     });
+
                     w.bindMouseEvent(Widget::W_MouseEventType::HoverLost, [this, &flags](std::optional<sf::Event>)
                     {
                         if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
@@ -449,7 +467,6 @@ public:
         
         m_selected.widget_info_ptr = info_ptr::make_wrapper<WidgetT>(w);
         m_selected.widget_ptr = w;
-        m_selected.enable_if_frame_ptr = nullptr;
         if constexpr(std::is_same_v<WidgetT, Frame>)
             m_selected.enable_if_frame_ptr = w;
 
@@ -474,7 +491,8 @@ public:
         m_selected.widget_info_ptr.reset();
         m_selected.widget_ptr = nullptr;
         m_selected.enable_if_frame_ptr = nullptr;
-        m_rows.clear();
+        m_selected.to_be_deleted = false;
+        m_rows = nullptr;
     }
 
 private:
@@ -527,6 +545,12 @@ private:
     void renderWidgets() override;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Renders sfml widgets
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderWinElements() override;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Renders "Edit" section in ImGui interface
     ///
     ///////////////////////////////////////////////////////////////////
@@ -554,7 +578,7 @@ private:
     /// @brief Renders a single key attribute in accessor section
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderRow(Info&);
+    void renderRow(Accessor_ptr&);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders "Bindings" section in ImGui interface
@@ -598,9 +622,7 @@ private:
     /// @param resetFn `Widget` class function for resetting the shader
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderShaderControl(const char* label, const char* is_suffix, ShaderUiState& state,
-                             bool (Widget::*loadFn)(const std::string_view&, Widget::W_LoadType),
-                             void (Widget::*resetFn)(const std::string_view&, Widget::W_LoadType));
+    void renderShaderControl(const char* label, ShaderType shader_type, ShaderCache& state);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders "Shaders" section in ImGui interface
@@ -617,19 +639,26 @@ private:
         Widget* widget_ptr{nullptr};            //!< selected widget
         Frame* enable_if_frame_ptr{nullptr};    //!< also selected widget, enabled if it's a `Frame` type
         info_ptr widget_info_ptr;               //!< info wrapper for widget
+        bool to_be_deleted{false};              //!< selected widget is marked for deletion
+    };
+
+    enum class ShaderType
+    {
+        Clip,
+        Color
     };
     
-    static constexpr std::size_t s_MAX_WIDGET_COUNT{10};
+    static constexpr unsigned int s_MAX_WIDGET_COUNT{10};
 
-    std::vector<Info> m_rows;                                           //!< selected widget accessor data
-    std::array<std::optional<Widget_t>, s_MAX_WIDGET_COUNT> m_widgets;  //!< managed widgets
-    std::unordered_map<Widget*, CachedAttributes> m_widgetMem;          //!< memory for bindings
+    std::array<std::optional<Widget_t>, s_MAX_WIDGET_COUNT> m_widgets;  //!< widgets storage
+    SelectedWidget m_selected;
+    LookupVec_t* m_rows{nullptr};                                       //!< selected widget accessor data
+    CacheMap_t m_cache;                                                 //!< memory for attributes which can't be obtained from the widget
+    DialogThread m_dialog;                                              //!< path dialog
+
     unsigned int m_widgetsCount{0};                                     //!< active widgets count
-    unsigned int m_selectToken{0}; //!< context switch between selections to prevent value inheritence
-    SelectedWidget m_selected;                                          //!< selected widget
-    bool m_revealFps{false};                                            //!< fps toggle
-    DialogThread m_dialog;
-    std::optional<std::string> m_dialogResultPath;
+    unsigned int m_selectToken{0};                                      //!< context switch between selections to prevent value inheritence
+    bool m_revealFps{false};
 };
 }
 

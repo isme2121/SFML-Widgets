@@ -134,8 +134,10 @@ add_library(imgui-test STATIC
     "${IMGUI_TEST_SOURCE_DIR}/wrapper_info.cpp"
 )
 
-target_include_directories(imgui-test PUBLIC
+target_include_directories(imgui-test
+    PRIVATE
     "${TINYDIALOGS_SOURCE_DIR}"
+    PUBLIC
     "${IMGUI_TEST_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"
     "${WIDGET_INCLUDE_DIR}"

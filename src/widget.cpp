@@ -344,9 +344,10 @@ bool Widget::captureKeyEvents(const sf::Event& event)
     }
 
     // key event won't trigger if:
-    if(s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
+    if(s_externalEventUsed ||                                                                           //!< ImGui event
+       s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
        checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) ||                                        //!< widget is either blocked or restricted
-      !checkFlag(m_flags, FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;                       //!< widget is neither selected, always selected
+      !checkFlag(m_flags, FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;                       //!< widget is neither selected, nor always selected
     // external event currently not considered for now since it's only trigger from mouse events anyways
     
     // indicate if event is already consumed by other widgets

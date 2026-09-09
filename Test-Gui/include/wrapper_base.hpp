@@ -85,6 +85,12 @@ protected:
     ///////////////////////////////////////////////////////////////////
     virtual void renderWidgets() = 0;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders any non ImGui content
+    ///
+    ///////////////////////////////////////////////////////////////////
+    virtual void renderWinElements() = 0;
+
     sf::RenderWindow& m_window;     //!< root window
 private:
     sf::Clock m_deltaClock;         //!< internal update clock
@@ -92,6 +98,7 @@ private:
     unsigned int m_ID{0};           //!< unique frame ID
     bool m_guiVisible{true};        //!< visiblity indicator
     bool m_hovered{false};          //!< hovered flag updated on each loop
+    bool m_keyboardEventUsed{false};
 
     inline static unsigned int s_instanceCount{0};  //!< maintain separation between multiple ImGui frames
 };
