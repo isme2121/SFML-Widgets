@@ -11,6 +11,7 @@ namespace
     constexpr ImVec4 RED{0.80f, 0.25f, 0.25f, 1.0f};
     constexpr ImVec4 DARK_RED{0.70f, 0.20f, 0.20f, 1.0f};
     constexpr ImVec4 DARKER_RED{0.55f, 0.15f, 0.15f, 1.0f};
+    constexpr ImVec4 SECTION_LABEL_COLOR{0.55f, 0.75f, 1.0f, 1.0f};     // light green
 
     constexpr const char* IMG_EXTENSIONS[] = {"*.png", "*.jpg", "*.jpeg"};
     constexpr int N_IMG_EXTENSIONS = 3;
@@ -24,7 +25,6 @@ namespace
     constexpr ImU32 SET_CELL_FILL_COLOR = IM_COL32(80, 200, 120, 255);  // green
     constexpr ImU32 RESET_CELL_FILL_COLOR = IM_COL32(70, 70, 70, 255);  // gray
 
-    constexpr ImVec4 SECTION_LABEL_COLOR{0.55f, 0.75f, 1.0f, 1.0f};     // light green
 
     constexpr float CHAR_INPUT_WIDTH = 40.f;
     constexpr float NUMERIC_INPUT_WIDTH = 80.f;
@@ -37,8 +37,7 @@ namespace
 
 namespace sfml_widgets
 {
-InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title)
-    : ImGuiWrapper(window, title)
+InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title) : ImGuiWrapper(window, title)
 {
 }
 
@@ -225,11 +224,11 @@ void InfoWrapper::renderWidgets()
     ImGui::PushID(m_selectToken);   //!< avoids value inheritence between previous and new selected widgets
     
     // rendered in order
+    renderThemeSection();
+    renderBindsSection();
     renderFlagsSection();
     renderAccessorSections();
     renderShadersSection();
-    renderBindsSection();
-    renderThemeSection();
     ImGui::PopID();
 }
 

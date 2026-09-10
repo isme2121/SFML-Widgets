@@ -527,6 +527,18 @@ struct AccessorsLink<Button>
             return false;
         }, EnumSection::Text, "Float [0.f, 1.f]", false, sf::Vector2f{0.f, 0.999f});
     
+        set_lookup(vec, "icon size" ,+ [](const void* w) -> Accessed_t {return static_cast<const Button*>(w)->getIconSizeRatio();}, EnumSection::Image, "Float [0.f, 1.f]", false, sf::Vector2f{0.f, 1.f});
+        set_lookup(vec, "icon size" ,+ [](void* w, const Accessed_t& v) -> bool
+        {
+            if(const float* f = std::get_if<float>(&v))
+                return invoke_setter([&]{return static_cast<Button*>(w)->setIconSizeRatio(*f);});
+            return false;
+        });
+        set_lookup(vec, "icon size" ,+ [](void* w) -> bool
+        {
+                return invoke_setter([&]{return static_cast<Button*>(w)->setIconSizeRatio(0.33f);});
+        });
+
         set_lookup(vec, "text limit" ,+ [](const void* w) -> Accessed_t {return static_cast<const Button*>(w)->getTextLimit();}, EnumSection::Text);
         set_lookup(vec, "text limit" ,+ [](void* w, const Accessed_t& v) -> bool
         {

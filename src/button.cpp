@@ -112,10 +112,7 @@ bool Button::setIcon(const sf::String& image_path, const std::string_view& shade
 
     else m_imagePtr->setTexture(*m_texturePtr, true);
 
-    updateClipShader();
-    setFlag(m_flags, FLAGS::UPDATE);
-    setFlag(m_flags, FLAGS::IMAGE);
-
+    setFlag(m_flags, FLAGS::UPDATE | FLAGS::IMAGE);
     return true;
 }
 
@@ -177,15 +174,14 @@ void Button::setIconPosition(Button::SIDE image_side)
 
     m_imagePosition = image_side;
     setFlag(m_flags, FLAGS::UPDATE);
-    updateClipShader();
 }
 
 bool Button::setIconSizeRatio(float ratio)
 {
-    if(ratio < 0.1f || ratio > 0.33f) return false;
+    if(ratio < 0.1f || ratio > 1.f) return false;
     m_imageSizeRatio = ratio;
     updateImageSize();
-    updateClipShader();
+    setFlag(m_flags, FLAGS::MODIFIED);
     return true;
 }
 
@@ -241,6 +237,11 @@ unsigned int Button::getTextSize() const
     return m_charSize;
 }
 
+float Button::getIconSizeRatio() const
+{
+    return m_imageSizeRatio;
+}
+
 unsigned int Button::getTextLimit() const
 {
     return m_charLimit;
@@ -291,9 +292,9 @@ void Button::updatePosition()
 void Button::updateSize()
 {
     // all methods that scale with size
-    updateClipShader();
     updateTextSize();       //!< if text scales with ratio
     updateImageSize();
+    updateClipShader();
 
     // keep text aligned
     // image position scales with size
@@ -376,14 +377,18 @@ void Button::updateTheme()
 
 void Button::updateClipShader()
 {
-    if(!m_clipShaderPtr) return;
+    if (!m_clipShaderPtr)
+        return;
 
-    // side image sprite
+    sf::Vector2f icon_size;
+    if(m_imagePtr) icon_size = m_imagePtr->getGlobalBounds().size;
+
     m_clipShaderPtr->setUniform("texture", sf::Shader::CurrentTexture);
     m_clipShaderPtr->setUniform("size", sf::Glsl::Vec2(m_size));
     m_clipShaderPtr->setUniform("radius", m_radius);
     m_clipShaderPtr->setUniform("opacity", m_opacity);
-    m_clipShaderPtr->setUniform("side", m_imagePosition == SIDE::Right? 2.f : m_imagePosition == SIDE::Left? 0.f : 1.f);
+    m_clipShaderPtr->setUniform("icon_size", sf::Glsl::Vec2(icon_size));
+    m_clipShaderPtr->setUniform("icon_local_center", sf::Glsl::Vec2(m_imageCenter));
 }
 
 void Button::updateTextPosition()
@@ -438,25 +443,24 @@ void Button::updateImagePosition()
     sf::FloatRect bounds = m_imagePtr->getLocalBounds();
     m_imagePtr->setOrigin(bounds.position + bounds.size / 2.f);
 
-    sf::Vector2f local_offset;
-    local_offset.y = m_size.y / 2.f;
+    m_imageCenter.y = m_size.y * 0.5f;
 
     switch (m_imagePosition)
     {
     case SIDE::Left:
-        local_offset.x = m_size.x * 0.165f;
+        m_imageCenter.x = m_size.x * 0.165f;
         break;
 
     case SIDE::Center:
-        local_offset.x = m_size.x * 0.5f;
+        m_imageCenter.x = m_size.x * 0.5f;
         break;
-    
+
     case SIDE::Right:
-        local_offset.x = m_size.x * 0.835f;
+        m_imageCenter.x = m_size.x * 0.835f;
         break;
-    
     }
-    m_imagePtr->setPosition(this->getTransform().transformPoint(local_offset));
+    m_imagePtr->setPosition(this->getTransform().transformPoint(m_imageCenter));
+    updateClipShader();
 }
 
 bool Button::updateImageSize()

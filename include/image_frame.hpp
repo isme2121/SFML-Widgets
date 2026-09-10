@@ -40,7 +40,7 @@ public:
     /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ptr, const sf::String& ref_path = "");
+    ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<sf::Texture>& texture_ptr, const sf::String& ref_path = "");
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the image frame with `Frame`
@@ -75,7 +75,7 @@ public:
     /// @param ref_path a path just for reference (does not influence results except for `ImageFrame::getImagePath()` return)
     ///
     ///////////////////////////////////////////////////////////////////
-    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& texture_ptr, const sf::String& ref_path = "");
+    ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<sf::Texture>& texture_ptr, const sf::String& ref_path = "");
 
     ImageFrame(ImageFrame&& other) = delete;
     ImageFrame& operator=(ImageFrame&& other) = delete;
@@ -136,7 +136,7 @@ public:
     /// @see `clearImage`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setImage(std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& ref_path = "", const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
+    bool setImage(std::shared_ptr<sf::Texture>& ref_texture, const sf::String& ref_path = "", const std::string_view& shader = "", W_LoadType loading_type = W_LoadType::Memory);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current image data from the widget, does nothing
@@ -280,7 +280,7 @@ private:
     std::unique_ptr<sf::Text> m_noImageTextPtr;                         //!< Text displayed when no image is selected
     
     std::mutex m_guard;                                                 //!< For multi-threading safety when loading an image from a separate thread
-    std::weak_ptr<const sf::Texture> m_extImagePtr;                     //!< Weak pointer to an external read only texture
+    std::weak_ptr<sf::Texture> m_extImagePtr;                           //!< Weak pointer to an external read only texture
 
     sf::String m_imagePath;                                             //!< Path to currently loaded image
     sf::Vector2u m_originalImageSize{0, 0};                             //!< Original dimensions of the loaded image

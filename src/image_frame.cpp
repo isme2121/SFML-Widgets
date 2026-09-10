@@ -30,7 +30,7 @@ ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector
     setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
+ImageFrame::ImageFrame(sf::RenderWindow& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
     if(!setImage(ref_texture, image_path)) writeText();
@@ -69,7 +69,7 @@ ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, co
     setFlag(m_flags, FLAGS::NOBGIMAGE);
 }
 
-ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<const sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
+ImageFrame::ImageFrame(Frame& root, sf::Vector2f position, sf::Vector2u size, std::shared_ptr<sf::Texture>& ref_texture, const sf::String& image_path) : Widget(root, position, size)
 {
     // this guarantees sprite allocation with the correct texture
     if(!setImage(ref_texture, image_path)) writeText();
@@ -212,7 +212,7 @@ bool ImageFrame::setImage(const sf::Image& image, const sf::String& ref_path, co
     return true;
 }
 
-bool ImageFrame::setImage(std::shared_ptr<const sf::Texture>& texture_ref, const sf::String& ref_path, const std::string_view& shader, W_LoadType loading_type)
+bool ImageFrame::setImage(std::shared_ptr<sf::Texture>& texture_ref, const sf::String& ref_path, const std::string_view& shader, W_LoadType loading_type)
 {
     if(!texture_ref) return false;
 

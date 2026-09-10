@@ -1,10 +1,5 @@
 #pragma once
-/*
-* Fonts that were previously available within assets are hard-coded here.
-* The purpose is to avoid hard-coded paths entirely and allow the generated
-* executable to run freely without having to exist in the same directory layer
-* as assets/ by using sf::Font::openFromMemory method at runtime
-*/
+
 #ifndef FONTS_AND_LEN
 #define FONTS_AND_LEN
 constexpr unsigned int Inter_Light_ttf_len = 343704;

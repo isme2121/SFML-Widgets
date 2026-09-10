@@ -77,7 +77,7 @@ void Widget::draw()
     // drawing tool tip if enabled
     if(m_ToolTipPtr) m_ToolTipPtr->draw(checkFlag(m_flags, FLAGS::HOVERED));
 
-    resetFlag(m_flags, FLAGS::DRAWING | FLAGS::MODIFIED);
+    resetFlag(m_flags, FLAGS::DRAWING);
 }
 
 void Widget::configure(FLAGS flags)

@@ -1,13 +1,6 @@
 #pragma once
 #include <string>
 
-/*
-* Shaders that were previously available within assets are hard-coded here.
-* The purpose is to avoid hard-coded paths entirely and allow the generated
-* executable to run freely without having to exist in the same directory layer
-* as assets/ by using sf::Shader::loadFromMemory method at runtime
-*/
-
 constexpr std::string_view BUTTON_SHADER_FRAG = R"(
 /*
 * Handles clipping a single side of a sprite in a button while also affecting it's transparency
@@ -21,47 +14,31 @@ constexpr std::string_view BUTTON_SHADER_FRAG = R"(
 * size: The dimensions of the button (no transform)
 * radius: radius value of the rounded corners
 * opacity: Transparency ratio between 0 & 1, scales within the alpha channel value of the texture itself
-* side: The position of the sprite image relative to the button with 0.0 = left, 1.0 = center, and 2.0 right
+* icon_size: accurate icon sprite size
+* icon_local_center: icon center coordinates local to button shape
 */
 
 uniform sampler2D texture;
 uniform vec2 size;
 uniform float radius;
 uniform float opacity;
-uniform float side;
+uniform vec2 icon_size;
+uniform vec2 icon_local_center;
 
 void main()
 {
-    vec2 uv  = gl_TexCoord[0].xy;
-    vec2 pos;
+    vec2 uv = gl_TexCoord[0].xy;
 
-    // left side
-    if(side < 0.5)
-    {
-        pos = uv * (size / vec2(3.0, 1.0));
-    }
+    vec2 sprite_x0 = icon_local_center - icon_size * 0.5;
+    vec2 pos = sprite_x0 + uv * icon_size;
 
-    // right side
-    else if(side > 1.5)
-    {
-        // right side — image occupies right x/3
-        pos = vec2(size.x * (2.0 / 3.0), 0.0) + uv * (size / vec2(3.0, 1.0));
-    }
+    vec2 half_shape_size = size * 0.5;
+    vec2 q = abs(pos - half_shape_size) - (half_shape_size - vec2(radius));
 
-    // center
-    else
-    {
-        // center — image occupies middle x/3
-        pos = vec2(size.x * (1.0 / 3.0), 0.0) + uv * (size / vec2(3.0, 1.0));
-    }
-
-    // clip
-    vec2 h = size * 0.5;
-    vec2 q = abs(pos - h) - (h - vec2(radius));
     float dist = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
-    if(dist > 0.0) discard;
+    if (dist > 0.0)
+        discard;
 
-    // transparency
     vec4 texPixel = texture2D(texture, uv);
     gl_FragColor = vec4(texPixel.rgb, texPixel.a * opacity);
 }

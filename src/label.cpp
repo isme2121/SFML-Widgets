@@ -281,12 +281,11 @@ void Label::updateTextSize()
     {
         float target_height  = m_size.y * m_textSizeRatio;
         // single line scale
-        float current_height = W_CharHeight::getHeight(m_text.getFont(),
-                                                      m_text.getCharacterSize());
+        float current_height = W_CharHeight::getHeight(m_text.getFont(), m_text.getCharacterSize());
         if(current_height > 0.f)
         {
             float ratio = target_height / current_height;
-            m_charSize  = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
+            m_charSize = std::floor<unsigned int>(m_text.getCharacterSize() * ratio);
         }
     }
 

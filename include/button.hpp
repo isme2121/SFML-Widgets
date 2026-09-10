@@ -243,6 +243,14 @@ public:
     [[nodiscard]] unsigned int getTextSize() const;
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current icon size ratio
+    ///
+    /// @see `setIconSizeRatio`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    [[nodiscard]] float getIconSizeRatio() const;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current maximum number of characters in text
     ///
     /// @see `setTextLimit`
@@ -353,6 +361,7 @@ private:
     std::unique_ptr<sf::Texture> m_texturePtr;                          //!< Image texture
     std::unique_ptr<sf::Sprite> m_imagePtr;                             //!< Image sprite
     sf::String m_imagePath;                                             //!< Path for used image
+    sf::Vector2f m_imageCenter;
 
     float m_imageSizeRatio{0.33f};                                      //!< Icon size relative to the button's width, `range=[0.1f, 0.33f]`
     float m_charSizeRatio{0.35f};                                       //!< Button's height occupied by text, prio until it's set to 0.f, `range=[0.f, 1.f[`
