@@ -11,6 +11,7 @@ namespace
     constexpr ImVec4 RED{0.80f, 0.25f, 0.25f, 1.0f};
     constexpr ImVec4 DARK_RED{0.70f, 0.20f, 0.20f, 1.0f};
     constexpr ImVec4 DARKER_RED{0.55f, 0.15f, 0.15f, 1.0f};
+    constexpr ImVec4 LIME_GREEN{0.25f, 0.55f, 0.30f, 1.0f};    // lime
     constexpr ImVec4 SECTION_LABEL_COLOR{0.55f, 0.75f, 1.0f, 1.0f};     // light green
 
     constexpr const char* IMG_EXTENSIONS[] = {"*.png", "*.jpg", "*.jpeg"};
@@ -19,6 +20,8 @@ namespace
     constexpr int N_SHADER_EXTENSIONS = 2;
 
     constexpr unsigned int FPS_TEXT_LENGTH = 12;
+    constexpr unsigned int WIDGET_LABEL_LENGTH = 16;
+    constexpr unsigned int GROUP_LABEL_LENGTH = 32;
     constexpr const char* FPS_TEXT_FORMAT = "FPS: %.1f";
 
     constexpr unsigned int FLAGS_N_ROWS = 6;
@@ -27,18 +30,28 @@ namespace
 
 
     constexpr float CHAR_INPUT_WIDTH = 40.f;
+    constexpr float SMALL_BUTTON_WIDTH = 60.f;
     constexpr float NUMERIC_INPUT_WIDTH = 80.f;
     constexpr float ENUM_INPUT_WIDTH = 100.f;
     constexpr float DOUBLE_INPUT_WIDTH = 120.f;
     constexpr float TEXT_INPUT_WIDTH = 120.f;
     constexpr float PATH_INPUT_WIDTH = 160.f;
     constexpr float COMBO_INPUT_WIDTH = 200.f;
+    constexpr float UNKNOWN_INPUT_WIDTH = 200.f;
+
+    constexpr const char* NULL_TEXT = "NOT FOUND";
+    constexpr const char* ROOT_WIN_TEXT = "Main Window";
 }
 
 namespace sfml_widgets
 {
 InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title) : ImGuiWrapper(window, title)
 {
+    for(int idx{0}; idx < s_GROUPS_COUNT; idx++)
+    {
+        m_widgetGroups[idx].group_name = "Group " + std::to_string(idx);
+        m_widgetGroups[idx].group_ptr = WidgetGroup::make_group();
+    }
 }
 
 InfoWrapper::~InfoWrapper()
@@ -170,6 +183,27 @@ void InfoWrapper::trySetFromText(const std::string& key, const std::string& text
     return;
 }
 
+void InfoWrapper::openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc)
+{
+    if(m_dialog.is_open.load()) return;
+    if(m_dialog.thread.joinable()) m_dialog.thread.join();
+
+    m_dialog.req_key = key;
+    m_dialog.req_token = m_selectToken;
+    m_dialog.is_open = true;
+
+    m_dialog.thread = std::thread([this, title, filters, filter_count, filter_desc]()
+    {
+        const char* result = tinyfd_openFileDialog(title, "", filter_count, filters, filter_desc, 0);
+        {
+            std::lock_guard<std::mutex> lock(m_dialog.guard);
+            m_dialog.protected_path = result ? result : "";
+        }
+        m_dialog.path_found.store(result != nullptr);
+        m_dialog.is_open.store(false);
+    });
+}
+
 bool InfoWrapper::processEvents(const sf::Event& event)
 {
     bool event_used{false};
@@ -220,12 +254,10 @@ void InfoWrapper::renderWidgets()
     /* Selected widget section */
     if(!m_selected.widget_ptr) return;
 
-    textHeader("Selected Widget Section", true, true, HEADER_1);
     ImGui::PushID(m_selectToken);   //!< avoids value inheritence between previous and new selected widgets
     
     // rendered in order
-    renderThemeSection();
-    renderBindsSection();
+    renderSelectedSection();
     renderFlagsSection();
     renderAccessorSections();
     renderShadersSection();
@@ -340,7 +372,6 @@ void InfoWrapper::renderEditSection()
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
     ImGui::TextDisabled("Actions");
     ImGui::Spacing();
 
@@ -361,17 +392,41 @@ void InfoWrapper::renderEditSection()
     if(ImGui::Button("Refresh")) refreshUI();
 }
 
-void InfoWrapper::renderFps() const
+void InfoWrapper::renderSelectedSection()
 {
-    if(m_revealFps)
+    auto it = m_cache.find(m_selected.widget_ptr);
+    if(it == m_cache.end())
     {
-        ImGui::SameLine();
-        char fps_text[FPS_TEXT_LENGTH];
-        std::snprintf(fps_text, sizeof(fps_text), FPS_TEXT_FORMAT, ImGui::GetIO().Framerate);
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(fps_text).x);
-        ImGui::TextUnformatted(fps_text);
+        ImGui::PushStyleColor(ImGuiCol_Text, RED);
+        ImGui::TextUnformatted("CACHE ERROR");
+        ImGui::Spacing();
+        return;
     }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::PushStyleColor(ImGuiCol_Text, HEADER_1);
+    ImGui::TextUnformatted("Selected Widget: ");
+    ImGui::SameLine(0.f, 12.f);
+    ImGui::TextUnformatted(it->second.label.c_str());
+    ImGui::PopStyleColor();
+
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::BeginGroup();
+    _renderProperties(it);
+    _renderBindings(it);
+    _renderTheme(it);
+    ImGui::EndGroup();
+
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(24.f, 0.f));
+    ImGui::SameLine();
+
+    ImGui::BeginGroup();
+    _renderWidgetGroups();
+    ImGui::EndGroup();
 }
 
 void InfoWrapper::renderFlagsSection()
@@ -513,6 +568,227 @@ void InfoWrapper::renderAccessorSections()
     ImGui::SetCursorPosY(max_bottom_y);
 }
 
+void InfoWrapper::renderShadersSection()
+{
+    textHeader("Shaders", true, true, HEADER_2);
+    auto it = m_cache.find(m_selected.widget_ptr);
+    if(it == m_cache.end()) return;
+
+    _addShaderUI("Clip Shader:", ShaderType::Clip, it->second.clip_shader_cache);
+    ImGui::Spacing();
+    _addShaderUI("Color Shader:", ShaderType::Color, it->second.color_shader_cache);
+}
+
+void InfoWrapper::_renderProperties(CacheMap_t::iterator& cached_data)
+{
+    textHeader("Properties", true, false, HEADER_2);
+
+    ImGui::TextUnformatted("Label");
+    ImGui::SameLine();
+    char widget_label[WIDGET_LABEL_LENGTH];
+    std::snprintf(widget_label, sizeof(widget_label), "%s", cached_data->second.label.c_str());
+    ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+    if(ImGui::InputText("##widgetlabel", widget_label, sizeof(widget_label)))
+    {
+        cached_data->second.label = widget_label;
+    }
+
+    ImGui::TextUnformatted("Root Label");
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", getRootLabel(m_selected.widget_ptr));
+}
+
+void InfoWrapper::_renderBindings(CacheMap_t::iterator& cached_data)
+{
+    textHeader("Bindings", true, false, HEADER_2);
+
+    BuiltinBindFlags& flags_ref = cached_data->second.flags;
+    for(const auto& bind_literal : enum_literals::QUICK_BINDINGS_LITERAL)
+    {
+        bool state = isBuiltinFlagSet(flags_ref, bind_literal.get<1>());
+        if(ImGui::Checkbox(bind_literal.get<0>(), &state))
+        {
+            flags_ref = state ? (flags_ref | bind_literal.get<1>()) : (flags_ref & ~bind_literal.get<1>());
+        }
+    }
+}
+
+void InfoWrapper::_renderTheme(CacheMap_t::iterator& cached_data)
+{
+    textHeader("Theme", true, false, HEADER_2);
+
+    constexpr std::size_t N_THEMES = enum_literals::THEME_LITERAL.size();
+    int& curr_theme_idx = cached_data->second.theme_idx;
+
+    const char* theme_label = (curr_theme_idx >= 0) ?
+                enum_literals::THEME_LITERAL[curr_theme_idx].get<0>() :
+                "None";
+
+    ImGui::SetNextItemWidth(COMBO_INPUT_WIDTH);
+    if(ImGui::BeginCombo("##theme_select", theme_label))
+    {
+        if(ImGui::Selectable("None", curr_theme_idx == -1))
+        {
+            m_selected.widget_ptr->unlinkTheme();
+        }
+
+        for(int i{0}; i < N_THEMES; ++i)
+        {
+            bool is_selected = (i == curr_theme_idx);
+            if(ImGui::Selectable(enum_literals::THEME_LITERAL[i].get<0>(), is_selected))
+            {
+                if(i != curr_theme_idx)
+                {
+                    m_selected.widget_ptr->linkTheme(enum_literals::THEME_LITERAL[i].get<1>());
+                    curr_theme_idx = i;
+                }
+            }
+            if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::TextDisabled(curr_theme_idx != -1 ? "Theme Linked" : "No theme is currently linked");
+}
+
+void InfoWrapper::_renderWidgetGroups()
+{
+
+    textHeader("Groups", true, false, HEADER_2);
+
+    for(std::size_t i = 0; i < m_widgetGroups.size(); ++i)
+    {
+        ImGui::PushID(static_cast<int>(i));
+
+        std::shared_ptr<WidgetGroup>& group = m_widgetGroups[i].group_ptr;
+        ImGui::BeginDisabled(!group);
+        
+        bool is_member = group && group->contains(m_selected.widget_ptr);
+        if(is_member) ImGui::PushStyleColor(ImGuiCol_Button, LIME_GREEN);
+
+        if(ImGui::Button(is_member ? "Leave" : "Join", ImVec2(SMALL_BUTTON_WIDTH, 0.f)))
+        {
+            m_selected.widget_ptr->linkWidget(group);
+        }
+        if(is_member) ImGui::PopStyleColor();
+
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip(is_member ? "click to leave" : "click to join");
+
+        ImGui::SameLine();
+        char group_label[GROUP_LABEL_LENGTH];
+        std::snprintf(group_label, sizeof(group_label), "%s", m_widgetGroups[i].group_name.c_str());
+
+        ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+        if(ImGui::InputText("##groupname", group_label, sizeof(group_label)))
+            m_widgetGroups[i].group_name = group_label;
+
+        if(group)
+        {
+            ImGui::Checkbox("Focus Gain##FG", &group->groupFocusCallback);
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Triggers FocusGain event for all group widgets at once if checked");
+            ImGui::SameLine();
+            ImGui::Checkbox("Focus Loss##FL", &group->groupFocuslossCallback);
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Triggers FocusLoss event for all group widgets at once if checked");
+        }
+
+        ImGui::EndDisabled();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+}
+
+void InfoWrapper::_addShaderUI(const char* label_id, ShaderType shader_type, ShaderCache& state)
+{
+    bool memory_selected{state.mode == Widget::W_LoadType::Memory};
+
+    ImGui::PushID(label_id);
+    ImGui::TextUnformatted(label_id);
+
+    ImGui::BeginDisabled(memory_selected);
+    if(ImGui::Button("Memory")) state.mode = Widget::W_LoadType::Memory;
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!memory_selected);
+    if(ImGui::Button("File")) state.mode = Widget::W_LoadType::File;
+    ImGui::EndDisabled();
+
+    if(state.mode == Widget::W_LoadType::Memory)
+    {
+        constexpr std::size_t N = enum_literals::BUILTIN_SHADERS_LITERAL.size();
+        bool no_shader = (state.combo_idx < 0);
+        const char* preview = no_shader ? "None" : enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<0>();
+
+        ImGui::SetNextItemWidth(COMBO_INPUT_WIDTH);
+
+        if(ImGui::BeginCombo("##comboshader", preview))
+        {
+            if(ImGui::Selectable("None", no_shader)) state.combo_idx = -1;
+            if(no_shader) ImGui::SetItemDefaultFocus();
+
+            for(int i{0}; i < N; i++)
+            {
+                bool selected_option = (state.combo_idx == i);
+                if(ImGui::Selectable(enum_literals::BUILTIN_SHADERS_LITERAL[i].get<0>(), selected_option))
+                {
+                    state.combo_idx = i;
+                }
+                if(selected_option) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+    }
+    else
+    {
+        ImGui::SetNextItemWidth(PATH_INPUT_WIDTH);
+        ImGui::InputTextWithHint("##pathshader", "Path to Shader", state.file_path.data(), state.file_path.size());
+
+        ImGui::SameLine();
+        ImGui::BeginDisabled(m_dialog.is_open.load());
+        if(ImGui::Button("...##browse")) openFileDialog(label_id, "Open Shader", SHADER_EXTENSIONS, N_SHADER_EXTENSIONS, "Shader files");
+        ImGui::EndDisabled();
+
+        if(m_dialog.safe_path && m_dialog.req_key == label_id && m_selectToken == m_dialog.req_token)
+        {
+            std::snprintf(state.file_path.data(), state.file_path.size(), "%s", m_dialog.safe_path->c_str());
+            m_dialog.safe_path.reset();
+        }
+    }
+
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(COMBO_INPUT_WIDTH + 12.f);
+    if(ImGui::Button("Load##loadshader"))
+    {
+        if(shader_type == ShaderType::Clip)
+        {
+            if(state.mode == Widget::W_LoadType::Memory)
+            {
+                if(state.combo_idx < 0) m_selected.widget_ptr->resetClipShader();
+                else m_selected.widget_ptr->loadClipShader(enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<1>(), state.mode);
+            }
+            else
+            {
+                if(state.file_path[0] == '\0') m_selected.widget_ptr->resetClipShader();
+                else m_selected.widget_ptr->loadClipShader(state.file_path.data(), Widget::W_LoadType::File);
+            }
+        }
+        else
+        {
+            if(state.mode == Widget::W_LoadType::Memory)
+            {
+                if(state.combo_idx < 0) m_selected.widget_ptr->resetColorShader();
+                else m_selected.widget_ptr->loadColorShader(enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<1>(), state.mode);
+            }
+            else
+            {
+                if(state.file_path[0] == '\0') m_selected.widget_ptr->resetColorShader();
+                else m_selected.widget_ptr->loadColorShader(state.file_path.data(), Widget::W_LoadType::File);
+            }
+        }
+    }
+}
+
 void InfoWrapper::renderRow(Accessor_ptr& row)
 {
     const bool CAN_BE_MODIFIED = static_cast<bool>(row.setter);
@@ -520,7 +796,7 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
     // for rows with a setter only
     if(!row.attrib.val.has_value() && CAN_BE_MODIFIED)
     {
-        ImGui::SetNextItemWidth(row.attrib.is_path ? PATH_INPUT_WIDTH : TEXT_INPUT_WIDTH);
+        ImGui::SetNextItemWidth(UNKNOWN_INPUT_WIDTH);
         if(ImGui::InputTextWithHint("##key", row.attrib.hint.has_value() ? (*row.attrib.hint).c_str() : "Any Value",
                 row.attrib.text_content.data(), row.attrib.text_content.size(), ImGuiInputTextFlags_EnterReturnsTrue))
         {
@@ -835,88 +1111,17 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
     }
 }
 
-void InfoWrapper::renderBindsSection()
+void InfoWrapper::renderFps() const
 {
-    textHeader("Bindings", true, true, HEADER_2);
-
-    auto it = m_cache.find(m_selected.widget_ptr);
-    if(it == m_cache.end()) return;
-
-    BuiltinBindFlags& flags_ref = it->second.flags;
-    for(const auto& bind_literal : enum_literals::QUICK_BINDINGS_LITERAL)
+    if(m_revealFps)
     {
-        // is flag set?
-        bool state = isBuiltinFlagSet(flags_ref, bind_literal.get<1>());
-        if(ImGui::Checkbox(bind_literal.get<0>(), &state))
-        {
-            flags_ref = state ? (flags_ref | bind_literal.get<1>()) : (flags_ref & ~bind_literal.get<1>());
-        }
+        ImGui::SameLine();
+        char fps_text[FPS_TEXT_LENGTH];
+        std::snprintf(fps_text, sizeof(fps_text), FPS_TEXT_FORMAT, ImGui::GetIO().Framerate);
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(fps_text).x);
+        ImGui::TextUnformatted(fps_text);
     }
-}
-
-void InfoWrapper::renderThemeSection()
-{
-    textHeader("Theme", true, true, HEADER_2);
-
-    auto it = m_cache.find(m_selected.widget_ptr);
-    if(it == m_cache.end()) return;
-
-    constexpr std::size_t N_THEMES = enum_literals::THEME_LITERAL.size();
-    int& curr_theme_idx = it->second.theme_idx;
-
-    const char* theme_label = (curr_theme_idx >= 0) ?
-                enum_literals::THEME_LITERAL[curr_theme_idx].get<0>() :
-                "None";
-
-    ImGui::SetNextItemWidth(COMBO_INPUT_WIDTH);
-    if(ImGui::BeginCombo("##theme_select", theme_label))
-    {
-        if(ImGui::Selectable("None", curr_theme_idx == -1))
-        {
-            m_selected.widget_ptr->unlinkTheme();
-            std::cout << "None\n";
-        }
-
-        for(int i{0}; i < N_THEMES; ++i)
-        {
-            bool is_selected = (i == curr_theme_idx);
-            if(ImGui::Selectable(enum_literals::THEME_LITERAL[i].get<0>(), is_selected))
-            {
-                if(i != curr_theme_idx)
-                {
-                    m_selected.widget_ptr->linkTheme(enum_literals::THEME_LITERAL[i].get<1>());
-                    curr_theme_idx = i;
-                }
-            }
-            if(is_selected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-
-    ImGui::SameLine();
-    ImGui::TextDisabled(curr_theme_idx != -1 ? "Theme Linked" : "No theme is currently linked");
-}
-
-
-void InfoWrapper::openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc)
-{
-    if(m_dialog.is_open.load()) return;
-    if(m_dialog.thread.joinable()) m_dialog.thread.join();
-
-    m_dialog.req_key = key;
-    m_dialog.req_token = m_selectToken;
-    m_dialog.is_open = true;
-
-    m_dialog.thread = std::thread([this, title, filters, filter_count, filter_desc]()
-    {
-        const char* result = tinyfd_openFileDialog(title, "", filter_count, filters, filter_desc, 0);
-        {
-            std::lock_guard<std::mutex> lock(m_dialog.guard);
-            m_dialog.protected_path = result ? result : "";
-        }
-        m_dialog.path_found.store(result != nullptr);
-        m_dialog.is_open.store(false);
-    });
 }
 
 void InfoWrapper::pullDialogPath()
@@ -929,106 +1134,17 @@ void InfoWrapper::pullDialogPath()
     }
 }
 
-void InfoWrapper::renderShadersSection()
+const char* InfoWrapper::getRootLabel(Widget* w) const
 {
-    textHeader("Shaders", true, true, HEADER_2);
-    auto it = m_cache.find(m_selected.widget_ptr);
-    if(it == m_cache.end()) return;
+    if(!w) return NULL_TEXT;
+    if(w->getRootWindow()) return ROOT_WIN_TEXT;
 
-    renderShaderControl("Clip Shader:", ShaderType::Clip, it->second.clip_shader_cache);
-    ImGui::Spacing();
-    renderShaderControl("Color Shader:", ShaderType::Color, it->second.color_shader_cache);
-}
+    const Frame* root = w->getRootFrame();
+    if(!root) return NULL_TEXT;
 
-void InfoWrapper::renderShaderControl(const char* label_id, ShaderType shader_type, ShaderCache& state)
-{
-    bool memory_selected{state.mode == Widget::W_LoadType::Memory};
-
-    ImGui::PushID(label_id);
-    ImGui::TextUnformatted(label_id);
-
-    ImGui::BeginDisabled(memory_selected);
-    if(ImGui::Button("Memory")) state.mode = Widget::W_LoadType::Memory;
-    ImGui::EndDisabled();
-
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!memory_selected);
-    if(ImGui::Button("File")) state.mode = Widget::W_LoadType::File;
-    ImGui::EndDisabled();
-
-    if(state.mode == Widget::W_LoadType::Memory)
-    {
-        constexpr std::size_t N = enum_literals::BUILTIN_SHADERS_LITERAL.size();
-        bool no_shader = (state.combo_idx < 0);
-        const char* preview = no_shader ? "None" : enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<0>();
-
-        ImGui::SetNextItemWidth(COMBO_INPUT_WIDTH);
-
-        if(ImGui::BeginCombo("##comboshader", preview))
-        {
-            if(ImGui::Selectable("None", no_shader)) state.combo_idx = -1;
-            if(no_shader) ImGui::SetItemDefaultFocus();
-
-            for(int i{0}; i < N; i++)
-            {
-                bool selected_option = (state.combo_idx == i);
-                if(ImGui::Selectable(enum_literals::BUILTIN_SHADERS_LITERAL[i].get<0>(), selected_option))
-                {
-                    state.combo_idx = i;
-                }
-                if(selected_option) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-    }
-    else
-    {
-        ImGui::SetNextItemWidth(PATH_INPUT_WIDTH);
-        ImGui::InputTextWithHint("##pathshader", "Path to Shader", state.file_path.data(), state.file_path.size());
-
-        ImGui::SameLine();
-        ImGui::BeginDisabled(m_dialog.is_open.load());
-        if(ImGui::Button("...##browse")) openFileDialog(label_id, "Open Shader", SHADER_EXTENSIONS, N_SHADER_EXTENSIONS, "Shader files");
-        ImGui::EndDisabled();
-
-        if(m_dialog.safe_path && m_dialog.req_key == label_id && m_selectToken == m_dialog.req_token)
-        {
-            std::snprintf(state.file_path.data(), state.file_path.size(), "%s", m_dialog.safe_path->c_str());
-            m_dialog.safe_path.reset();
-        }
-    }
-
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(COMBO_INPUT_WIDTH + 12.f);
-    if(ImGui::Button("Load##loadshader"))
-    {
-        if(shader_type == ShaderType::Clip)
-        {
-            if(state.mode == Widget::W_LoadType::Memory)
-            {
-                if(state.combo_idx < 0) m_selected.widget_ptr->resetClipShader();
-                else m_selected.widget_ptr->loadClipShader(enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<1>(), state.mode);
-            }
-            else
-            {
-                if(state.file_path[0] == '\0') m_selected.widget_ptr->resetClipShader();
-                else m_selected.widget_ptr->loadClipShader(state.file_path.data(), Widget::W_LoadType::File);
-            }
-        }
-        else
-        {
-            if(state.mode == Widget::W_LoadType::Memory)
-            {
-                if(state.combo_idx < 0) m_selected.widget_ptr->resetColorShader();
-                else m_selected.widget_ptr->loadColorShader(enum_literals::BUILTIN_SHADERS_LITERAL[state.combo_idx].get<1>(), state.mode);
-            }
-            else
-            {
-                if(state.file_path[0] == '\0') m_selected.widget_ptr->resetColorShader();
-                else m_selected.widget_ptr->loadColorShader(state.file_path.data(), Widget::W_LoadType::File);
-            }
-        }
-    }
+    auto it = m_cache.find(static_cast<const Widget*>(root));
+    if(it == m_cache.end()) return NULL_TEXT;
+    return it->second.label.c_str();
 }
 }
 

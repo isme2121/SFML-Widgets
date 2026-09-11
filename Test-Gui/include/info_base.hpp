@@ -348,10 +348,11 @@ struct CachedAttributes
     ShaderCache clip_shader_cache;
     ShaderCache color_shader_cache;
     sf::Vector2f grab_offset{0.f, 0.f};
+    std::string label;
 };
 
 /// Widget cache type in `InfoWrapper`
-using CacheMap_t = std::unordered_map<Widget*, CachedAttributes>;
+using CacheMap_t = std::unordered_map<const Widget*, CachedAttributes>;
 
 struct DialogThread
 {
@@ -365,6 +366,13 @@ struct DialogThread
 
     std::string req_key;
     unsigned int req_token{0};
+};
+
+// Widget group with a label
+struct LabeledGroup
+{
+    std::string group_name;
+    std::shared_ptr<WidgetGroup> group_ptr;
 };
 
 ///////////////////////////////////////////////////////////////////
