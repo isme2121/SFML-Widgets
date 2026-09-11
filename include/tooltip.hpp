@@ -4,6 +4,99 @@
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
+
+class NewToolTip
+{
+    friend class Widget;
+    class _Body;
+    class _ContentBase;
+    class ToolTipText;
+    class ToolTipImage;
+
+    enum class ContentType : int;
+public:
+
+    void setDelay(sf::Time delay_ms);
+    void setOffset(sf::Vector2f offset);
+    void setTheme(ToolTipStyle style);
+    std::size_t createText(sf::Vector2f local_pos, const sf::String& text);
+    std::size_t createImage(sf::Vector2f local_pos, const sf::Image& img);
+    ToolTipText& getText(std::size_t id) const;
+    ToolTipImage& getImage(std::size_t id) const;
+    void setCornerRadius(float radius);
+
+private:
+    NewToolTip(sf::RenderWindow& window, const sf::Vector2f& root_pos);
+
+    NewToolTip(const NewToolTip&) = delete;
+    NewToolTip(NewToolTip&&) = delete;
+    NewToolTip& operator=(const NewToolTip&) = delete;
+    NewToolTip& operator=(NewToolTip&&) = delete;
+
+    static std::shared_ptr<NewToolTip> init_tooltip(sf::RenderWindow& window, const sf::Vector2f& root_pos);
+    void draw(bool root_is_hovered);
+    void stepTransparency();
+    void updateShapeBounds();
+
+class _Body : public sf::Shape
+{
+    std::size_t getPointCount() const override;
+    sf::Vector2f getPoint(std::size_t index) const override;
+};
+
+    sf::RenderWindow& m_window;                                                 //!< Caller widget's root window
+    _Body m_shape;
+    std::vector<std::unique_ptr<ToolTipText>> m_textContent;
+    std::vector<std::unique_ptr<ToolTipImage>> m_imageContent;
+    sf::Clock m_timer;                                                          //!< Hovering timer
+    sf::Time m_hoverDuration;                                                   //!< Hover duration to reach before drawing
+    float m_radius = 0.f;                                                       //!< Corner radius
+    std::size_t m_cornerPoints = 1;                                             //!< Number of points per corner
+    unsigned int m_currentLevel = 1;                                            //!< Used when gradually stepping transparency down, up to `s_FRAMES_TO_DRAW`
+    bool m_needUpdate = true;                                                   //!< Calls for a shape update when true
+    ToolTipStyle m_style;                                                       //!< Theme
+    static constexpr sf::Vector2f s_MIN_SIZE = {50.f, 20.f};                    //!< Size when no text is written
+    static constexpr unsigned int s_FRAMES_TO_DRAW = 120;                       //!< Number of frames for tooltip to appear
+    static constexpr unsigned int s_CORNER_POINTS = 16;                         //!< Number of vertices in a single rounded corner
+
+
+
+class _ContentBase
+{
+    std::size_t id;
+    sf::Vector2f relative_position;
+
+public:
+    explicit _ContentBase(std::size_t id);
+    bool operator==(const std::size_t& other_id) const
+    {
+        return id == other_id;
+    }
+};
+
+class ToolTipText : public _ContentBase
+{
+    explicit ToolTipText(const sf::String& text);
+
+private:
+    sf::Text content;
+};
+
+class ToolTipImage : public _ContentBase
+{
+
+private:
+    sf::Texture texture;
+    sf::Sprite sprite;
+};
+
+enum class ContentType
+{
+    TEXT,
+    IMAGE
+};
+};
+
 ///////////////////////////////////////////////////////////////////
 /// @brief Integrated in widget, pops a text box after hovering
 /// on a widget
