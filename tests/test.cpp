@@ -11,11 +11,21 @@ int main()
     imgui.enableFps(true);
 
     Button button(window, {100.f, 200.f}, {200, 50}, "ToolTip");
-    auto tt = button.EnableToolTip({100.f, 280.f}, sf::milliseconds(500));
-    if(auto t = tt.lock())
+    auto* tooltip_ptr = button.EnableToolTip();
+    if(tooltip_ptr)
     {
-        t->setCornerRadius(12.f);
-        t->setText("Hello World!");
+        tooltip_ptr->setCornerRadius(12.f);
+        tooltip_ptr->setTheme(Theme::tooltip_style::TOOLTIP_EMERALD_FOREST);
+        tooltip_ptr->setOffset({200.f, 0.f});
+        tooltip_ptr->getText(tooltip_ptr->createText({10.f, 10.f}))->setText("HELLO WORLDS\n GOODBYE WORLDS");
+        // if(tooltip_ptr->getImage(tooltip_ptr->createImage({100.f, 100.f}))->setImage(asa, {200, 200}))
+        // {
+        //     std::cout << "Yes\n";
+        // }
+        // else
+        // {
+        //     std::cout << "No\n";
+        // }
     }
 
     while (window.isOpen())

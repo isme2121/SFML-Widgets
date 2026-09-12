@@ -145,6 +145,8 @@ void Widget::setWidgetPosition(sf::Vector2f new_position)
     {
         setFlag(root->m_flags, FLAGS::UPDATE);  //!< update grid/separator lines
     }
+
+    if(m_ToolTipPtr) m_ToolTipPtr->updateRootPosition(m_position);
 }
 
 void Widget::setWidgetSize(sf::Vector2f new_size)
@@ -745,13 +747,16 @@ void Widget::unlinkTheme()
     m_themePtr.reset();
 }
 
-std::weak_ptr<ToolTip> Widget::EnableToolTip(sf::Vector2f abs_position, sf::Time delay_ms, unsigned int text_size, ToolTipStyle style)
+NewToolTip* Widget::EnableToolTip()
 {
-    if(m_ToolTipPtr) return m_ToolTipPtr;
+    if(m_ToolTipPtr) return m_ToolTipPtr.get();
 
-    m_ToolTipPtr = std::shared_ptr<ToolTip>(new ToolTip(*m_master.getRootWindowPtr(), abs_position, delay_ms, style));
-    if(m_ToolTipPtr) m_ToolTipPtr->setCharacterSize(text_size);
-    return m_ToolTipPtr;
+    m_ToolTipPtr = std::unique_ptr<NewToolTip>(NewToolTip::init_tooltip(*m_master.getRootWindowPtr()));
+    if(m_ToolTipPtr)
+    {
+        m_ToolTipPtr->setDelay(s_HOVER_DURATION);
+    }
+    return m_ToolTipPtr.get();
 }
 
 void Widget::DisableToolTip()
