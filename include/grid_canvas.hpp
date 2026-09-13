@@ -5,6 +5,14 @@
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
+
+/*
+* Canvas new implementation follows the listed below goals:
+* - Simplified control
+* - Large optimization of both memory and performance
+* - Creating Cells directly -> Creating lines which result in rectangular Cells
+*/
+class Canvas;
 ///////////////////////////////////////////////////////////////////
 /// @brief Canvas with grid for a fixed number of cells
 ///
