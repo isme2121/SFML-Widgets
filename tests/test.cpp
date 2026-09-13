@@ -15,10 +15,10 @@ int main()
     if(tooltip_ptr)
     {
         tooltip_ptr->setCornerRadius(12.f);
-        tooltip_ptr->setTheme(Theme::tooltip_style::TOOLTIP_EMERALD_FOREST);
+        // tooltip_ptr->setTheme(Theme::tooltip_style::TOOLTIP_EMERALD_FOREST);
         tooltip_ptr->setOffset({200.f, 0.f});
-        tooltip_ptr->getText(tooltip_ptr->createText({10.f, 10.f}))->setText("HELLO WORLDS\n GOODBYE WORLDS");
-        // if(tooltip_ptr->getImage(tooltip_ptr->createImage({100.f, 100.f}))->setImage(asa, {200, 200}))
+        tooltip_ptr->getText(tooltip_ptr->createContent(NewToolTip::ContentType::Text, {10.f, 10.f}))->setText("HELLO WORLDS\n GOODBYE WORLDS");
+        // if(tooltip_ptr->getImage(tooltip_ptr->createContent(NewToolTip::ContentType::Image, {100.f, 100.f}))->setImage(asa, {200, 200}))
         // {
         //     std::cout << "Yes\n";
         // }
@@ -26,6 +26,9 @@ int main()
         // {
         //     std::cout << "No\n";
         // }
+        // tooltip_ptr->deleteContent(0);
+        // tooltip_ptr->getText(0)->setText("HIIIIIIIIII");
+        // tooltip_ptr->getText(2)->setText("BIIIIIIIIII");
     }
 
     while (window.isOpen())

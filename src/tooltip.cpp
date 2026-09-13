@@ -35,46 +35,65 @@ void NewToolTip::setTheme(ToolTipStyle style)
     m_updateTheme = true;
 }
 
-std::size_t NewToolTip::createText(sf::Vector2f local_pos)
+std::size_t NewToolTip::createContent(ContentType type, sf::Vector2f pos)
 {
-    ToolTipText tmp{&m_updateShape};
-    tmp.setPosition(local_pos);
-    std::size_t obj_id = tmp.getID();
-    m_textContent.push_back(std::make_unique<ToolTipText>(std::move(tmp)));
-    return obj_id;
+    std::size_t id{0};
+
+    std::unique_ptr<Content_t> content = std::make_unique<Content_t>(
+        type == ContentType::Text
+        ? Content_t(std::in_place_type<ToolTipText>, &m_updateShape)
+        : Content_t(std::in_place_type<ToolTipImage>, &m_updateShape)
+    );
+
+    std::visit([&](auto& obj)
+    {
+        obj.setPosition(pos);
+        id = obj.getID();
+    }, *content);
+
+    m_content.emplace_back(std::move(content));
+    return id;
 }
 
-std::size_t NewToolTip::createImage(sf::Vector2f local_pos)
+bool NewToolTip::deleteContent(std::size_t id)
 {
-    ToolTipImage tmp{&m_updateShape};
-    tmp.setPosition(local_pos);
-    std::size_t obj_id = tmp.getID();
-    m_imageContent.push_back(std::make_unique<ToolTipImage>(std::move(tmp)));
-    return obj_id;
+    auto it = std::find_if(m_content.begin(), m_content.end(),
+        [id](std::unique_ptr<Content_t>& element)
+        {
+            return std::visit([id](auto& obj) -> bool
+                    {
+                        return obj.getID() == id;
+                    }, *element);
+        });
+
+    if(it != m_content.end())
+    {
+        m_content.erase(it);
+        return true;
+    }
+    return false;
 }
 
 NewToolTip::ToolTipText* NewToolTip::getText(std::size_t id) const
 {
-    if(!m_textContent.empty())
+    for(const auto& element : m_content)
     {
-        auto it = std::find_if(m_textContent.begin(), m_textContent.end(), [id](const std::unique_ptr<ToolTipText>& text)
+        if(ToolTipText* text = std::get_if<ToolTipText>(element.get()))
         {
-            return id == text->getID();
-        });
-        if(it != m_textContent.end()) return it->get();
+            if(text->getID() == id) return text;
+        }
     }
     return nullptr;
 }
 
 NewToolTip::ToolTipImage* NewToolTip::getImage(std::size_t id) const
 {
-    if(!m_imageContent.empty())
+    for(const auto& element : m_content)
     {
-        auto it = std::find_if(m_imageContent.begin(), m_imageContent.end(), [id](const std::unique_ptr<ToolTipImage>& text)
+        if(ToolTipImage* img = std::get_if<ToolTipImage>(element.get()))
         {
-            return id == text->getID();
-        });
-        if(it != m_imageContent.end()) return it->get();
+            if(img->getID() == id) return img;
+        }
     }
     return nullptr;
 }
@@ -96,8 +115,10 @@ void NewToolTip::draw(bool root_is_hovered)
             updateShapeBounds();
             if(auto* base = m_shape.beginDraw())
             {
-                for(auto& text_ptr : m_textContent) text_ptr->draw(*base); 
-                for(auto& image_ptr : m_imageContent) image_ptr->draw(*base); 
+                for(auto& element_ptr : m_content)
+                {
+                    std::visit([base](auto& element){element.draw(*base);}, *element_ptr);
+                }
                 m_shape.endDraw();
             }
         }
@@ -141,17 +162,14 @@ void NewToolTip::updateShapeBounds()
     m_updateShape = false;
 
     sf::Vector2f max_xy = s_MIN_SIZE;
-    for(auto& text_ptr : m_textContent)
+    for(auto& content_ptr : m_content)
     {
-        sf::FloatRect bounds = text_ptr->getBounds();
-        max_xy.x = std::max(max_xy.x, bounds.position.x + bounds.size.x);
-        max_xy.y = std::max(max_xy.y, bounds.position.y + bounds.size.y);
-    }
-    for(auto& img_ptr : m_imageContent)
-    {
-        sf::FloatRect bounds = img_ptr->getBounds();
-        max_xy.x = std::max(max_xy.x, bounds.position.x + bounds.size.x);
-        max_xy.y = std::max(max_xy.y, bounds.position.y + bounds.size.y);
+        std::visit([&max_xy](auto& element)
+        {
+            sf::FloatRect bounds = element.getBounds();
+            max_xy.x = std::max(max_xy.x, bounds.position.x + bounds.size.x);
+            max_xy.y = std::max(max_xy.y, bounds.position.y + bounds.size.y);
+        }, *content_ptr);
     }
 
     m_shape.setBodySize(sf::Vector2u(max_xy));
@@ -268,11 +286,6 @@ void NewToolTip::_ContentBase::setPosition(sf::Vector2f new_pos)
 std::size_t NewToolTip::_ContentBase::getID() const
 {
     return id;
-}
-
-bool NewToolTip::_ContentBase::operator==(const std::size_t& other_id) const
-{
-    return id == other_id;
 }
 
 ///////////////////////////////////////////////////////////////////

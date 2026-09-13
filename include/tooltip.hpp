@@ -1,4 +1,5 @@
 #pragma once
+#include <variant>
 #include "widget_themes.hpp"
 
 #ifdef WIDGETS_HPP
@@ -12,13 +13,25 @@ class NewToolTip
     class _ContentBase;
     class ToolTipText;
     class ToolTipImage;
+    using Content_t = std::variant<ToolTipText, ToolTipImage>;
+
+    template<class... Ts>
+    struct ContentVisitor : Ts... {using Ts::operator()...;};
+    template<class... Ts>
+    ContentVisitor(Ts...) -> ContentVisitor<Ts...>;
+
 public:
+    enum class ContentType
+    {
+        Text,
+        Image
+    };
 
     void setDelay(sf::Time delay_ms);
     void setOffset(sf::Vector2f offset);
     void setTheme(ToolTipStyle style);
-    std::size_t createText(sf::Vector2f local_pos);
-    std::size_t createImage(sf::Vector2f local_pos);
+    std::size_t createContent(ContentType _t, sf::Vector2f pos);
+    bool deleteContent(std::size_t id);
     ToolTipText* getText(std::size_t id) const;
     ToolTipImage* getImage(std::size_t id) const;
     void setCornerRadius(float radius);
@@ -73,7 +86,6 @@ public:
     void setPosition(sf::Vector2f new_pos);
     virtual sf::FloatRect getBounds() const = 0;
     std::size_t getID() const;
-    bool operator==(const std::size_t& other_id) const;
 
 protected:
     virtual void draw(sf::RenderTexture& base) = 0;
@@ -128,8 +140,8 @@ private:
     sf::Vector2f m_offsetPosition{0.f, 0.f};
     std::vector<std::unique_ptr<ToolTipText>> m_textContent;
     std::vector<std::unique_ptr<ToolTipImage>> m_imageContent;
-
-    ToolTipStyle m_style;
+    mutable std::vector<std::unique_ptr<Content_t>> m_content;
+    ToolTipStyle m_style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK;
     sf::Clock m_timer;
     sf::Time m_hoverDuration;
     unsigned int m_currentLevel{1};
