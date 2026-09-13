@@ -1,185 +1,434 @@
 #pragma once
+#include <variant>
 #include "widget_themes.hpp"
 
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
+/// @brief 
+enum class TT_RenderedType
+{
+    Text,
+    Image
+};
+
 ///////////////////////////////////////////////////////////////////
-/// @brief Integrated in widget, pops a text box after hovering
-/// on a widget
-///
-/// Initiated from `Widget::EnableToolTip` and exists until it's
-/// disabled or the widget is destroyed.
+/// @brief 
 ///
 ///////////////////////////////////////////////////////////////////
-class ToolTip : private sf::Shape
+class ToolTip
 {
     friend class Widget;
+    class DrawBoard;
+    class RenderedObjectBase;
+    class RenderedText;
+    class RenderedImage;
+
+    // Object type
+    using Rendered_t = std::variant<RenderedText, RenderedImage>;
 
 public:
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the hovering duration for the tooltip to appear
-    ///
-    /// @param delay_ms delay in milliseconds
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setDelay(sf::Time delay_ms);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the ToolTip theme
-    ///
-    /// @param style style object
-    ///
+    /// @brief 
+    /// @param delay_ms 
     ///////////////////////////////////////////////////////////////////
-    void setTheme(ToolTipStyle style);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the content of the text box
-    ///
-    /// @param text new text content
-    ///
-    /// @see `getText`, `clearText`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setText(sf::String text);
+    void setDelay(std::int32_t delay_ms);
     
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the current text content
-    ///
-    /// @see `setText`, `clearText`
-    ///
+    /// @brief 
+    /// @param delay_ms 
     ///////////////////////////////////////////////////////////////////
-    const sf::String& getText() const;
+    void setPhaseDuration(float delay_ms);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Resets text content
-    ///
-    /// @see `setText`, `getText`
-    ///
+    /// @brief 
+    /// @param offset 
     ///////////////////////////////////////////////////////////////////
-    void clearText();
+    void setOffset(sf::Vector2f offset);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param offset 
+    ///////////////////////////////////////////////////////////////////
+    void setLocalOffset(sf::Vector2f offset);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the ToolTip position relative to local top left
-    /// coordinates
-    ///
-    /// @param position new pixel position
-    ///
+    /// @brief 
+    /// @param style 
     ///////////////////////////////////////////////////////////////////
-    void setBoxPosition(sf::Vector2f position);
-
+    void setTheme(ToolTipStyle style);
+    
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the shape with rounded corners based on the radius
-    ///
-    /// Set to `0.f` for rectangular corners, the radius limit depends on
-    /// the size of the box and it is capped internally.
-    ///
-    /// @param radius float radius value
-    ///
+    /// @brief 
+    /// @param radius 
     ///////////////////////////////////////////////////////////////////
     void setCornerRadius(float radius);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the used font
-    ///
-    /// @param font existing font object
-    ///
-    /// @warning font object must outlive the ToolTip object itself
-    ///
+    /// @brief
+    /// @param _t 
+    /// @param pos 
+    /// @return 
     ///////////////////////////////////////////////////////////////////
-    void setTextFont(const sf::Font& font);
+    std::size_t createContent(TT_RenderedType _t, sf::Vector2f pos);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the style of text
-    ///
-    /// @param style `sf::Text::Style` enum value
-    ///
+    /// @brief 
+    /// @param id 
+    /// @return 
     ///////////////////////////////////////////////////////////////////
-    void setTextStyle(sf::Text::Style style);
+    bool deleteContent(std::size_t id);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the size of the text
-    ///
-    /// This indirectly updates the surrounding shape's size as well
-    ///
-    /// @param char_size character size
-    ///
+    /// @brief 
+    /// @param id 
+    /// @return 
     ///////////////////////////////////////////////////////////////////
-    void setCharacterSize(unsigned int char_size);
+    RenderedText* getText(std::size_t id) const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the vertical space between lines that is defined
-    /// by the font
-    ///
-    /// @param factor default is `1.f`
-    ///
+    /// @brief 
+    /// @param id 
+    /// @return 
     ///////////////////////////////////////////////////////////////////
-    void setLineSpacing(float factor);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates the horizontal space between characters that is
-    /// defined by the font
-    ///
-    /// @param factor default is `1.f`
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void setLetterSpacing(float factor);
+    RenderedImage* getImage(std::size_t id) const;
 
 private:
     ///////////////////////////////////////////////////////////////////
-    /// @brief Constructs ToolTip with it's assigned widget's root window
-    ///
-    /// @param position initial position relative to 0, 0 local coords
-    /// @param ms_delay hover duration to trigger, can be changed later
-    /// @param style ToolTip's initial theme
-    ///
+    /// @brief 
+    /// @param window 
+    /// @param root_pos 
     ///////////////////////////////////////////////////////////////////
-    ToolTip(sf::RenderWindow& window, sf::Vector2f position, sf::Time ms_delay, ToolTipStyle style);
+    ToolTip(sf::RenderWindow& window, sf::Vector2f root_pos);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param root_is_hovered 
+    ///////////////////////////////////////////////////////////////////
+    void draw(bool root_is_hovered);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    ///////////////////////////////////////////////////////////////////
+    void stepTransparency();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    ///////////////////////////////////////////////////////////////////
+    void updateTheme();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    ///////////////////////////////////////////////////////////////////
+    void updateShapeBounds();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_root_pos 
+    ///////////////////////////////////////////////////////////////////
+    void updateRootPosition(sf::Vector2f new_root_pos);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param window 
+    /// @param root_pos 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    static ToolTip* make_tooltip(sf::RenderWindow& window, sf::Vector2f root_pos);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    static std::size_t generateID();
+
+    std::unique_ptr<DrawBoard> m_shapePtr;
+    mutable std::vector<std::unique_ptr<Rendered_t>> m_content;
+    ToolTipStyle m_style = Theme::tooltip_style::TOOLTIP_DEFAULT_DARK;
+
+    sf::Clock m_timer;
+    sf::Time m_hoverDuration{sf::Time::Zero};
+    float m_phaseDuration{500.f};
+    sf::Vector2f m_offsetPosition{0.f, 0.f};
+    sf::Vector2f m_localOffset{0.f, 0.f};
+
+    bool m_isDrawing{false};
+    bool m_updateTheme{true};
+    bool m_updateShape{true};
+
+    static constexpr sf::Vector2f s_MIN_SIZE = {100.f, 20.f};
+    static inline std::size_t s_seed = 0;
 
     ToolTip(const ToolTip&) = delete;
     ToolTip(ToolTip&&) = delete;
     ToolTip& operator=(const ToolTip&) = delete;
     ToolTip& operator=(ToolTip&&) = delete;
 
+
+
+
+class DrawBoard : public sf::Shape
+{
+public:
     ///////////////////////////////////////////////////////////////////
-    /// @brief Checks hover duration and draws the object
-    ///
-    /// @param is_hovered `HOVERED` flag in widget
-    ///
+    /// @brief 
+    /// @param window 
+    /// @param position 
+    /// @param size 
     ///////////////////////////////////////////////////////////////////
-    void draw(bool is_hovered);
+    explicit DrawBoard(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Creates a slow fade effect when drawing the ToolTip, called
-    /// in `draw`
-    ///
+    /// @brief 
+    /// @param new_pos 
     ///////////////////////////////////////////////////////////////////
-    void stepTransparency();
+    void setBoardPosition(sf::Vector2f new_pos);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Expands shape bounds to cover the entire text box
-    ///
+    /// @brief 
+    /// @param new_size 
     ///////////////////////////////////////////////////////////////////
-    void updateShapeBounds();
+    void setBoardSize(sf::Vector2u new_size);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param rad 
+    ///////////////////////////////////////////////////////////////////
+    void setRadius(float rad);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    sf::RenderTexture* beginDraw();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param t 
+    ///////////////////////////////////////////////////////////////////
+    void updateUniforms(float t = 1.f);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    ///////////////////////////////////////////////////////////////////
+    void endDraw();
+
+private:
     std::size_t getPointCount() const override;
     sf::Vector2f getPoint(std::size_t index) const override;
 
-    sf::RenderWindow& m_window;                                                 //!< Caller widget's root window
-    sf::Text m_text;                                                            //!< Text
-    sf::Vector2f m_size;                                                        //!< Shape's dimensions
-    sf::Clock m_timer;                                                          //!< Hovering timer
-    sf::Time m_hoverDuration;                                                   //!< Hover duration to reach before drawing
-    float m_radius = 0.f;                                                       //!< Corner radius
-    std::size_t m_cornerPoints = 1;                                             //!< Number of points per corner
-    unsigned int m_currentLevel = 1;                                            //!< Used when gradually stepping transparency down, up to `s_FRAMES_TO_DRAW`
-    bool m_needUpdate = true;                                                   //!< Calls for a shape update when true
-    ToolTipStyle m_style;                                                       //!< Theme
-    
-    static constexpr sf::Vector2f s_MIN_SIZE = {50.f, 20.f};                    //!< Size when no text is written
-    static constexpr unsigned int s_FRAMES_TO_DRAW = 120;                       //!< Number of frames for tooltip to appear
-    static constexpr unsigned int s_CORNER_POINTS = 16;                         //!< Number of vertices in a single rounded corner
+    sf::RenderWindow& m_window;
+    sf::RenderTexture m_texture;
+    sf::Sprite m_sprite;
+    sf::Shader m_shader;
 
+    sf::Vector2u m_size;
+    float m_radius{0.f};
+    bool m_isDrawing{false};
+
+    std::size_t m_cornerPoints{1};
+    static constexpr unsigned int s_CORNER_POINTS = 16;
+};
+
+class RenderedObjectBase
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param  
+    ///////////////////////////////////////////////////////////////////
+    explicit RenderedObjectBase(bool*);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_pos 
+    ///////////////////////////////////////////////////////////////////
+    void setPosition(sf::Vector2f new_pos);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    std::size_t getID() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    virtual sf::FloatRect getBounds() const = 0;
+
+protected:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param base 
+    ///////////////////////////////////////////////////////////////////
+    virtual void draw(sf::RenderTexture& base) = 0;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_pos 
+    ///////////////////////////////////////////////////////////////////
+    virtual void updatePosition(sf::Vector2f new_pos) = 0;
+    
+    bool* m_pushShapeUpdatePtr{nullptr};
+
+private:
+    std::size_t id{0};
+};
+
+class RenderedText : public RenderedObjectBase
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param  
+    ///////////////////////////////////////////////////////////////////
+    explicit RenderedText(bool*);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param base 
+    ///////////////////////////////////////////////////////////////////
+    void draw(sf::RenderTexture& base) override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param char_size 
+    ///////////////////////////////////////////////////////////////////
+    void setCharacterSize(unsigned int char_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param text 
+    ///////////////////////////////////////////////////////////////////
+    void setText(const sf::String& text);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param font 
+    ///////////////////////////////////////////////////////////////////
+    void setFont(const sf::Font& font);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param style 
+    ///////////////////////////////////////////////////////////////////
+    void setStyle(const sf::Text::Style& style);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param fill_color 
+    ///////////////////////////////////////////////////////////////////
+    void setFillColor(sf::Color fill_color);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param fill_color 
+    ///////////////////////////////////////////////////////////////////
+    void setOutlineColor(sf::Color fill_color);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param outline_thickness 
+    ///////////////////////////////////////////////////////////////////
+    void setOutlineThickness(unsigned int outline_thickness);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param factor 
+    ///////////////////////////////////////////////////////////////////
+    void setLineSpacing(float factor);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param factor 
+    ///////////////////////////////////////////////////////////////////
+    void setLetterSpacing(float factor);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    sf::FloatRect getBounds() const override;
+
+private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_pos 
+    ///////////////////////////////////////////////////////////////////
+    void updatePosition(sf::Vector2f new_pos) override;
+
+    sf::Text m_text;
+};
+
+class RenderedImage : public RenderedObjectBase
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param  
+    ///////////////////////////////////////////////////////////////////
+    explicit RenderedImage(bool*);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param base 
+    ///////////////////////////////////////////////////////////////////
+    void draw(sf::RenderTexture& base) override;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_size 
+    ///////////////////////////////////////////////////////////////////
+    void setSize(sf::Vector2u new_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param path 
+    /// @param size 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const sf::String& path, sf::Vector2u size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param img 
+    /// @param size 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const sf::Image& img, sf::Vector2u size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param texture_ref 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    bool setImage(const std::shared_ptr<sf::Texture>& texture_ref);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    ///////////////////////////////////////////////////////////////////
+    void clearImage();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @return 
+    ///////////////////////////////////////////////////////////////////
+    sf::FloatRect getBounds() const override;
+
+private:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief 
+    /// @param new_pos 
+    ///////////////////////////////////////////////////////////////////
+    void updatePosition(sf::Vector2f new_pos) override;
+
+    sf::Texture m_texture;
+    std::weak_ptr<sf::Texture> m_externalTexturePtr;
+    sf::Sprite m_sprite;
+    bool m_ownsData{false};
+};
 };
 }
 #endif
