@@ -528,7 +528,7 @@ public:
     /// @see `DisableToolTip`, `ToolTip`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] NewToolTip* EnableToolTip();
+    [[nodiscard]] ToolTip* EnableToolTip();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears the current ToolTip instance
@@ -887,7 +887,7 @@ protected:
     std::unique_ptr<sf::Shader> m_bgShaderPtr;                                      //!< Shader responsible for bg image's opacity
     std::unique_ptr<sf::Shader> m_clipShaderPtr;                                    //!< Needed for widgets that use sprites
     std::unique_ptr<sf::Texture> m_bgTexturePtr;                                    //!< Background image texture, allocated in loadBgImage
-    std::unique_ptr<NewToolTip> m_ToolTipPtr;                                          //!< ToolTip object pointer for this widget
+    std::unique_ptr<ToolTip> m_ToolTipPtr;                                          //!< ToolTip object pointer for this widget
 
     // unique members and flags
     sf::String m_bgImagePath;                                                       //!< Path to bg resource on disk

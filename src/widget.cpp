@@ -747,15 +747,11 @@ void Widget::unlinkTheme()
     m_themePtr.reset();
 }
 
-NewToolTip* Widget::EnableToolTip()
+ToolTip* Widget::EnableToolTip()
 {
     if(m_ToolTipPtr) return m_ToolTipPtr.get();
 
-    m_ToolTipPtr = std::unique_ptr<NewToolTip>(NewToolTip::init_tooltip(*m_master.getRootWindowPtr()));
-    if(m_ToolTipPtr)
-    {
-        m_ToolTipPtr->setDelay(s_HOVER_DURATION);
-    }
+    m_ToolTipPtr = std::unique_ptr<ToolTip>(ToolTip::make_tooltip(*m_master.getRootWindowPtr(), m_position));
     return m_ToolTipPtr.get();
 }
 
