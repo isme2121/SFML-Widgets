@@ -3,49 +3,14 @@
 
 namespace sfml_widgets
 {
+///////////////////////////////////////////////////////////////////
+/// ToolTip
+///////////////////////////////////////////////////////////////////
+
 ToolTip::ToolTip(sf::RenderWindow& window, sf::Vector2f root_pos) : m_shapePtr(std::make_unique<DrawBoard>(std::ref(window), sf::Vector2f{0.f, 0.f}, sf::Vector2u(s_MIN_SIZE)))
 {
     updateRootPosition(root_pos);
     m_timer.reset();
-}
-
-ToolTip* ToolTip::make_tooltip(sf::RenderWindow& window, sf::Vector2f root_pos)
-{
-    return new ToolTip(window, root_pos);
-}
-
-std::size_t ToolTip::generateID()
-{
-    return s_seed++;
-}
-
-void ToolTip::setDelay(std::int32_t delay_ms)
-{
-    m_hoverDuration = sf::milliseconds(delay_ms);
-}
-
-void ToolTip::setPhaseDuration(float delay_ms)
-{
-    // 0 disables
-    if(delay_ms >= 0.f) m_phaseDuration = delay_ms;
-}
-
-void ToolTip::setOffset(sf::Vector2f offset)
-{
-    m_shapePtr->setBoardPosition((m_shapePtr->getPosition() - m_offsetPosition) + offset);
-    m_offsetPosition = offset;
-}
-
-void ToolTip::setLocalOffset(sf::Vector2f offset)
-{
-    m_localOffset = offset;
-    m_updateShape = true;
-}
-
-void ToolTip::setTheme(ToolTipStyle style)
-{
-    m_style = style;
-    m_updateTheme = true;
 }
 
 std::size_t ToolTip::createContent(TT_RenderedType type, sf::Vector2f pos)
@@ -87,6 +52,41 @@ bool ToolTip::deleteContent(std::size_t id)
     return false;
 }
 
+void ToolTip::setTheme(ToolTipStyle style)
+{
+    m_style = style;
+    m_updateTheme = true;
+}
+
+void ToolTip::setDelay(std::int32_t delay_ms)
+{
+    m_hoverDuration = sf::milliseconds(delay_ms);
+}
+
+void ToolTip::setPhaseDuration(float delay_ms)
+{
+    // 0 disables
+    if(delay_ms >= 0.f) m_phaseDuration = delay_ms;
+}
+
+void ToolTip::setOffset(sf::Vector2f offset)
+{
+    m_shapePtr->setBoardPosition((m_shapePtr->getPosition() - m_offsetPosition) + offset);
+    m_offsetPosition = offset;
+}
+
+void ToolTip::setLocalOffset(sf::Vector2f offset)
+{
+    if(offset.x < 0 || offset.y < 0) return;
+    m_localOffset = offset;
+    m_updateShape = true;
+}
+
+void ToolTip::setCornerRadius(float radius)
+{
+    m_shapePtr->setRadius(radius);
+}
+
 ToolTip::RenderedText* ToolTip::getText(std::size_t id) const
 {
     for(const auto& element : m_content)
@@ -111,9 +111,39 @@ ToolTip::RenderedImage* ToolTip::getImage(std::size_t id) const
     return nullptr;
 }
 
-void ToolTip::setCornerRadius(float radius)
+sf::Vector2f ToolTip::getPosition() const
 {
-    m_shapePtr->setRadius(radius);
+    return m_shapePtr->getPosition();
+}
+
+sf::Vector2u ToolTip::getSize() const
+{
+    return m_shapePtr->getSize();
+}
+
+float ToolTip::getCornerRadius() const
+{
+    return m_shapePtr->getRadius();
+}
+
+std::int32_t ToolTip::getDelay() const
+{
+    return m_hoverDuration.asMilliseconds();
+}
+
+float ToolTip::getPhaseDuration() const
+{
+    return m_phaseDuration;
+}
+
+sf::Vector2f ToolTip::getOffset() const
+{
+    return m_offsetPosition;
+}
+
+sf::Vector2f ToolTip::getLocalOffset() const
+{
+    return m_localOffset;
 }
 
 void ToolTip::draw(bool root_is_hovered)
@@ -200,14 +230,38 @@ void ToolTip::updateRootPosition(sf::Vector2f new_root_pos)
     m_shapePtr->setBoardPosition(new_root_pos + m_offsetPosition);
 }
 
+ToolTip* ToolTip::make_tooltip(sf::RenderWindow& window, sf::Vector2f root_pos)
+{
+    return new ToolTip(window, root_pos);
+}
+
+std::size_t ToolTip::generateID()
+{
+    return s_seed++;
+}
+
 ///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
+/// DrawBoard
 ///////////////////////////////////////////////////////////////////
 
 ToolTip::DrawBoard::DrawBoard(sf::RenderWindow& window, sf::Vector2f pos, sf::Vector2u size) : m_window(window), m_size(size),
 m_texture(size), m_sprite(m_texture.getTexture()), m_shader(SPRITE_SHADER_FRAG, sf::Shader::Type::Fragment)
 {
 
+}
+
+void ToolTip::DrawBoard::setBoardPosition(sf::Vector2f new_pos)
+{
+    this->setPosition(new_pos);
+    m_sprite.setPosition(new_pos);
+}
+
+void ToolTip::DrawBoard::setBoardSize(sf::Vector2u new_size)
+{
+    if(!m_texture.resize(new_size)) return;
+    m_sprite.setTexture(m_texture.getTexture(), true);
+    m_size = new_size;
+    setRadius(m_radius);
 }
 
 void ToolTip::DrawBoard::setRadius(float rad)
@@ -224,20 +278,6 @@ void ToolTip::DrawBoard::setRadius(float rad)
     }
     updateUniforms();
     update();
-}
-
-void ToolTip::DrawBoard::setBoardPosition(sf::Vector2f new_pos)
-{
-    this->setPosition(new_pos);
-    m_sprite.setPosition(new_pos);
-}
-
-void ToolTip::DrawBoard::setBoardSize(sf::Vector2u new_size)
-{
-    if(!m_texture.resize(new_size)) return;
-    m_sprite.setTexture(m_texture.getTexture(), true);
-    m_size = new_size;
-    setRadius(m_radius);
 }
 
 sf::RenderTexture* ToolTip::DrawBoard::beginDraw()
@@ -269,6 +309,16 @@ void ToolTip::DrawBoard::updateUniforms(float t)
     m_shader.setUniform("opacity", t);
 }
 
+sf::Vector2u ToolTip::DrawBoard::getSize() const
+{
+    return m_size;
+}
+
+float ToolTip::DrawBoard::getRadius() const
+{
+    return m_radius;
+}
+
 std::size_t ToolTip::DrawBoard::getPointCount() const
 {
     return m_cornerPoints * 4;
@@ -296,7 +346,7 @@ sf::Vector2f ToolTip::DrawBoard::getPoint(std::size_t index) const {
 }
 
 ///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
+/// RenderedObjectBase
 ///////////////////////////////////////////////////////////////////
 
 ToolTip::RenderedObjectBase::RenderedObjectBase(bool* flag) : id(ToolTip::generateID()), m_pushShapeUpdatePtr(flag)
@@ -316,21 +366,12 @@ std::size_t ToolTip::RenderedObjectBase::getID() const
 }
 
 ///////////////////////////////////////////////////////////////////
+/// RenderedText
+///////////////////////////////////////////////////////////////////
 
 ToolTip::RenderedText::RenderedText(bool* flag) : RenderedObjectBase(flag), m_text(parameters::INTER_SEMIBOLD_18)
 {
 
-}
-
-void ToolTip::RenderedText::draw(sf::RenderTexture& base)
-{
-    base.draw(m_text);
-}
-
-void ToolTip::RenderedText::setCharacterSize(unsigned int char_size)
-{
-    m_text.setCharacterSize(char_size);
-    *m_pushShapeUpdatePtr = true;
 }
 
 void ToolTip::RenderedText::setText(const sf::String& text)
@@ -345,9 +386,9 @@ void ToolTip::RenderedText::setFont(const sf::Font& font)
     *m_pushShapeUpdatePtr = true;
 }
 
-void ToolTip::RenderedText::setStyle(const sf::Text::Style& style)
+void ToolTip::RenderedText::setCharacterSize(unsigned int char_size)
 {
-    m_text.setStyle(style);
+    m_text.setCharacterSize(char_size);
     *m_pushShapeUpdatePtr = true;
 }
 
@@ -366,6 +407,12 @@ void ToolTip::RenderedText::setOutlineThickness(unsigned int outline_thickness)
     m_text.setOutlineThickness(outline_thickness);
 }
 
+void ToolTip::RenderedText::setStyle(const sf::Text::Style& style)
+{
+    m_text.setStyle(style);
+    *m_pushShapeUpdatePtr = true;
+}
+
 void ToolTip::RenderedText::setLineSpacing(float factor)
 {
     m_text.setLineSpacing(factor);
@@ -378,26 +425,73 @@ void ToolTip::RenderedText::setLetterSpacing(float factor)
     *m_pushShapeUpdatePtr = true;
 }
 
-void ToolTip::RenderedText::updatePosition(sf::Vector2f new_pos)
-{
-    m_text.setPosition(new_pos);
-}
-
 sf::FloatRect ToolTip::RenderedText::getBounds() const
 {
     return m_text.getGlobalBounds();
 }
 
+sf::Vector2f ToolTip::RenderedText::getPosition() const
+{
+    return m_text.getPosition();
+}
+
+const sf::String& ToolTip::RenderedText::getText() const
+{
+    return m_text.getString();
+}
+
+unsigned int ToolTip::RenderedText::getCharacterSize() const
+{
+    return m_text.getCharacterSize();
+}
+
+sf::Color ToolTip::RenderedText::getFillColor() const
+{
+    return m_text.getFillColor();
+}
+
+sf::Color ToolTip::RenderedText::getOutlineColor() const
+{
+    return m_text.getOutlineColor();
+}
+
+unsigned int ToolTip::RenderedText::getOutlineThickness() const
+{
+    return m_text.getOutlineThickness();
+}
+
+sf::Text::Style ToolTip::RenderedText::getStyle() const
+{
+    return static_cast<sf::Text::Style>(m_text.getStyle());
+}
+
+float ToolTip::RenderedText::getLineSpacing() const
+{
+    return m_text.getLineSpacing();
+}
+
+float ToolTip::RenderedText::getLetterSpacing() const
+{
+    return m_text.getLetterSpacing();
+}
+
+void ToolTip::RenderedText::draw(sf::RenderTexture& base)
+{
+    base.draw(m_text);
+}
+
+void ToolTip::RenderedText::updatePosition(sf::Vector2f new_pos)
+{
+    m_text.setPosition(new_pos);
+}
+
+///////////////////////////////////////////////////////////////////
+/// RenderedImage
 ///////////////////////////////////////////////////////////////////
 
 ToolTip::RenderedImage::RenderedImage(bool* flag) : RenderedObjectBase(flag), m_texture({1, 1}), m_sprite(m_texture)
 {
 
-}
-
-void ToolTip::RenderedImage::draw(sf::RenderTexture& base)
-{
-    base.draw(m_sprite);
 }
 
 void ToolTip::RenderedImage::setSize(sf::Vector2u new_size)
@@ -414,7 +508,7 @@ bool ToolTip::RenderedImage::setImage(const sf::String& path, sf::Vector2u size)
     sf::Texture tmp;
     if(!tmp.loadFromFile(path.toAnsiString())) return false;
 
-    if(size != m_texture.getSize())
+    if(size.x * size.y != 0)
     {
         std::optional<sf::Image> resized_image = resize_image(tmp.copyToImage(), size);
         if(!resized_image) return false;
@@ -433,7 +527,7 @@ bool ToolTip::RenderedImage::setImage(const sf::String& path, sf::Vector2u size)
 
 bool ToolTip::RenderedImage::setImage(const sf::Image& img, sf::Vector2u size)
 {
-    if(size != img.getSize())
+    if(size.x * size.y != 0 && size != img.getSize())
     {
         std::optional<sf::Image> resized_image = resize_image(img, size);
         if(!resized_image) return false;
@@ -467,15 +561,31 @@ void ToolTip::RenderedImage::clearImage()
 {
     m_texture = sf::Texture();
     m_ownsData = false;
-}
-
-void ToolTip::RenderedImage::updatePosition(sf::Vector2f new_pos)
-{
-    m_sprite.setPosition(new_pos);
+    setSize({1, 1});
 }
 
 sf::FloatRect ToolTip::RenderedImage::getBounds() const
 {
     return m_sprite.getGlobalBounds();
+}
+
+sf::Vector2f ToolTip::RenderedImage::getPosition() const
+{
+    return m_sprite.getPosition();
+}
+
+sf::Vector2u ToolTip::RenderedImage::getSize() const
+{
+    return m_externalTexturePtr.expired() ? m_texture.getSize() : m_externalTexturePtr.lock()->getSize();
+}
+
+void ToolTip::RenderedImage::draw(sf::RenderTexture& base)
+{
+    base.draw(m_sprite);
+}
+
+void ToolTip::RenderedImage::updatePosition(sf::Vector2f new_pos)
+{
+    m_sprite.setPosition(new_pos);
 }
 }

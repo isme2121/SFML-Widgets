@@ -22,6 +22,9 @@ namespace
     constexpr unsigned int FPS_TEXT_LENGTH = 12;
     constexpr unsigned int WIDGET_LABEL_LENGTH = 16;
     constexpr unsigned int GROUP_LABEL_LENGTH = 32;
+    constexpr unsigned int TT_OBJECT_ID_ENTRY_LENGTH = 12;
+    constexpr unsigned int TT_TEXT_OBJECT_LENGTH = 256;
+
     constexpr const char* FPS_TEXT_FORMAT = "FPS: %.1f";
 
     constexpr unsigned int FLAGS_N_ROWS = 6;
@@ -38,9 +41,31 @@ namespace
     constexpr float PATH_INPUT_WIDTH = 160.f;
     constexpr float COMBO_INPUT_WIDTH = 200.f;
     constexpr float UNKNOWN_INPUT_WIDTH = 200.f;
+    constexpr ImVec2 MULTITEXT_INPUT_DIMENSIONS{200.f, 40.f};
 
     constexpr const char* NULL_TEXT = "NOT FOUND";
     constexpr const char* ROOT_WIN_TEXT = "Main Window";
+
+    // anonymous namespace, alongside the existing UI constants
+    constexpr float TOOLTIP_TREE_HEIGHT = 120.f;
+
+    sf::Color toSfColor(const float rgba[4])
+    {
+        return sf::Color(
+            static_cast<std::uint8_t>(rgba[0] * 255.f + 0.5f),
+            static_cast<std::uint8_t>(rgba[1] * 255.f + 0.5f),
+            static_cast<std::uint8_t>(rgba[2] * 255.f + 0.5f),
+            static_cast<std::uint8_t>(rgba[3] * 255.f + 0.5f)
+        );
+    }
+
+    void toFloatColor(sf::Color c, float out[4])
+    {
+        out[0] = c.r / 255.f;
+        out[1] = c.g / 255.f;
+        out[2] = c.b / 255.f;
+        out[3] = c.a / 255.f;
+    }
 }
 
 namespace sfml_widgets
@@ -261,6 +286,7 @@ void InfoWrapper::renderWidgets()
     renderFlagsSection();
     renderAccessorSections();
     renderShadersSection();
+    renderToolTipSection();   // NEW
     ImGui::PopID();
 }
 
@@ -579,6 +605,177 @@ void InfoWrapper::renderShadersSection()
     _addShaderUI("Color Shader:", ShaderType::Color, it->second.color_shader_cache);
 }
 
+void InfoWrapper::renderToolTipSection()
+{
+    auto it_cache = m_cache.find(m_selected.widget_ptr);
+    if(it_cache == m_cache.end()) return;
+    
+    textHeader("ToolTip", true, true, HEADER_2);
+    
+    constexpr std::size_t N_STYLES = enum_literals::TT_STYLE_LITERAL.size();
+    const float SECTION_WIDTH = ImGui::GetContentRegionAvail().x * 0.5f;
+    ToolTipCache& tooltip_cache = it_cache->second.tooltip;
+    bool is_enabled = static_cast<bool>(tooltip_cache.ptr);
+
+    /* THE CHECKBOX */
+    if(ImGui::Checkbox("Enable ToolTip", &is_enabled))
+    {
+        if(is_enabled)
+        {
+            tooltip_cache.ptr = m_selected.widget_ptr->EnableToolTip();
+        }
+        else
+        {
+            m_selected.widget_ptr->DisableToolTip();
+            tooltip_cache.ptr = nullptr;
+            tooltip_cache.content.clear();
+            tooltip_cache.selected_id.reset();
+        }
+    }
+
+    /* left column */
+    ImGui::BeginGroup();
+    ImGui::BeginDisabled(!is_enabled);
+    textHeader("Parameters", false, false, HEADER_2);
+
+    { // Hover Delay
+        textHeader("Delay (ms):", false, false, HEADER_3);
+        std::int32_t delay = is_enabled ? tooltip_cache.ptr->getDelay() : 0;
+        ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+        if(ImGui::InputInt("##tt_delayms", &delay) && is_enabled)
+        {
+            delay = std::max(0, delay);
+            tooltip_cache.ptr->setDelay(delay);
+        }
+    }
+    { // Phase Duration
+        textHeader("Phase Duration (ms):", false, false, HEADER_3);
+        float phase = is_enabled ? tooltip_cache.ptr->getPhaseDuration() : 0.f;
+        ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+        if(ImGui::InputFloat("##tt_phasems", &phase) && is_enabled)
+        {
+            phase = std::max(0.f, phase);
+            tooltip_cache.ptr->setPhaseDuration(phase);
+        }
+    }
+    { // Offset
+        textHeader("Offset:", false, false, HEADER_3);
+        sf::Vector2f offset = is_enabled ? tooltip_cache.ptr->getOffset() : sf::Vector2f{0.f, 0.f};
+        float offset_xy[2]{offset.x, offset.y};
+        ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+        if(ImGui::InputFloat2("##tt_Offset", offset_xy) && is_enabled)
+            tooltip_cache.ptr->setOffset(sf::Vector2f(offset_xy[0], offset_xy[1]));
+    }
+    { // Local Offset
+        textHeader("Local Offset:", false, false, HEADER_3);
+        sf::Vector2f local_offset = is_enabled ? tooltip_cache.ptr->getLocalOffset() : sf::Vector2f{0.f, 0.f};
+        float local_offset_xy[2]{local_offset.x, local_offset.y};
+        ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+        if(ImGui::InputFloat2("##tt_LocalOffset", local_offset_xy) && is_enabled)
+            tooltip_cache.ptr->setLocalOffset(sf::Vector2f(local_offset_xy[0], local_offset_xy[1]));
+    }
+    {
+        textHeader("Corner Radius:", false, false, HEADER_3);
+        float radius = is_enabled ? tooltip_cache.ptr->getCornerRadius() : 0.f;
+        ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+        if(ImGui::InputFloat("##tt_CornerRad", &radius) && is_enabled)
+            tooltip_cache.ptr->setCornerRadius(radius);
+    }
+    { // Style
+        textHeader("ToolTip Style:", false, false, HEADER_3);
+        std::size_t& curr_style_idx = tooltip_cache.style_idx;
+        ImGui::SetNextItemWidth(COMBO_INPUT_WIDTH);
+        if(ImGui::BeginCombo("##tt_StyleSelect", enum_literals::TT_STYLE_LITERAL[curr_style_idx].get<0>()))
+        {
+            for(std::size_t i{0}; i < N_STYLES; ++i)
+            {
+                bool is_selected = (i == curr_style_idx);
+                if(ImGui::Selectable(enum_literals::TT_STYLE_LITERAL[i].get<0>(), is_selected))
+                {
+                    if(i != curr_style_idx)
+                    {
+                        tooltip_cache.ptr->setTheme(enum_literals::TT_STYLE_LITERAL[i].get<1>());
+                        curr_style_idx = i;
+                    }
+                }
+                if(is_selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    /* OBJECTS TABLE */
+    ImGui::Spacing();
+    if(ImGui::Button("Add Text##tt"))
+    {
+        std::size_t id = tooltip_cache.ptr->createContent(TT_RenderedType::Text, sf::Vector2f{0.f, 0.f});
+        tooltip_cache.content.push_back(ToolTipObject{id, TT_RenderedType::Text, {}});
+        tooltip_cache.selected_id = id;
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Add Image##tt"))
+    {
+        std::size_t id = tooltip_cache.ptr->createContent(TT_RenderedType::Image, sf::Vector2f{0.f, 0.f});
+        tooltip_cache.content.push_back(ToolTipObject{id, TT_RenderedType::Image, {}});
+        tooltip_cache.selected_id = id;
+    }
+
+    ImGui::Spacing();
+    ImGui::BeginChild("tt_tree", ImVec2(SECTION_WIDTH, TOOLTIP_TREE_HEIGHT), true);
+    if(tooltip_cache.content.empty())
+    {
+        ImGui::TextDisabled("ID (Type)");
+    }
+    else
+    {
+        for(ToolTipObject& rendered_obj : tooltip_cache.content)
+        {
+            char obj_label[TT_OBJECT_ID_ENTRY_LENGTH];
+            std::snprintf(obj_label, sizeof(obj_label), "#%zu (%s)", rendered_obj.id,
+                          rendered_obj.type == TT_RenderedType::Text ? "Text" : "Image");
+    
+            bool is_selected = tooltip_cache.selected_id && *tooltip_cache.selected_id == rendered_obj.id;
+            if(ImGui::Selectable(obj_label, is_selected)) tooltip_cache.selected_id = rendered_obj.id;
+        }
+    }
+    ImGui::EndChild();
+    ImGui::EndDisabled();
+    ImGui::EndGroup();
+
+    /* right column */
+
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(12.f, 0.f));
+    ImGui::SameLine();
+
+    ImGui::BeginGroup();
+    ImGui::BeginDisabled(!is_enabled);
+
+    /* Selecting an object */
+    ToolTipObject* selected_entry{nullptr};
+
+    if(is_enabled && tooltip_cache.selected_id)
+    {
+        auto it_selected = std::find_if(tooltip_cache.content.begin(), tooltip_cache.content.end(),
+                [&](const ToolTipObject& e)
+                {
+                    return e.id == *tooltip_cache.selected_id;
+                });
+
+        if(it_selected != tooltip_cache.content.end()) selected_entry = &(*it_selected);
+    }
+
+    if(selected_entry)
+    {
+        /* right column start here actually */
+        ImGui::TextDisabled("Selected ID: ");
+        ImGui::SameLine();
+        _renderToolTipEditor(tooltip_cache, *selected_entry);
+    }
+    ImGui::EndDisabled();
+    ImGui::EndGroup();
+}
+
 void InfoWrapper::_renderProperties(CacheMap_t::iterator& cached_data)
 {
     textHeader("Properties", true, false, HEADER_2);
@@ -787,6 +984,194 @@ void InfoWrapper::_addShaderUI(const char* label_id, ShaderType shader_type, Sha
             }
         }
     }
+}
+
+void InfoWrapper::_renderToolTipEditor(ToolTipCache& tooltip_cache, ToolTipObject& selected_obj)
+{
+    ImGui::PushID(static_cast<int>(selected_obj.id));
+    
+    /* TITLE */
+    ImGui::TextDisabled("%zu", selected_obj.id);
+    ImGui::SameLine(0.f, 12.f);
+    ImGui::PushStyleColor(ImGuiCol_Button, RED);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DARK_RED);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DARKER_RED);
+    if(ImGui::SmallButton("Delete Object##tt"))
+    {
+        std::size_t deleted_id = selected_obj.id;
+        (void)tooltip_cache.ptr->deleteContent(deleted_id);
+        tooltip_cache.content.erase(std::remove_if(tooltip_cache.content.begin(), tooltip_cache.content.end(),
+                [&](const ToolTipObject& e)
+                {
+                    return e.id == deleted_id;
+                }), tooltip_cache.content.end());
+
+        tooltip_cache.selected_id.reset();
+    }
+    ImGui::PopStyleColor(3);
+
+    /* Accessors */
+
+    if(selected_obj.type == TT_RenderedType::Text)
+    {
+        ToolTip::RenderedText* text_ptr = tooltip_cache.ptr->getText(selected_obj.id);
+        if(!text_ptr)
+        {
+            ImGui::PopID();
+            return;
+        }
+
+        { // Text
+            textHeader("Text:", false, false, HEADER_3);
+            std::string text = text_ptr->getText().toAnsiString();
+            char text_buf[TT_TEXT_OBJECT_LENGTH];
+            std::snprintf(text_buf, sizeof(text_buf), "%s", text.c_str());
+            if(ImGui::InputTextMultiline("##tt_TextGet", text_buf, sizeof(text_buf), MULTITEXT_INPUT_DIMENSIONS))
+                text_ptr->setText(text_buf);
+        }
+
+        { // Text Position
+            textHeader("Text Position:", false, false, HEADER_3);
+            sf::Vector2f pos = text_ptr->getPosition();
+            float pos_xy[2]{pos.x, pos.y};
+            ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+            if(ImGui::InputFloat2("##tt_TextPos", pos_xy))
+                text_ptr->setPosition(sf::Vector2f(pos_xy[0], pos_xy[1]));
+        }
+
+        { // Char size
+            textHeader("Char Size:", false, false, HEADER_3);
+            unsigned int char_size = text_ptr->getCharacterSize();
+            ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+            if(ImGui::InputScalar("##tt_TextSize", ImGuiDataType_U32, &char_size))
+                text_ptr->setCharacterSize(char_size);
+        }
+
+        { // Text Line Spacing
+            textHeader("Line Spacing:", false, false, HEADER_3);
+            float line_spacing = text_ptr->getLineSpacing();
+            ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+            if(ImGui::InputFloat("##tt_TextLineSpacing", &line_spacing))
+                text_ptr->setLineSpacing(line_spacing);
+        }
+
+        { // Text Letter Spacing
+            textHeader("Letter Spacing:", false, false, HEADER_3);
+            float letter_spacing = text_ptr->getLetterSpacing();
+            ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+            if(ImGui::InputFloat("##tt_TextLetterSpacing", &letter_spacing))
+                text_ptr->setLetterSpacing(letter_spacing);
+        }
+
+        { // Text Fill Color
+            textHeader("Fill Color:", false, false, HEADER_3);
+            float fill[4];
+            toFloatColor(text_ptr->getFillColor(), fill);
+            if(ImGui::ColorEdit4("##tt_TextColor", fill, ImGuiColorEditFlags_NoInputs))
+                text_ptr->setFillColor(toSfColor(fill));
+        }
+
+        { // Text Outline Color
+            textHeader("Outline Color:", false, false, HEADER_3);
+            float outline[4];
+            toFloatColor(text_ptr->getOutlineColor(), outline);
+            if(ImGui::ColorEdit4("##tt_TextOutlineColor", outline, ImGuiColorEditFlags_NoInputs))
+                text_ptr->setOutlineColor(toSfColor(outline));
+        }
+
+        { // Text Outline Thickness
+            textHeader("Outline Thickness:", false, false, HEADER_3);
+            unsigned int outline_thickness = text_ptr->getOutlineThickness();
+            ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+            if(ImGui::InputScalar("##tt_TextOutlineThickness", ImGuiDataType_U32, &outline_thickness))
+                text_ptr->setOutlineThickness(outline_thickness);
+        }
+
+        { // Text Style
+            textHeader("Text Style:", false, false, HEADER_3);
+            int style_flags = static_cast<int>(text_ptr->getStyle());
+            bool style_changed = false;
+            constexpr std::size_t N = enum_literals::TEXT_STYLE_LITERAL.size();
+            for(std::size_t i = 0; i < N; ++i)
+            {
+                if(i % 2 == 1) ImGui::SameLine(ENUM_INPUT_WIDTH);
+                style_changed |= ImGui::CheckboxFlags(enum_literals::TEXT_STYLE_LITERAL[i].get<0>(), &style_flags,
+                                 static_cast<int>(enum_literals::TEXT_STYLE_LITERAL[i].get<1>()));
+
+            }
+            if(style_changed) text_ptr->setStyle(static_cast<sf::Text::Style>(style_flags));
+        }
+    }
+    else
+    {
+        ToolTip::RenderedImage* image_ptr = tooltip_cache.ptr->getImage(selected_obj.id);
+        if(!image_ptr)
+        {
+            ImGui::PopID();
+            return;
+        }
+
+        { // Image Position
+            textHeader("Image Position:", false, false, HEADER_3);
+            sf::Vector2f pos = image_ptr->getPosition();
+            float pos_xy[2]{pos.x, pos.y};
+            ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+            if(ImGui::InputFloat2("##tt_ImagePos", pos_xy))
+                image_ptr->setPosition(sf::Vector2f(pos_xy[0], pos_xy[1]));
+        }
+
+        { // Image Size
+            textHeader("Resize Image:", false, false, HEADER_3);
+            sf::Vector2u size = image_ptr->getSize();
+            int size_xy[2]{static_cast<int>(size.x), static_cast<int>(size.y)};
+            ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+            if(ImGui::InputInt2("##tt_ImageResize", size_xy, ImGuiInputTextFlags_EnterReturnsTrue))
+                image_ptr->setSize(sf::Vector2u(size_xy[0], size_xy[1]));
+        }
+
+        { // setImage
+            textHeader("Load Image:", false, false, HEADER_3);
+            std::string dialog_key = "tt_" + std::to_string(selected_obj.id);
+
+            ImGui::BeginDisabled(m_dialog.is_open.load());
+            if(ImGui::Button("Browse##tt"))
+                openFileDialog(dialog_key, "Open Image", IMG_EXTENSIONS, N_IMG_EXTENSIONS, "Image files");
+            ImGui::EndDisabled();
+
+            if(m_dialog.safe_path && m_dialog.req_key == dialog_key && m_selectToken == m_dialog.req_token)
+            {
+                selected_obj.pending_image_path = *m_dialog.safe_path;
+                m_dialog.safe_path.reset();
+            }
+
+            ImGui::SameLine();
+            int size_xy[2]{static_cast<int>(selected_obj.image_size_param.x), static_cast<int>(selected_obj.image_size_param.y)};
+            ImGui::SetNextItemWidth(DOUBLE_INPUT_WIDTH);
+            if(ImGui::InputInt2("##tt_ImageSize", size_xy))
+            {
+                selected_obj.image_size_param.x = std::max(0, size_xy[0]);
+                selected_obj.image_size_param.y = std::max(0, size_xy[1]);
+            }
+        
+            ImGui::SameLine();
+            
+            ImGui::BeginDisabled(selected_obj.pending_image_path.empty());
+            if(ImGui::Button("Load##tt"))
+            {
+                image_ptr->setImage(sf::String(selected_obj.pending_image_path), selected_obj.image_size_param);
+                selected_obj.pending_image_path.clear();
+                selected_obj.image_size_param = {0, 0};
+            }
+            ImGui::EndDisabled();
+        }
+
+        // Clear Image
+        if(ImGui::Button("Clear Image##tt"))
+        {
+            image_ptr->clearImage();
+        }
+    }
+    ImGui::PopID();
 }
 
 void InfoWrapper::renderRow(Accessor_ptr& row)
