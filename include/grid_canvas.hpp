@@ -5,14 +5,64 @@
 #ifdef WIDGETS_HPP
 namespace sfml_widgets
 {
+struct ACell
+{
+    std::size_t id{0};
+    sf::Rect<unsigned int> boundaries;
+};
 
-/*
-* Canvas new implementation follows the listed below goals:
-* - Simplified control
-* - Large optimization of both memory and performance
-* - Creating Cells directly -> Creating lines which result in rectangular Cells
-*/
-class Canvas;
+struct ALine
+{
+    std::size_t id{0};
+};
+
+class Canvas : public Widget
+{
+public:
+    Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone = 0.f);
+    Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone = 0.f);
+    ~Canvas() override;
+    
+    Canvas(Canvas&& other) = delete;
+    Canvas& operator=(Canvas&& other) = delete;
+    Canvas(const Canvas& other) = delete;
+    Canvas& operator=(const Canvas& other) = delete;
+ 
+    bool drawLine(sf::Vector2u start, sf::Vector2u end);
+    bool removeLine(sf::Vector2u start, sf::Vector2u end);
+    void clearCanvas();
+    ACell* at(sf::Vector2u coords);
+
+private:
+    bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    void drawWidget() override;
+    void config(FLAGS mask) override;
+    void updatePosition() override;
+    void updateSize() override;
+    void updateRotation() override;
+    void updateState() override;
+    void updateTheme() override;
+
+    void zoom(float delta, sf::Vector2i local_mouse_position);
+    void pan(sf::Vector2i local_mouse_position);
+    void limitView(sf::View& v);
+
+    static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
+    static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
+    static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
+    
+    sf::RenderTexture m_texture;
+    sf::Sprite m_sprite;
+    std::vector<ALine> m_lines;
+    std::vector<ACell> m_cells;
+    const sf::Vector2u m_gridMapping;
+    const std::size_t MAX_CELL_COUNT;
+    float m_zoomLevel = s_MAX_ZOOM_LEVEL;
+    float m_deadZone = 0.f;
+    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;
+};
+
 ///////////////////////////////////////////////////////////////////
 /// @brief Canvas with grid for a fixed number of cells
 ///

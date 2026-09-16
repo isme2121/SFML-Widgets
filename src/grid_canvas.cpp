@@ -1,5 +1,108 @@
 #include "frame.hpp"
 #include "grid_canvas.hpp"
+#include <cmath>
+
+namespace sfml_widgets
+{
+Canvas::Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone) : Widget(window, position, size),
+m_texture(size), m_sprite(m_texture.getTexture()), m_gridMapping(grid),
+m_deadZone(dead_zone), MAX_CELL_COUNT(grid.x * grid.y)
+{
+
+}
+
+Canvas::Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone) : Widget(root, position, size),
+m_texture(size), m_sprite(m_texture.getTexture()), m_gridMapping(grid),
+m_deadZone(dead_zone), MAX_CELL_COUNT(grid.x * grid.y)
+{
+
+}
+
+Canvas::~Canvas()
+{
+
+}
+
+bool Canvas::drawLine(sf::Vector2u start, sf::Vector2u end)
+{
+
+}
+
+bool Canvas::removeLine(sf::Vector2u start, sf::Vector2u end)
+{
+
+}
+
+void Canvas::clearCanvas()
+{
+
+}
+
+ACell* Canvas::at(sf::Vector2u coords)
+{
+
+}
+
+bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+
+}
+
+bool Canvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position)
+{
+
+}
+
+void Canvas::drawWidget()
+{
+
+}
+
+void Canvas::config(FLAGS mask)
+{
+
+}
+
+void Canvas::updatePosition()
+{
+
+}
+
+void Canvas::updateSize()
+{
+
+}
+
+void Canvas::updateRotation()
+{
+
+}
+
+void Canvas::updateState()
+{
+
+}
+
+void Canvas::updateTheme()
+{
+
+}
+
+void Canvas::zoom(float delta, sf::Vector2i local_mouse_position)
+{
+
+}
+
+void Canvas::pan(sf::Vector2i local_mouse_position)
+{
+
+}
+
+void Canvas::limitView(sf::View& v)
+{
+
+}
+}
 
 namespace sfml_widgets // GridCanvas
 {
