@@ -21,7 +21,7 @@ class ImageFrame;
 class CheckBox;
 class Entry;
 class Label;
-class ToolTip;
+class NewToolTip;
 class WidgetGroup;
 template <typename DERIVED_TYPE> struct WidgetStyle;
 class CaptureSequence;

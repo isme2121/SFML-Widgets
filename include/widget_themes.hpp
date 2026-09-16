@@ -146,10 +146,6 @@ struct ToolTipStyle
     sf::Color fill_color;
     sf::Color outline_color;
     float outline_thickness;
-
-    sf::Color text_color;
-    sf::Color text_outline_color;
-    float text_outline_thickness;
 };
 
 struct CellColor
@@ -2283,102 +2279,70 @@ constexpr ToolTipStyle TOOLTIP_DEFAULT_DARK =
 {
     {28, 28, 32},           // fill_color
     {205, 205, 212},        // outline_color
-    1.0f,                   // outline_thickness
-
-    {218, 215, 208},        // text_color
-    {42, 42, 48},           // text_outline_color
-    0.0f                    // text_outline_thickness
+    1.0f                    // outline_thickness
 };
 
 constexpr ToolTipStyle TOOLTIP_DEFAULT_LIGHT = 
 {
     {245, 245, 247},        // fill_color
     {58, 58, 68},           // outline_color
-    1.0f,                   // outline_thickness
-
-    {30, 30, 35},           // text_color
-    {218, 215, 208},        // text_outline_color
-    0.0f                    // text_outline_thickness
+    1.0f                    // outline_thickness
 };
 
 constexpr ToolTipStyle TOOLTIP_EMERALD_FOREST =
 {
     {22, 29, 23},
     {38, 109, 71},
-    1.5f,
-    {206, 218, 211},
-    {7, 10, 8},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_GOLDEN_AMBER =
 {
     {31, 25, 16},
     {145, 107, 32},
-    1.5f,
-    {223, 217, 205},
-    {10, 8, 5},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_CRIMSON_ASH =
 {
     {29, 18, 18},
     {138, 43, 45},
-    1.5f,
-    {222, 207, 207},
-    {10, 6, 6},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_STEEL_GRAPHITE =
 {
     {22, 23, 27},
     {77, 90, 108},
-    1.5f,
-    {212, 215, 217},
-    {7, 8, 9},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_LAVENDER_DUSK =
 {
     {25, 22, 31},
     {111, 90, 139},
-    1.5f,
-    {218, 214, 222},
-    {8, 7, 10},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_SKY_AZURE =
 {
     {16, 22, 31},
     {45, 96, 158},
-    1.5f,
-    {207, 215, 225},
-    {5, 7, 10},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_ARCTIC_FROST =
 {
     {246, 248, 250},
     {212, 213, 215},
-    1.5f,
-    {30, 30, 35},
-    {249, 250, 252},
-    0.0f
+    1.5f
 };
 
 constexpr ToolTipStyle TOOLTIP_SANDSTONE_DUNE =
 {
     {250, 244, 235},
     {215, 210, 202},
-    1.5f,
-    {30, 30, 35},
-    {252, 247, 241},
-    0.0f
+    1.5f
 };
 }
 

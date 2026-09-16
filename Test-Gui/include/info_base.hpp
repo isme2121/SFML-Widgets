@@ -199,6 +199,19 @@ const auto THEME_LITERAL = std::array<VecN<const char*, std::shared_ptr<WidgetTh
     {"Sandstone Dune", Theme::sandstone_dune_theme}}
 };
 
+const auto TT_STYLE_LITERAL = std::array<VecN<const char*, ToolTipStyle>, 10>{
+    {{"Dark", Theme::tooltip_style::TOOLTIP_DEFAULT_DARK},
+    {"Light", Theme::tooltip_style::TOOLTIP_DEFAULT_LIGHT},
+    {"Emerald Forest", Theme::tooltip_style::TOOLTIP_EMERALD_FOREST},
+    {"Golden Amber", Theme::tooltip_style::TOOLTIP_GOLDEN_AMBER},
+    {"Crimson Ash", Theme::tooltip_style::TOOLTIP_CRIMSON_ASH},
+    {"Steel Graphite", Theme::tooltip_style::TOOLTIP_STEEL_GRAPHITE},
+    {"Lavender Dusk", Theme::tooltip_style::TOOLTIP_LAVENDER_DUSK},
+    {"Sky Azure", Theme::tooltip_style::TOOLTIP_SKY_AZURE},
+    {"Arctic Frost", Theme::tooltip_style::TOOLTIP_ARCTIC_FROST},
+    {"Sandstone Dune", Theme::tooltip_style::TOOLTIP_SANDSTONE_DUNE}}
+};
+
 constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::string_view>, 3>{
     {{"Button Shader", BUTTON_SHADER_FRAG},
      {"Sprite Shader", SPRITE_SHADER_FRAG},
@@ -323,6 +336,31 @@ void set_lookup(LookupVec_t& vec, const std::string& key, Fn&& fn, EnumSection k
 }
 
 ///////////////////////////////////////////////////////////////////
+/// @brief Represents a `ToolTip` class rendered object, the attributes
+/// maintain a reference to the object itself and it's state
+///
+///////////////////////////////////////////////////////////////////
+struct ToolTipObject
+{
+    std::size_t id{0};
+    TT_RenderedType type{TT_RenderedType::Text};
+    std::string pending_image_path;
+    sf::Vector2u image_size_param{0, 0};
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Cache object for `ToolTip`
+///
+///////////////////////////////////////////////////////////////////
+struct ToolTipCache
+{
+    ToolTip* ptr{nullptr};
+    std::vector<ToolTipObject> content;
+    std::optional<std::size_t> selected_id{std::nullopt};
+    std::size_t style_idx{0};
+};
+
+///////////////////////////////////////////////////////////////////
 /// @brief cache for shader
 ///
 ///////////////////////////////////////////////////////////////////
@@ -344,14 +382,16 @@ struct ShaderCache
 struct CachedAttributes
 {
     BuiltinBindFlags flags{BuiltinBindFlags::None};
-    int theme_idx{-1};                                      //!< -1 == None
     ShaderCache clip_shader_cache;
     ShaderCache color_shader_cache;
+    ToolTipCache tooltip;
+    int theme_idx{-1};                                      //!< -1 == None
     sf::Vector2f grab_offset{0.f, 0.f};
+    std::string label;
 };
 
 /// Widget cache type in `InfoWrapper`
-using CacheMap_t = std::unordered_map<Widget*, CachedAttributes>;
+using CacheMap_t = std::unordered_map<const Widget*, CachedAttributes>;
 
 struct DialogThread
 {
@@ -365,6 +405,13 @@ struct DialogThread
 
     std::string req_key;
     unsigned int req_token{0};
+};
+
+// Widget group with a label
+struct LabeledGroup
+{
+    std::string group_name;
+    std::shared_ptr<WidgetGroup> group_ptr;
 };
 
 ///////////////////////////////////////////////////////////////////

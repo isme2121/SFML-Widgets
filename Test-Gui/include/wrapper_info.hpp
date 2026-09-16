@@ -363,8 +363,8 @@ public:
                 {
                     using Derived_t = std::decay_t<decltype(w)>;
                     Widget* widget_ptr = &w;
-                    BuiltinBindFlags& flags = m_cache[widget_ptr].flags;
-                    sf::Vector2f& grab_offset = m_cache[widget_ptr].grab_offset;
+                    CachedAttributes& cache = m_cache[widget_ptr];
+                    cache.label = "Widget " + std::to_string(m_labelCounter++); 
 
                     /* Reserved events */
                     w.bindMouseEvent(Widget::W_MouseEventType::FocusSet, [this, &w](std::optional<sf::Event>)
@@ -378,31 +378,31 @@ public:
 
 
                     /* Bind events */
-                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &flags, &grab_offset](std::optional<sf::Event> e)
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &cache](std::optional<sf::Event> e)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::Drag))
                         {
                             if(const sf::Event::MouseButtonPressed* pressed = e->getIf<sf::Event::MouseButtonPressed>())
                             {
                                 if(const Frame* frame = w.getRootFrame())
-                                    grab_offset = frame->mapPixelToCoords(pressed->position) - w.getBounds().position;
+                                    cache.grab_offset = frame->mapPixelToCoords(pressed->position) - w.getBounds().position;
                                 else
-                                    grab_offset = sf::Vector2f(pressed->position) - w.getBounds().position;
+                                    cache.grab_offset = sf::Vector2f(pressed->position) - w.getBounds().position;
                             }
                         }
                     });
 
-                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &flags](std::optional<sf::Event> e)
+                    w.bindMouseEvent(Widget::W_MouseEventType::Press, [this, &w, &cache](std::optional<sf::Event> e)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::RightClickDelete))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::RightClickDelete))
                         {
                             if(&w == m_selected.widget_ptr) m_selected.to_be_deleted = true;
                         }
                     }, sf::Mouse::Button::Right);
 
-                    w.bindMouseEvent(Widget::W_MouseEventType::Hold, [this, &w, &flags, &grab_offset](std::optional<sf::Event>)
+                    w.bindMouseEvent(Widget::W_MouseEventType::Hold, [this, &w, &cache](std::optional<sf::Event>)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::Drag))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::Drag))
                         {
                             sf::Vector2f current;
                             const sf::Vector2i window_pixel = sf::Mouse::getPosition(m_window);
@@ -411,13 +411,13 @@ public:
                             else
                                 current = sf::Vector2f(window_pixel);
 
-                            w.setWidgetPosition(current - grab_offset);
+                            w.setWidgetPosition(current - cache.grab_offset);
                         }
                     });
 
-                    w.bindMouseEvent(Widget::W_MouseEventType::Scroll, [this, &w, &flags](std::optional<sf::Event> e)
+                    w.bindMouseEvent(Widget::W_MouseEventType::Scroll, [this, &w, &cache](std::optional<sf::Event> e)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::ScrollResize))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::ScrollResize))
                         {
                             if(e)
                             {
@@ -430,17 +430,17 @@ public:
                         }
                     });
 
-                    w.bindMouseEvent(Widget::W_MouseEventType::HoverSet, [this, &flags](std::optional<sf::Event>)
+                    w.bindMouseEvent(Widget::W_MouseEventType::HoverSet, [this, &cache](std::optional<sf::Event>)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::HighlightOnHover))
                         {
                             std::cout << "Hovered (highlight event)\n";
                         }
                     });
 
-                    w.bindMouseEvent(Widget::W_MouseEventType::HoverLost, [this, &flags](std::optional<sf::Event>)
+                    w.bindMouseEvent(Widget::W_MouseEventType::HoverLost, [this, &cache](std::optional<sf::Event>)
                     {
-                        if(isBuiltinFlagSet(flags, BuiltinBindFlags::HighlightOnHover))
+                        if(isBuiltinFlagSet(cache.flags, BuiltinBindFlags::HighlightOnHover))
                         {
                             std::cout << "Not Hovered (highlight event)\n";
                         }
@@ -533,6 +533,20 @@ private:
     void trySetFromText(const std::string& key, const std::string& text);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Opens a file dialog on a separate thread
+    ///
+    /// Used for file loader keys
+    ///
+    /// @param key accessor key
+    /// @param title dialog title
+    /// @param filters allowed file extensions
+    /// @param filter_count number of extensions listed on filters
+    /// @param filter_desc description in dialog
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Processing external events
     ///
     ///////////////////////////////////////////////////////////////////
@@ -557,10 +571,10 @@ private:
     void renderEditSection();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Renders FPS in "Edit" section
+    /// @brief Renders "Selected" section in ImGui interface
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderFps() const;
+    void renderSelectedSection();
     
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders "Flags" section in ImGui interface
@@ -575,42 +589,40 @@ private:
     void renderAccessorSections();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Renders a single key attribute in accessor section
+    /// @brief Renders "Shaders" section in ImGui interface
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderRow(Accessor_ptr&);
+    void renderShadersSection();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Renders "Bindings" section in ImGui interface
+    /// @brief Renders "ToolTip" section in ImGui interface
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderBindsSection();
+    void renderToolTipSection();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Renders "Theme" section in ImGui interface
+    /// @brief Managed by `renderSelectedSection`
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderThemeSection();
+    void _renderProperties(CacheMap_t::iterator& cached_data);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Opens a file dialog on a separate thread
-    ///
-    /// Used for file loader keys
-    ///
-    /// @param key accessor key
-    /// @param title dialog title
-    /// @param filters allowed file extensions
-    /// @param filter_count number of extensions listed on filters
-    /// @param filter_desc description in dialog
+    /// @brief Managed by `renderSelectedSection`
     ///
     ///////////////////////////////////////////////////////////////////
-    void openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc);
+    void _renderBindings(CacheMap_t::iterator& cached_data);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Syncs file dialog returned path with internal path
+    /// @brief Managed by `renderSelectedSection`
     ///
     ///////////////////////////////////////////////////////////////////
-    void pullDialogPath();
+    void _renderTheme(CacheMap_t::iterator& cached_data);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Managed by `renderSelectedSection`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void _renderWidgetGroups();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders a single shader type in the UI
@@ -622,13 +634,37 @@ private:
     /// @param resetFn `Widget` class function for resetting the shader
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderShaderControl(const char* label, ShaderType shader_type, ShaderCache& state);
+    void _addShaderUI(const char* label, ShaderType shader_type, ShaderCache& state);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Renders "Shaders" section in ImGui interface
+    /// @brief Renders the selected `ToolTip` object's accessor variables
     ///
     ///////////////////////////////////////////////////////////////////
-    void renderShadersSection();
+    void _renderToolTipEditor(ToolTipCache&, ToolTipObject&);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders a single key attribute in accessor section
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderRow(Accessor_ptr&);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Renders FPS in "Edit" section
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void renderFps() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Syncs file dialog returned path with internal path
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void pullDialogPath();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the label of the root object for parameter widget
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const char* getRootLabel(Widget* w) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Selected widget information
@@ -649,14 +685,18 @@ private:
     };
     
     static constexpr unsigned int s_MAX_WIDGET_COUNT{10};
+    static constexpr unsigned int s_GROUPS_COUNT{4};
 
     std::array<std::optional<Widget_t>, s_MAX_WIDGET_COUNT> m_widgets;  //!< widgets storage
+    std::array<LabeledGroup, s_GROUPS_COUNT> m_widgetGroups;
+
     SelectedWidget m_selected;
     LookupVec_t* m_rows{nullptr};                                       //!< selected widget accessor data
     CacheMap_t m_cache;                                                 //!< memory for attributes which can't be obtained from the widget
     DialogThread m_dialog;                                              //!< path dialog
 
     unsigned int m_widgetsCount{0};                                     //!< active widgets count
+    unsigned int m_labelCounter{0};
     unsigned int m_selectToken{0};                                      //!< context switch between selections to prevent value inheritence
     bool m_revealFps{false};
 };
