@@ -20,3 +20,4 @@ README.md
 imgui.ini
 *.sh
 *.cmake
+tests/test_canvas.cpp
