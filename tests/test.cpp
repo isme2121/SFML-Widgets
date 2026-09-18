@@ -1,5 +1,5 @@
 #include "wrapper_info.hpp"
-#ifdef COMPILE_TESTS
+#ifdef BUILD_TESTS
 
 using namespace sfml_widgets;
 

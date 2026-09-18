@@ -118,7 +118,7 @@ public:
         m_pwEntry.setBackGroundText("Password");
 
         // adding a check image for the checkbox
-        m_showPwCheckbox.setBackgroundTexture(sfml_widgets::images::IMG_LOCK);
+        m_showPwCheckbox.setBackgroundTexture(sfml_widgets::images::IMG_CHECK);
         m_showPwCheckbox.setTextPosition(sfml_widgets::DIRECTION::RIGHT);
 
         // adding an icon to sign in button
@@ -268,7 +268,7 @@ public:
         m_rpwEntry.setTextOffsetRatio(0.04f);
 
         // setup hide password checkbox for sign-in frame
-        m_showPwCheckbox.setBackgroundTexture(sfml_widgets::images::IMG_LOCK);
+        m_showPwCheckbox.setBackgroundTexture(sfml_widgets::images::IMG_CHECK);
         m_showPwCheckbox.setTextPosition(sfml_widgets::DIRECTION::RIGHT);
     }
 
