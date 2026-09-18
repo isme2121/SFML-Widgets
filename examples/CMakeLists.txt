@@ -1,8 +1,5 @@
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/executables/examples")
-
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/examples")
 file(GLOB SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/examples/*.cpp")
-# image viewer requires file dialog library
-set(TINYDIALOGS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/tinyfiledialogs-src")
 
 #======libtinyfiledialogs setup=======================================
 FetchContent_Declare(
@@ -10,10 +7,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/native-toolkit/libtinyfiledialogs.git
     GIT_TAG master
 )
-
 FetchContent_MakeAvailable(tinyfiledialogs)
-file(COPY "${tinyfiledialogs_SOURCE_DIR}" DESTINATION "${PROJECT_SOURCE_DIR}")
-
 
 foreach(SOURCE ${SOURCES})
     get_filename_component(FILENAME "${SOURCE}" NAME)
@@ -23,8 +17,12 @@ foreach(SOURCE ${SOURCES})
     # include file dialog's source file if the source is ImageViewer.cpp
     if(FILENAME STREQUAL "ImageViewer.cpp")
         enable_language(C)
-        target_sources(${BASENAME} PRIVATE "${TINYDIALOGS_SOURCE_DIR}/tinyfiledialogs.c")
-        target_include_directories(${BASENAME} PRIVATE "${TINYDIALOGS_SOURCE_DIR}")
+        target_sources(${BASENAME} PRIVATE
+            "${tinyfiledialogs_SOURCE_DIR}/tinyfiledialogs.c"
+        )
+        target_include_directories(${BASENAME} PRIVATE
+        "${tinyfiledialogs_SOURCE_DIR}"
+        )
     endif()
 
     target_link_libraries(${BASENAME} PRIVATE

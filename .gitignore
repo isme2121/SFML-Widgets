@@ -1,9 +1,9 @@
 .vscode/
 .cache/
 cache/
+bin/
 build/
 build-windows/
-executables/
 docs/
 libs/
 SFML/

@@ -7,9 +7,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-option(BUILD_AS_SHARED "Build SFML widgets as dynamic libraries" OFF)
-option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/examples/executables/'" OFF)
-option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/tests/executables/'" OFF)
+option(SFML_WIDGETS_SHARED "Build SFML widgets as dynamic libraries" OFF)
+option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" OFF)
+option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" OFF)
 
 #======SFML setup====================================================
 find_package(SFML 3 CONFIG QUIET)
@@ -36,7 +36,7 @@ endif()
 #======widgets setup====================================================
 set(EXTERNAL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external-include")
 set(WIDGET_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
-set(BUILD_SHARED_LIBS ${BUILD_AS_SHARED})
+set(BUILD_SHARED_LIBS ${SFML_WIDGETS_SHARED})
 
 #core library
 add_library(widgets
@@ -83,6 +83,7 @@ target_link_libraries(image_frame PUBLIC widgets)
 add_library(label src/label.cpp)
 target_link_libraries(label PUBLIC widgets)
 unset(BUILD_SHARED_LIBS)
+
 #======Examples setup====================================================
 if(BUILD_EXAMPLES)
     if(EXISTS "${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt")
