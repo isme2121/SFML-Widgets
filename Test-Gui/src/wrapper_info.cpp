@@ -176,6 +176,13 @@ void InfoWrapper::trySetFromText(const std::string& key, const std::string& text
             if(try_set_from_val(Accessed_t(sf::Vector2f(fx, fy)))) return;
     }
 
+    // CoordRange
+    {
+        sf::Vector2u start, end;
+        if(std::sscanf(text.c_str(), "%u , %u , %u , %u", &start.x, &start.y, &end.x, &end.y) == 4 ||
+           std::sscanf(text.c_str(), "%u %u %u %u", &start.x, &start.y, &end.x, &end.y) == 4)
+            if(try_set_from_val(Accessed_t(CoordRange(start, end)))) return;
+    }
     // unsigned int types
     if(!text.empty())
     {
@@ -393,6 +400,16 @@ void InfoWrapper::renderEditSection()
                 refreshValues();
             }
             else addWidget<GridCanvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{16}, 0.f, true);
+        }
+        ImGui::TableNextColumn();
+        if(ImGui::Button("Canvas", ImVec2(-FLT_MIN, 0)))
+        {
+            if(m_selected.enable_if_frame_ptr)
+            {
+                addWidget<Canvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10}, 0.f);
+                refreshValues();
+            }
+            else addWidget<Canvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10}, 0.f);
         }
         ImGui::EndTable();
     }
@@ -1472,6 +1489,15 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
         {
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
             else ImGui::TextUnformatted("(Nan, Nan)");
+        },
+        [&](ACell* p)
+        {
+            if(p) ImGui::Text("Cell Address: %p", p);
+            else ImGui::TextUnformatted("NULL.");
+        },
+        [&](CoordRange& v)
+        {
+            ImGui::Text("start(%u, %u) end(%u, %u)", v.start.x, v.start.y, v.end.x, v.end.y);
         }
         }, *row.attrib.val);
 

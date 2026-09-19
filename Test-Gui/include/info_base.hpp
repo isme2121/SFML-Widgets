@@ -20,14 +20,14 @@ namespace sfml_widgets
 *  2. add to `AccessorLink`
 *  3. add default constructor to `InfoWrapper::renderEditSection`
 */
-using Widget_t = std::variant<Button, Frame, Label, Entry, CheckBox, ImageFrame, GridCanvas>;
+using Widget_t = std::variant<Button, Frame, Label, Entry, CheckBox, ImageFrame, GridCanvas, Canvas>;
 
 // All accessor types collapsed here
 using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, std::string, sfml_widgets::Button::SIDE,
                            Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
                            DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign, Cell*,
                            sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>>;
+                           std::optional<sf::Vector2u>, ACell*, CoordRange>;
 
 // Compile time check if a type is part of our variant
 template<typename T, typename variant_t> struct is_part_of_variant;
@@ -994,6 +994,50 @@ struct AccessorsLink<GridCanvas>
                 return invoke_setter([&]{return static_cast<GridCanvas*>(w)->isTaken(*s);});
             return false;
         }, EnumSection::State, "Vector2u{row, col}");
+    }
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Links accessors for derived widget type `Canvas`
+///
+///////////////////////////////////////////////////////////////////
+template<>
+struct AccessorsLink<Canvas>
+{
+    static void link(LookupVec_t& vec)
+    {
+        /* Getters */
+        set_lookup(vec, "local pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
+        set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
+        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapLocalToView(static_cast<const Canvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow())));}, EnumSection::State);
+        set_lookup(vec, "coordinates" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapCoordinates(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
+        set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getSelectedCell();}, EnumSection::Pointer);
+        set_lookup(vec, "cell count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getCellsCount();}, EnumSection::State);
+        set_lookup(vec, "cell max count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getMaxCellsCount();}, EnumSection::State);
+
+        /* Setters */
+        set_lookup(vec, "draw line" ,+[](void* w, const Accessed_t& v) -> bool
+        {
+            if(const auto* s = std::get_if<CoordRange>(&v))
+                return invoke_setter([&]{return static_cast<Canvas*>(w)->drawLine(*s);});
+            return false;
+        }, EnumSection::Any);
+        set_lookup(vec, "remove line" ,+[](void* w, const Accessed_t& v) -> bool
+        {
+            if(const auto* s = std::get_if<CoordRange>(&v))
+                return invoke_setter([&]{return static_cast<Canvas*>(w)->removeLine(*s);});
+            return false;
+        }, EnumSection::Any);
+        set_lookup(vec, "clear lines" ,+[](void* w) -> bool
+        {
+            return invoke_setter([&]{static_cast<Canvas*>(w)->clearCanvas();});
+        }, EnumSection::Any);
+        set_lookup(vec, "dead zone" ,+[](void* w, const Accessed_t& v) -> bool
+        {
+            if(const auto* s = std::get_if<float>(&v))
+                return invoke_setter([&]{return static_cast<Canvas*>(w)->setDeadZone(*s);});
+            return false;
+        }, EnumSection::State, "Float [0.f, 0.1f]");
     }
 };
 }

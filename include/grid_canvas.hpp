@@ -24,6 +24,17 @@ private:
     sf::Color bg_color{sf::Color::Transparent};
 };
 
+struct CoordRange
+{
+    CoordRange(sf::Vector2u start, sf::Vector2u end) : start(start), end(end)
+    {
+
+    }
+
+    sf::Vector2u start;
+    sf::Vector2u end;    
+};
+
 class Canvas : public Widget
 {
 public:
@@ -36,14 +47,16 @@ public:
     Canvas(const Canvas& other) = delete;
     Canvas& operator=(const Canvas& other) = delete;
  
+    bool drawLine(CoordRange line_range);
     bool drawLine(sf::Vector2u start, sf::Vector2u end);
+    bool removeLine(CoordRange line_range);
     bool removeLine(sf::Vector2u start, sf::Vector2u end);
     void clearCanvas();
 
-    ACell* at(sf::Vector2u grid_coords);
-    ACell* at(sf::Vector2f pixel_coords);
-    ACell* at(std::size_t cell_id);
-    ACell* getSelectedCell();
+    ACell* at(sf::Vector2u grid_coords) const;
+    ACell* at(sf::Vector2f pixel_coords) const;
+    ACell* at(std::size_t cell_id) const;
+    ACell* getSelectedCell() const;
 
     std::size_t getCellsCount() const;
     std::size_t getMaxCellsCount() const;
@@ -74,10 +87,10 @@ private:
     void zoom(float delta, sf::Vector2i local_mouse_position);
     void pan(sf::Vector2i local_mouse_position);
     void limitView(sf::View& v);
-    void drawGrid();
 
     void updateCellSize();
     void updateBoard();
+    void _updateGrid();
 
     std::uint8_t& getLine(std::size_t row, std::size_t col, std::size_t axis);
     bool setLine(sf::Vector2u start, sf::Vector2u end, bool val);
@@ -93,12 +106,13 @@ private:
 
     // data
     std::vector<std::uint8_t> m_lines;
-    std::vector<ACell> m_cells;
+    mutable std::vector<ACell> m_cells;
+    sf::VertexArray m_gridLines;
 
     // properties
     const sf::Vector2u m_gridMapping;
     sf::Vector2f m_cellMinSize{0.f, 0.f};
-    sf::Vector2i m_memMousePos = {0, 0};
+    sf::Vector2i m_memMousePos{0, 0};
     TextureStyle m_style = Theme::texture_style::CANVAS_DARK_STYLE;
     const std::size_t MAX_CELL_COUNT;
     float m_zoomLevel = s_MAX_ZOOM_LEVEL;
@@ -106,8 +120,11 @@ private:
     
     // reference
     std::size_t m_hoveredCellID{constants::KSTALE};
+    std::size_t m_clickedCellID{constants::KSTALE};
     std::size_t m_selectedCellID{constants::KSTALE};
     std::size_t m_cellID{0};
+
+    bool m_updateGridLines{false};
 };
 
 template <>
