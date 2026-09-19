@@ -3,17 +3,25 @@
 #include "widget.hpp"
 
 #ifdef WIDGETS_HPP
+
 namespace sfml_widgets
 {
-struct ACell
+class ACell
 {
-    std::size_t id{0};
-    sf::Rect<unsigned int> boundaries;
-};
+    friend class Canvas;
+public:
+    bool contains(sf::Vector2u grid_coords) const;
+    bool contains(sf::Vector2f pixel_coords) const;
 
-struct ALine
-{
-    std::size_t id{0};
+    bool operator==(const ACell& other) const;
+    bool operator==(std::size_t id) const;
+
+private:
+    ACell(std::size_t id);
+    std::size_t m_id{0};
+    sf::Rect<unsigned int> m_gridBounds;
+    sf::FloatRect m_pixelBounds;
+    sf::Color bg_color{sf::Color::Transparent};
 };
 
 class Canvas : public Widget
@@ -31,11 +39,30 @@ public:
     bool drawLine(sf::Vector2u start, sf::Vector2u end);
     bool removeLine(sf::Vector2u start, sf::Vector2u end);
     void clearCanvas();
-    ACell* at(sf::Vector2u coords);
+
+    ACell* at(sf::Vector2u grid_coords);
+    ACell* at(sf::Vector2f pixel_coords);
+    ACell* at(std::size_t cell_id);
+    ACell* getSelectedCell();
+
+    std::size_t getCellsCount() const;
+    std::size_t getMaxCellsCount() const;
+
+    sf::Vector2i getLocalPixel(sf::Vector2i mouse_position) const;
+    sf::Vector2f getViewPixel(sf::Vector2i mouse_position) const;
+    sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
+    std::optional<sf::Vector2u> mapCoordinates(sf::Vector2i mouse_position) const;
+
+    void setDeadZone(float surface);
+    void setTheme(TextureStyle s_canvas);
+    void fetchTheme() override;
+    TextureStyle& style();
 
 private:
     bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
     bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
+    bool postProcessKeyEvents(const sf::Event& event) override; // arrow buttons to quickly add lines
+
     void drawWidget() override;
     void config(FLAGS mask) override;
     void updatePosition() override;
@@ -47,20 +74,61 @@ private:
     void zoom(float delta, sf::Vector2i local_mouse_position);
     void pan(sf::Vector2i local_mouse_position);
     void limitView(sf::View& v);
+    void drawGrid();
 
+    void updateCellSize();
+    void updateBoard();
+
+    std::uint8_t& getLine(std::size_t row, std::size_t col, std::size_t axis);
+    bool setLine(sf::Vector2u start, sf::Vector2u end, bool val);
+
+    std::size_t generateID();
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
     
+    // drawing
     sf::RenderTexture m_texture;
     sf::Sprite m_sprite;
-    std::vector<ALine> m_lines;
+
+    // data
+    std::vector<std::uint8_t> m_lines;
     std::vector<ACell> m_cells;
+
+    // properties
     const sf::Vector2u m_gridMapping;
+    sf::Vector2f m_cellMinSize{0.f, 0.f};
+    sf::Vector2i m_memMousePos = {0, 0};
+    TextureStyle m_style = Theme::texture_style::CANVAS_DARK_STYLE;
     const std::size_t MAX_CELL_COUNT;
     float m_zoomLevel = s_MAX_ZOOM_LEVEL;
     float m_deadZone = 0.f;
-    TextureStyle m_style = Theme::texture_style::STYLE_STALE_VIOLET;
+    
+    // reference
+    std::size_t m_hoveredCellID{constants::KSTALE};
+    std::size_t m_selectedCellID{constants::KSTALE};
+    std::size_t m_cellID{0};
+};
+
+template <>
+struct WidgetStyle<Canvas>
+{
+    using StyleType = TextureStyle;
+ 
+    static const StyleType& get(const WidgetTheme& theme)
+    {
+        return theme.m_gridCanvasTheme;
+    }
+ 
+    static void set(WidgetTheme& theme, StyleType s_canvas)
+    {
+        theme.m_gridCanvasTheme = s_canvas;
+    }
+ 
+    static std::size_t& token(WidgetTheme& theme)
+    {
+        return theme.m_gridCanvasToken;
+    }
 };
 
 ///////////////////////////////////////////////////////////////////
