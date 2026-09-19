@@ -811,7 +811,7 @@ const sf::FloatRect Widget::getAbsoluteBounds() const
 
 const sf::RenderWindow* Widget::getRootWindow() const
 {
-    return m_master.getWindowPtr();
+    return m_master.getRootWindowPtr();
 }
 
 const Frame* Widget::getRootFrame() const

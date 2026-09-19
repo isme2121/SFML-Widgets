@@ -428,7 +428,7 @@ public:
     /// of the window drawing it.
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::RenderWindow* getRootWindowPtr();
+    sf::RenderWindow* getRootWindowPtr() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns a pointer to frame if available

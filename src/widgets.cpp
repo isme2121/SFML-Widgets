@@ -317,7 +317,7 @@ const sf::RenderWindow* RenderContext::getWindowPtr() const
     return m_window;
 } 
 
-sf::RenderWindow* RenderContext::getRootWindowPtr() 
+sf::RenderWindow* RenderContext::getRootWindowPtr() const
 {
     if(m_frame) return m_frame->getWindowPtr();
     return m_window;

@@ -1493,11 +1493,22 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
         [&](ACell* p)
         {
             if(p) ImGui::Text("Cell Address: %p", p);
-            else ImGui::TextUnformatted("NULL.");
+            else ImGui::TextUnformatted("NULL");
         },
         [&](CoordRange& v)
         {
             ImGui::Text("start(%u, %u) end(%u, %u)", v.start.x, v.start.y, v.end.x, v.end.y);
+        },
+        [&](const sf::RenderWindow* p)
+        {
+            if(p) ImGui::Text("Window Address: %p", p);
+            else ImGui::TextUnformatted("NULL.");
+        },
+        [&](const Frame* p)
+        {
+            auto it = m_cache.find(static_cast<const Widget*>(p));
+            if(it != m_cache.end()) ImGui::Text("Root Frame: %s", it->second.label.c_str());
+            else ImGui::TextUnformatted("No Frame Root Available.");
         }
         }, *row.attrib.val);
 

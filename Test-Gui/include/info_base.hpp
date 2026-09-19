@@ -27,7 +27,7 @@ using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, st
                            Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
                            DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign, Cell*,
                            sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>, ACell*, CoordRange>;
+                           std::optional<sf::Vector2u>, ACell*, CoordRange, const Frame*, const sf::RenderWindow*>;
 
 // Compile time check if a type is part of our variant
 template<typename T, typename variant_t> struct is_part_of_variant;
@@ -535,6 +535,9 @@ struct BaseAccessorsLink
             {
                 return invoke_setter([&]{return static_cast<WidgetT*>(w)->resetBackgroundTexture();});
             });
+
+        set_lookup(vec, "root window", + [](const void* w) -> Accessed_t {return static_cast<const WidgetT*>(w)->getRootWindow();}, EnumSection::Pointer);
+        set_lookup(vec, "root frame", + [](const void* w) -> Accessed_t {return static_cast<const WidgetT*>(w)->getRootFrame();}, EnumSection::Pointer);
     }
 };
 
@@ -674,6 +677,8 @@ struct AccessorsLink<Frame>
                 return invoke_setter([&]{return static_cast<Frame*>(w)->scroll(*s);});
             return false;
         }, EnumSection::State, "Float");
+
+        set_lookup(vec, "root window", + [](const void* w) -> Accessed_t {return static_cast<const Frame*>(w)->getWindowPtr();}, EnumSection::Pointer);
     }
 };
 

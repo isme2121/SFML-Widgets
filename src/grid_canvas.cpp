@@ -216,8 +216,7 @@ bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& m
 
     if(hovered_cell_id != m_hoveredCellID)
     {
-        auto it = std::find(m_cells.begin(), m_cells.end(), m_hoveredCellID);
-        if(it != m_cells.end())
+        if(ACell* prev_cell = at(m_hoveredCellID))
         {
             // cell lost hover event
         }
@@ -241,7 +240,7 @@ bool Canvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf
 
     if(details.event_type == W_MouseEventType::Press)
     {
-
+        
     }
 
     else if(details.event_type == W_MouseEventType::Release)
