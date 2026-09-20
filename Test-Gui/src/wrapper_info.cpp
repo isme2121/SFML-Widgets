@@ -1232,6 +1232,12 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
         return;
     }
 
+    if(!row.attrib.val.has_value())
+    {
+        ImGui::TextDisabled("(pending)");
+        return;
+    }
+
     bool was_modified = false;
 
     if(!CAN_BE_MODIFIED) ImGui::BeginDisabled();

@@ -31,6 +31,7 @@ public:
         // link all getters/setters for this widget
         BaseAccessorsLink<WidgetT>::link(m_lookup);
         AccessorsLink<WidgetT>::link(m_lookup);
+        updateValues();
     }
 
     explicit InfoWidget(WidgetT* w) : m_widget(w), m_isManaged(true)
@@ -38,6 +39,7 @@ public:
         // link all getters/setters for this widget
         BaseAccessorsLink<WidgetT>::link(m_lookup);
         AccessorsLink<WidgetT>::link(m_lookup);
+        updateValues();
     }
 
     ~InfoWidget()

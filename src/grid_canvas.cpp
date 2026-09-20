@@ -37,7 +37,8 @@ namespace sfml_widgets // Canvas
 {
 Canvas::Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone) : Widget(window, position, size),
 m_texture(size), m_sprite(m_texture.getTexture()), m_gridMapping(grid), MAX_CELL_COUNT(grid.x * grid.y),
-m_gridLines(sf::PrimitiveType::Lines)
+m_renderedlines(sf::PrimitiveType::Lines),
+m_renderedGridLines(sf::PrimitiveType::Lines)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -53,7 +54,8 @@ m_gridLines(sf::PrimitiveType::Lines)
 
 Canvas::Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone) : Widget(root, position, size),
 m_texture(size), m_sprite(m_texture.getTexture()), m_gridMapping(grid), MAX_CELL_COUNT(grid.x * grid.y),
-m_gridLines(sf::PrimitiveType::Lines)
+m_renderedlines(sf::PrimitiveType::Lines),
+m_renderedGridLines(sf::PrimitiveType::Lines)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
@@ -183,8 +185,10 @@ std::optional<sf::Vector2u> Canvas::mapCoordinates(sf::Vector2i mouse_position) 
 
 void Canvas::setDeadZone(float surface)
 {
-    m_deadZone = std::clamp(surface, 0.f, std::min<float>(m_size.x, m_size.y) * s_MAX_DEADZONE_RATIO);
-    updateSize();
+    surface = std::clamp(surface, 0.f, s_MAX_DEADZONE_RATIO);
+    m_deadZone = surface * std::min<float>(m_size.x, m_size.y);
+    updateCellSize();
+    if(checkFlag(m_flags, FLAGS::GRID)) m_updateGridLines = true;
 }
 
 void Canvas::setTheme(TextureStyle s_canvas)
@@ -278,7 +282,9 @@ void Canvas::drawWidget()
 {
     updateBoard();
     
-    if(checkFlag(m_flags, FLAGS::GRID)) m_texture.draw(m_gridLines);
+    if(checkFlag(m_flags, FLAGS::GRID)) m_texture.draw(m_renderedGridLines);
+
+    if(m_renderedlines.getVertexCount()) m_texture.draw(m_renderedlines);
     // draw lines
     // draw cells
 
@@ -297,16 +303,7 @@ void Canvas::config(FLAGS mask)
 
     if(checkFlag(mask, FLAGS::GRID))
     {
-        if(!checkFlag(m_flags, FLAGS::GRID))
-        {
-            m_gridLines.clear();
-            m_updateGridLines = false;
-        }
-        else
-        {
-            m_gridLines.resize((m_gridMapping.x + 1) * 2 + (m_gridMapping.y + 1) * 2);
-            m_updateGridLines = true;
-        }
+        if(checkFlag(m_flags, FLAGS::GRID)) m_updateGridLines = true;
     }
 }
 
@@ -392,24 +389,69 @@ void Canvas::updateTheme()
     }
 }
 
+void Canvas::_updateLines()
+{
+    if(!checkFlag(m_flags, FLAGS::UPDATE)) return;
+    resetFlag(m_flags, FLAGS::UPDATE);
+
+    m_renderedlines.clear();
+    m_renderedlines.resize(std::count(m_lines.begin(), m_lines.end(), 1u) * 2);
+
+    std::size_t offset{0};
+    for(std::size_t row{0}; row <= m_gridMapping.x; ++row)
+    {
+        for(std::size_t col{0}; col < m_gridMapping.y; ++col)
+        {
+            if(getLine(row, col, 0))
+            {
+                m_renderedlines[offset++] = sf::Vertex
+                {{m_deadZone + row * m_cellMinSize.y, m_deadZone + col * m_cellMinSize.x},
+                *m_currentOutlineColorPtr};
+
+                m_renderedlines[offset++] = sf::Vertex
+                {{m_deadZone + row * m_cellMinSize.y, m_deadZone + (col + 1) * m_cellMinSize.x},
+                *m_currentOutlineColorPtr};
+            }
+        }
+    }
+
+    // Axis 1: grid.x * (grid.y + 1)
+    for(std::size_t row{0}; row < m_gridMapping.x; ++row)
+    {
+        for(std::size_t col{0}; col <= m_gridMapping.y; ++col)
+        {
+            if(getLine(row, col, 1))
+            {
+                m_renderedlines[offset++] = sf::Vertex
+                {{m_deadZone + row * m_cellMinSize.y, m_deadZone + col * m_cellMinSize.x},
+                *m_currentOutlineColorPtr};
+
+                m_renderedlines[offset++] = sf::Vertex
+                {{m_deadZone + (row + 1) * m_cellMinSize.y, m_deadZone + col * m_cellMinSize.x},
+                *m_currentOutlineColorPtr};
+            }
+        }
+    }
+}
+
 void Canvas::_updateGrid()
 {
     if(!m_updateGridLines || !checkFlag(m_flags, FLAGS::GRID)) return;
-    m_gridLines.clear();
-    const sf::Color color = sf::Color::White;
- 
+    m_renderedGridLines.clear();
+    const sf::Color color = *m_currentOutlineColorPtr;
+    m_renderedGridLines.resize((m_gridMapping.x + 1) * 2 + (m_gridMapping.y + 1) * 2);
     std::size_t offset{0};
     for(unsigned int r{0}; r <= m_gridMapping.x ; ++r)
     {
         const float y = m_deadZone + static_cast<float>(r) * m_cellMinSize.y;
-        m_gridLines[offset++] = sf::Vertex{{m_deadZone, y}, color};
-        m_gridLines[offset++] = sf::Vertex{{m_size.x - m_deadZone, y}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{m_deadZone, y}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{m_size.x - m_deadZone, y}, color};
     }
     for(unsigned int c{0}; c <= m_gridMapping.y; ++c)
     {
         const float x = m_deadZone + static_cast<float>(c) * m_cellMinSize.x;
-        m_gridLines[offset++] = sf::Vertex{{x, m_deadZone}, color};
-        m_gridLines[offset++] = sf::Vertex{{x, m_size.y - m_deadZone}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{x, m_deadZone}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{x, m_size.y - m_deadZone}, color};
     }
  
     m_updateGridLines = false;
@@ -486,6 +528,7 @@ void Canvas::updateCellSize()
 
 void Canvas::updateBoard()
 {
+    _updateLines();
     _updateGrid();
 }
 
@@ -649,7 +692,8 @@ void GridCanvas::setActiveCells(std::function<bool(Cell&)> condition)
 
 void GridCanvas::setDeadZone(float surface)
 {
-    m_deadZone = std::clamp(surface, 0.f, std::min<float>(m_size.x, m_size.y) * s_MAX_DEADZONE_RATIO);
+    surface = std::clamp(surface, 0.f, s_MAX_DEADZONE_RATIO);
+    m_deadZone = surface * std::min<float>(m_size.x, m_size.y);
     updateCellSize(); //!< scales with dead zone
 }
 

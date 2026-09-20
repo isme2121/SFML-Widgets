@@ -6,6 +6,17 @@
 
 namespace sfml_widgets
 {
+// next episode
+#define LINE_ON 1u
+#define PLACEHOLDER_1 2u
+#define PLACEHOLDER_2 4u
+#define PLACEHOLDER_3 8u
+#define PLACEHOLDER_4 16u
+#define PLACEHOLDER_5 32u
+#define PLACEHOLDER_6 64u
+#define PLACEHOLDER_7 128u
+#define PROMISE 1
+
 class ACell
 {
     friend class Canvas;
@@ -90,6 +101,7 @@ private:
 
     void updateCellSize();
     void updateBoard();
+    void _updateLines();
     void _updateGrid();
 
     std::uint8_t& getLine(std::size_t row, std::size_t col, std::size_t axis);
@@ -105,9 +117,10 @@ private:
     sf::Sprite m_sprite;
 
     // data
-    std::vector<std::uint8_t> m_lines;
     mutable std::vector<ACell> m_cells;
-    sf::VertexArray m_gridLines;
+    std::vector<std::uint8_t> m_lines;
+    sf::VertexArray m_renderedlines;            //!< Added lines
+    sf::VertexArray m_renderedGridLines;        //!< GRID flag lines
 
     // properties
     const sf::Vector2u m_gridMapping;

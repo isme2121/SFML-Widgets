@@ -968,7 +968,7 @@ struct AccessorsLink<GridCanvas>
         /* Getters */
         set_lookup(vec, "local pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapLocalToView(static_cast<const GridCanvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow())));}, EnumSection::State);
+        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapLocalToView(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "coordinates" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapCoordinates(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getSelectedCellPtr();}, EnumSection::Pointer);
         set_lookup(vec, "clicked cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getClickedCellPtr();}, EnumSection::Pointer);
@@ -1014,7 +1014,7 @@ struct AccessorsLink<Canvas>
         /* Getters */
         set_lookup(vec, "local pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapLocalToView(static_cast<const Canvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow())));}, EnumSection::State);
+        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapLocalToView(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "coordinates" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapCoordinates(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getSelectedCell();}, EnumSection::Pointer);
         set_lookup(vec, "cell count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getCellsCount();}, EnumSection::State);
