@@ -6,42 +6,74 @@
 
 namespace sfml_widgets
 {
-// next episode
-#define LINE_ON 1u
-#define PLACEHOLDER_1 2u
-#define PLACEHOLDER_2 4u
-#define PLACEHOLDER_3 8u
-#define PLACEHOLDER_4 16u
-#define PLACEHOLDER_5 32u
-#define PLACEHOLDER_6 64u
-#define PLACEHOLDER_7 128u
-#define PROMISE 1
+inline constexpr sf::Color DEFAULT_COLOR{1, 1, 1, 1};
+inline constexpr std::size_t MAX_COLOR_STORAGE = 14;
+using LineState = std::uint16_t;
 
-class ACell
+namespace
 {
-    friend class Canvas;
-public:
-    bool contains(sf::Vector2u grid_coords) const;
-    bool contains(sf::Vector2f pixel_coords) const;
+constexpr std::uint16_t GENERATE_MASK_U16(unsigned int first, unsigned int last)
+{
+    return static_cast<sfml_widgets::LineState>(((UINT16_MAX >> (15 - last)) & (UINT16_MAX << first)));
+}
+}
 
-    bool operator==(const ACell& other) const;
+inline constexpr sfml_widgets::LineState LINE_SET = 1u;
+// 0 to 7
+inline constexpr unsigned int THICKNESS_OFFSET = 1u;
+inline constexpr unsigned int THICKNESS_LAST_BIT = 3u;
+inline constexpr sfml_widgets::LineState THICKNESS_MASK = GENERATE_MASK_U16(THICKNESS_OFFSET, THICKNESS_LAST_BIT);
+// 0 to 15
+inline constexpr unsigned int COLORS_OFFSET = 4u;
+inline constexpr unsigned int COLORS_LAST_BIT = 7u;
+inline constexpr sfml_widgets::LineState COLORS_MASK = GENERATE_MASK_U16(COLORS_OFFSET, COLORS_LAST_BIT);
+// 0 to 3
+inline constexpr unsigned int STATES_OFFSET = 8u;
+inline constexpr unsigned int STATES_LAST_BIT = 9u;
+inline constexpr sfml_widgets::LineState STATES_MASK = GENERATE_MASK_U16(STATES_OFFSET, STATES_LAST_BIT);
+
+enum class STATES : sfml_widgets::LineState
+{
+    None = 0u,
+    Open = 1u
+};
+
+class GridCell
+{
+public:
+    bool setOutlineThickness(DIRECTION _s, LineState thickness = 1u);
+    bool setOutlineColor(DIRECTION _s, sf::Color color = DEFAULT_COLOR);
+    bool setOutlineType(DIRECTION _s, STATES line_type = STATES::None);
+    bool setCellColor(sf::Color color);
+    std::size_t getID() const;
+    bool inRange(sf::Vector2u grid_coords) const;
+    bool inRange(sf::Vector2f pixel_coords) const;
+    bool operator==(const GridCell& other) const;
     bool operator==(std::size_t id) const;
 
 private:
-    ACell(std::size_t id);
+    GridCell(Canvas& root_canvas);
+    GridCell(GridCell&& other) = delete;
+    GridCell& operator=(GridCell&& other) = delete;
+    GridCell(const GridCell& other) = delete;
+    GridCell& operator=(const GridCell& other) = delete;
+
+    Canvas* m_root;
     std::size_t m_id{0};
-    sf::Rect<unsigned int> m_gridBounds;
-    sf::FloatRect m_pixelBounds;
+    sf::Rect<unsigned int> m_gridBounds{};
+    sf::FloatRect m_pixelBounds{};
     sf::Color bg_color{sf::Color::Transparent};
+    // store root instance pointer, indices of surrounding lines, index of cell body
+    // cell control happens here
+    // GridCell is only destroyed if
+    // 1) root is destroyed
+    // 2) cell body destroyed
+    friend class Canvas;
 };
 
 struct CoordRange
 {
-    CoordRange(sf::Vector2u start, sf::Vector2u end) : start(start), end(end)
-    {
-
-    }
-
+    CoordRange(sf::Vector2u start, sf::Vector2u end) : start(start), end(end) {}
     sf::Vector2u start;
     sf::Vector2u end;    
 };
@@ -49,44 +81,47 @@ struct CoordRange
 class Canvas : public Widget
 {
 public:
-    Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone = 0.f);
-    Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, sf::Vector2u grid, float dead_zone = 0.f);
+    Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid);
+    Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid);
     ~Canvas() override;
-    
-    Canvas(Canvas&& other) = delete;
-    Canvas& operator=(Canvas&& other) = delete;
-    Canvas(const Canvas& other) = delete;
-    Canvas& operator=(const Canvas& other) = delete;
  
-    bool drawLine(CoordRange line_range);
-    bool drawLine(sf::Vector2u start, sf::Vector2u end);
+    // lines
+    bool drawLine(CoordRange line_range, LineState thickness = 1u, sf::Color color = DEFAULT_COLOR, STATES Line_type = STATES::None);
     bool removeLine(CoordRange line_range);
-    bool removeLine(sf::Vector2u start, sf::Vector2u end);
     void clearCanvas();
+    bool setLineThickness(CoordRange line_range, LineState thickness = 1u);
+    bool setLineColor(CoordRange line_range, sf::Color = DEFAULT_COLOR);
+    bool setLineType(CoordRange line_range, STATES Line_type = STATES::None);
 
-    ACell* at(sf::Vector2u grid_coords) const;
-    ACell* at(sf::Vector2f pixel_coords) const;
-    ACell* at(std::size_t cell_id) const;
-    ACell* getSelectedCell() const;
-
+    // cells
+    GridCell* at(sf::Vector2u grid_coords) const;
+    GridCell* at(sf::Vector2f pixel_coords) const;
+    GridCell* at(std::size_t cell_id) const;
+    GridCell* getHoveredCell() const;
+    GridCell* getSelectedCell() const;
     std::size_t getCellsCount() const;
     std::size_t getMaxCellsCount() const;
 
+    // view
     sf::Vector2i getLocalPixel(sf::Vector2i mouse_position) const;
     sf::Vector2f getViewPixel(sf::Vector2i mouse_position) const;
     sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
-    std::optional<sf::Vector2u> mapCoordinates(sf::Vector2i mouse_position) const;
+    std::optional<sf::Vector2u> mapCoordsToGrid(sf::Vector2i mouse_position) const;
+    std::optional<sf::Vector2f> mapGridToCoords(sf::Vector2u grid_coordinates) const;
 
+    // other
     void setDeadZone(float surface);
+
+    // theme
     void setTheme(TextureStyle s_canvas);
     void fetchTheme() override;
     TextureStyle& style();
 
 private:
+    // widget
     bool preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position) override;
     bool postProcessMouseEvents(const W_MouseEventDetails& details, const sf::Event& event, const sf::Vector2i& mouse_position) override;
     bool postProcessKeyEvents(const sf::Event& event) override; // arrow buttons to quickly add lines
-
     void drawWidget() override;
     void config(FLAGS mask) override;
     void updatePosition() override;
@@ -95,49 +130,75 @@ private:
     void updateState() override;
     void updateTheme() override;
 
+    // helpers
+    std::size_t generateID();
+    LineState& getLine(std::size_t row, std::size_t col, std::size_t axis); //!< BEST FRIEND
+    bool setLine(sf::Vector2u start, sf::Vector2u end, LineState val);
+    
+    float getThickness(LineState line_flags);
+    sf::Color getColor(LineState line_flags);
+    STATES getState(LineState line_flags);
+    int getColorIndex(sf::Color color);
+
+    // update
+    void updateCellSize();
+    void updateBoard();
+    void _updateLines();
+    void _updateCells();
+    void _updateGrid();
+
+    // view handle
     void zoom(float delta, sf::Vector2i local_mouse_position);
     void pan(sf::Vector2i local_mouse_position);
     void limitView(sf::View& v);
 
-    void updateCellSize();
-    void updateBoard();
-    void _updateLines();
-    void _updateGrid();
-
-    std::uint8_t& getLine(std::size_t row, std::size_t col, std::size_t axis);
-    bool setLine(sf::Vector2u start, sf::Vector2u end, bool val);
-
-    std::size_t generateID();
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
-    
+
     // drawing
     sf::RenderTexture m_texture;
     sf::Sprite m_sprite;
 
     // data
-    mutable std::vector<ACell> m_cells;
-    std::vector<std::uint8_t> m_lines;
-    sf::VertexArray m_renderedlines;            //!< Added lines
-    sf::VertexArray m_renderedGridLines;        //!< GRID flag lines
+    std::vector<LineState> m_lines;
+    mutable std::vector<GridCell> m_cells;
 
+    // rendered data
+    sf::VertexArray m_renderedlines{sf::PrimitiveType::Triangles};
+    sf::VertexArray m_rendered_cells{sf::PrimitiveType::Triangles};
+    sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};
+    std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_sharedColors{};
+
+    
     // properties
-    const sf::Vector2u m_gridMapping;
     sf::Vector2f m_cellMinSize{0.f, 0.f};
     sf::Vector2i m_memMousePos{0, 0};
     TextureStyle m_style = Theme::texture_style::CANVAS_DARK_STYLE;
+    float m_zoomLevel{s_MAX_ZOOM_LEVEL};
+    float m_deadZone{0.f};
+
+    // constants
+    const sf::Vector2u m_grid;
     const std::size_t MAX_CELL_COUNT;
-    float m_zoomLevel = s_MAX_ZOOM_LEVEL;
-    float m_deadZone = 0.f;
     
     // reference
+    std::size_t m_cellID{0};
     std::size_t m_hoveredCellID{constants::KSTALE};
     std::size_t m_clickedCellID{constants::KSTALE};
     std::size_t m_selectedCellID{constants::KSTALE};
-    std::size_t m_cellID{0};
 
+    // update
+    bool m_updateLines{false};
+    bool m_updateCells{false};
     bool m_updateGridLines{false};
+
+    Canvas(Canvas&& other) = delete;
+    Canvas& operator=(Canvas&& other) = delete;
+    Canvas(const Canvas& other) = delete;
+    Canvas& operator=(const Canvas& other) = delete;
+
+    friend class GridCell;
 };
 
 template <>

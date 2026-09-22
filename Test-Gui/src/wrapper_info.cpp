@@ -406,10 +406,10 @@ void InfoWrapper::renderEditSection()
         {
             if(m_selected.enable_if_frame_ptr)
             {
-                addWidget<Canvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10}, 0.f);
+                addWidget<Canvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
                 refreshValues();
             }
-            else addWidget<Canvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10}, 0.f);
+            else addWidget<Canvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
         }
         ImGui::EndTable();
     }
@@ -1496,7 +1496,7 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
             else ImGui::TextUnformatted("(Nan, Nan)");
         },
-        [&](ACell* p)
+        [&](GridCell* p)
         {
             if(p) ImGui::Text("Cell Address: %p", p);
             else ImGui::TextUnformatted("NULL");
