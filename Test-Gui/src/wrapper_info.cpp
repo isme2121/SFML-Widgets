@@ -1496,10 +1496,10 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
             else ImGui::TextUnformatted("(Nan, Nan)");
         },
-        [&](GridCell* p)
+        [&](Canvas::CellHandle p)
         {
-            if(p) ImGui::Text("Cell Address: %p", p);
-            else ImGui::TextUnformatted("NULL");
+            if(p) ImGui::Text("Cell ID: %lu", p->getID());
+            else ImGui::TextUnformatted("None");
         },
         [&](CoordRange& v)
         {

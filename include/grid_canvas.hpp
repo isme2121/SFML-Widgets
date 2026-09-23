@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "widget.hpp"
 
 #ifdef WIDGETS_HPP
@@ -38,6 +37,39 @@ enum class STATES : sfml_widgets::LineState
     Open = 1u
 };
 
+struct CoordRange
+{
+    CoordRange(sf::Vector2u start, sf::Vector2u end) : start(start), end(end) {}
+    sf::Vector2u start{0, 0};
+    sf::Vector2u end{0, 0};
+};
+
+template<typename Num>
+struct RectRange
+{
+    static_assert(std::is_arithmetic_v<Num>, "RectRange template type is not numeric.");
+    Num x0{0}, y0{0}, x1{0}, y1{0};
+    constexpr bool inRange(sf::Vector2<Num> point) const
+    {
+        const Num minX = std::min(x0, x1);
+        const Num maxX = std::max(x0, x1);
+        const Num minY = std::min(y0, y1);
+        const Num maxY = std::max(y0, y1);
+        return (point.x >= minX) && (point.x < maxX) && (point.y >= minY) && (point.y < maxY);
+    }
+
+    constexpr bool operator==(const RectRange<Num>& other)
+    {
+        return (x0 == other.x0) && (x1 == other.x1) &&
+               (y0 == other.y0) && (y1 == other.y1);
+    }
+
+    constexpr bool operator!=(const RectRange<Num>& other)
+    {
+        return !(*this == other);
+    }
+};
+
 class GridCell
 {
 public:
@@ -50,41 +82,52 @@ public:
     bool inRange(sf::Vector2f pixel_coords) const;
     bool operator==(const GridCell& other) const;
     bool operator==(std::size_t id) const;
-
+    GridCell(Canvas& root_canvas, std::size_t id);
+    GridCell(GridCell&& other) = default;
+    GridCell& operator=(GridCell&& other) = default;
 private:
-    GridCell(Canvas& root_canvas);
-    GridCell(GridCell&& other) = delete;
-    GridCell& operator=(GridCell&& other) = delete;
+
     GridCell(const GridCell& other) = delete;
     GridCell& operator=(const GridCell& other) = delete;
 
     Canvas* m_root;
     std::size_t m_id{0};
-    sf::Rect<unsigned int> m_gridBounds{};
-    sf::FloatRect m_pixelBounds{};
+    RectRange<unsigned int> m_gridBounds{};
     sf::Color bg_color{sf::Color::Transparent};
-    // store root instance pointer, indices of surrounding lines, index of cell body
-    // cell control happens here
-    // GridCell is only destroyed if
-    // 1) root is destroyed
-    // 2) cell body destroyed
+
     friend class Canvas;
 };
 
-struct CoordRange
-{
-    CoordRange(sf::Vector2u start, sf::Vector2u end) : start(start), end(end) {}
-    sf::Vector2u start;
-    sf::Vector2u end;    
-};
 
 class Canvas : public Widget
 {
+    struct Access;
+
 public:
+    class CellHandle
+    {
+    public:
+        CellHandle() = default;
+
+        explicit operator bool() const;
+        GridCell* operator->() const;
+        GridCell& operator*() const;
+
+    private:
+        friend class Canvas;
+        CellHandle(std::weak_ptr<Access> access, std::size_t index, std::uint32_t generation);
+
+        GridCell* resolve() const;
+
+        std::weak_ptr<Access> m_access;
+        std::size_t m_index{0};
+        std::uint32_t m_generation{0};
+    };
+
     Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid);
     Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid);
     ~Canvas() override;
- 
+
     // lines
     bool drawLine(CoordRange line_range, LineState thickness = 1u, sf::Color color = DEFAULT_COLOR, STATES Line_type = STATES::None);
     bool removeLine(CoordRange line_range);
@@ -94,11 +137,11 @@ public:
     bool setLineType(CoordRange line_range, STATES Line_type = STATES::None);
 
     // cells
-    GridCell* at(sf::Vector2u grid_coords) const;
-    GridCell* at(sf::Vector2f pixel_coords) const;
-    GridCell* at(std::size_t cell_id) const;
-    GridCell* getHoveredCell() const;
-    GridCell* getSelectedCell() const;
+    CellHandle at(sf::Vector2u grid_coords) const;
+    CellHandle at(sf::Vector2f pixel_coords) const;
+    CellHandle at(std::size_t cell_id) const;
+    CellHandle getHoveredCell() const;
+    CellHandle getSelectedCell() const;
     std::size_t getCellsCount() const;
     std::size_t getMaxCellsCount() const;
 
@@ -108,6 +151,19 @@ public:
     sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
     std::optional<sf::Vector2u> mapCoordsToGrid(sf::Vector2i mouse_position) const;
     std::optional<sf::Vector2f> mapGridToCoords(sf::Vector2u grid_coordinates) const;
+
+    template<typename Tp>
+    RectRange<float> mapGridRectToCoords(RectRange<Tp> grid_rect) const
+    {
+        return
+        {
+            m_deadZone + static_cast<float>(grid_rect.x0) * m_cellMinSize.y,
+            m_deadZone + static_cast<float>(grid_rect.y0) * m_cellMinSize.x,
+            m_deadZone + static_cast<float>(grid_rect.x1 + 1) * m_cellMinSize.y,
+            m_deadZone + static_cast<float>(grid_rect.y1 + 1) * m_cellMinSize.x
+        };
+
+    }
 
     // other
     void setDeadZone(float surface);
@@ -131,14 +187,20 @@ private:
     void updateTheme() override;
 
     // helpers
-    std::size_t generateID();
     LineState& getLine(std::size_t row, std::size_t col, std::size_t axis); //!< BEST FRIEND
+    const LineState& getLine(std::size_t row, std::size_t col, std::size_t axis) const; //!< CONST BEST FRIEND
     bool setLine(sf::Vector2u start, sf::Vector2u end, LineState val);
-    
+    bool isClear(const RectRange<unsigned int>& rect) const;
+    bool isBoundarySealed(const RectRange<unsigned int>& rect) const;
     float getThickness(LineState line_flags);
     sf::Color getColor(LineState line_flags);
     STATES getState(LineState line_flags);
     int getColorIndex(sf::Color color);
+
+    std::optional<std::size_t> findIndex(sf::Vector2u grid_coords) const;
+    std::optional<std::size_t> findIndex(sf::Vector2f pixel_coords) const;
+    GridCell* getCell(std::size_t index) const;
+    CellHandle makeHandle(std::optional<std::size_t> index) const;
 
     // update
     void updateCellSize();
@@ -164,9 +226,26 @@ private:
     std::vector<LineState> m_lines;
     mutable std::vector<GridCell> m_cells;
 
+    ///////////////////////////////////////////////////////////////////
+    /// Kept alive only by this shared_ptr. CellHandle instances hold a
+    /// weak_ptr to it: once Canvas is destroyed this block goes with it,
+    /// so every outstanding handle's lock() starts failing on its own,
+    /// with no cooperation needed from Canvas at destruction time.
+    /// `generation` bumps once per `_updateCells()` pass; a handle whose
+    /// snapshot doesn't match the current generation is stale even if
+    /// Canvas is still alive, since its index may now name a different
+    /// cell or none at all.
+    ///////////////////////////////////////////////////////////////////
+    struct Access
+    {
+        Canvas* canvas{nullptr};
+        std::uint32_t generation{0};
+    };
+    std::shared_ptr<Access> m_access;
+
     // rendered data
     sf::VertexArray m_renderedlines{sf::PrimitiveType::Triangles};
-    sf::VertexArray m_rendered_cells{sf::PrimitiveType::Triangles};
+    sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};
     sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};
     std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_sharedColors{};
 
@@ -181,16 +260,16 @@ private:
     // constants
     const sf::Vector2u m_grid;
     const std::size_t MAX_CELL_COUNT;
-    
-    // reference
-    std::size_t m_cellID{0};
+
+    // reference - these are slot indices, valid only within the generation
+    // they were captured in; a rebuild resets all three, since a remembered
+    // slot may now belong to a different cell or none
     std::size_t m_hoveredCellID{constants::KSTALE};
     std::size_t m_clickedCellID{constants::KSTALE};
     std::size_t m_selectedCellID{constants::KSTALE};
 
     // update
     bool m_updateLines{false};
-    bool m_updateCells{false};
     bool m_updateGridLines{false};
 
     Canvas(Canvas&& other) = delete;
