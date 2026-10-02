@@ -377,16 +377,16 @@ namespace sfml_widgets // WidgetTheme
 {
 WidgetTheme::WidgetTheme(P) {}
 
-WidgetTheme::WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label) :
+WidgetTheme::WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas) :
 m_buttonTheme(s_button), m_frameTheme(s_texture), m_gridCanvasTheme(s_texture), m_imageFrameTheme(s_texture),
-m_checkboxTheme(s_checkbox), m_entryTheme(s_entry), m_labelTheme(s_label)
+m_checkboxTheme(s_checkbox), m_entryTheme(s_entry), m_labelTheme(s_label), m_canvasTheme(s_canvas)
 {
 
 }
 
-std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label)
+std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas)
 {
-    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, s_button, s_texture, s_checkbox, s_entry, s_label));
+    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, s_button, s_texture, s_checkbox, s_entry, s_label, s_canvas));
 }
 
 std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(const WidgetTheme& t)
@@ -402,6 +402,7 @@ void WidgetTheme::copy_theme(const WidgetTheme& t)
     {
         m_buttonTheme = t.m_buttonTheme;
         m_frameTheme = t.m_frameTheme;
+        m_canvasTheme = t.m_canvasTheme;
         m_gridCanvasTheme = t.m_gridCanvasTheme;
         m_imageFrameTheme = t.m_imageFrameTheme;
         m_checkboxTheme = t.m_checkboxTheme;

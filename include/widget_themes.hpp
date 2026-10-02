@@ -141,6 +141,30 @@ struct LabelStyle
     float text_outline_transparent_thickness;
 };
 
+struct CanvasStyle
+{
+    sf::Color fill_color;
+    sf::Color fill_hover_color;
+    sf::Color fill_active_color;
+    sf::Color fill_blocked_color;
+    sf::Color fill_transparent_color;
+
+    sf::Color outline_color;
+    sf::Color outline_hover_color;
+    sf::Color outline_active_color;
+    sf::Color outline_blocked_color;
+    sf::Color outline_transparent_color;
+
+    float outline_thickness;
+    float outline_hover_thickness;
+    float outline_active_thickness;
+    float outline_blocked_thickness;
+    float outline_transparent_thickness;
+
+    sf::Color hovered_cell_color;
+    sf::Color selected_cell_color;
+};
+
 struct ToolTipStyle
 {
     sf::Color fill_color;
@@ -186,13 +210,14 @@ private:
 
     WidgetTheme(P);
 
-    WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label);
+    WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas);
     ///////////////////////////////////////////////////////////////////
     /// @brief Various styles for each widget type
     ///////////////////////////////////////////////////////////////////
 
     ButtonStyle m_buttonTheme;
     TextureStyle m_frameTheme;
+    CanvasStyle m_canvasTheme;
     TextureStyle m_gridCanvasTheme;
     TextureStyle m_imageFrameTheme;
     CheckboxStyle m_checkboxTheme;
@@ -205,6 +230,7 @@ private:
 
     std::size_t m_buttonToken{0};
     std::size_t m_frameToken{0};
+    std::size_t m_canvasToken{0};
     std::size_t m_gridCanvasToken{0};
     std::size_t m_imageFrameToken{0};
     std::size_t m_checkboxToken{0};
@@ -229,7 +255,7 @@ public:
     /// @return shared pointer with the new `WidgetTheme` resource
     ///
     ///////////////////////////////////////////////////////////////////
-    static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label);
+    static std::shared_ptr<WidgetTheme> make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief creates a `WidgetTheme` resource with copy constructor
@@ -2273,6 +2299,345 @@ constexpr LabelStyle LABEL_SANDSTONE_DUNE =
 };
 };
 
+namespace canvas_style
+{
+constexpr CanvasStyle CANVAS_LIGHT_STYLE =
+{
+    {245, 245, 247, 255},
+    {245, 245, 247, 255},
+    {245, 245, 247, 255},
+    {220, 220, 223, 255},
+    {255, 255, 255, 15},
+
+    {205, 205, 212, 255},
+    {205, 205, 212, 255},
+    {205, 205, 212, 255},
+    {215, 215, 218, 255},
+    {185, 185, 198, 70},
+
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    2.0f,
+
+    {228, 228, 231, 255},
+    {205, 205, 210, 255}
+};
+
+constexpr sfml_widgets::CanvasStyle CANVAS_DARK_STYLE =
+{
+    {28, 28, 32, 255},
+    {28, 28, 32, 255},
+    {28, 28, 32, 255},
+    {34, 34, 38, 255},
+    {28, 28, 32, 15},
+
+    {58, 58, 68, 255},
+    {58, 58, 68, 255},
+    {58, 58, 68, 255},
+    {44, 44, 50, 255},
+    {78, 78, 95, 72},
+
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    2.0f,
+
+    {20, 20, 23, 255},
+    {46, 46, 53, 255}
+};
+
+constexpr CanvasStyle CANVAS_STALE_VIOLET =
+{
+    {30, 27, 46},
+    {45, 40, 72},
+    {76, 63, 160},
+    {22, 22, 32},
+    {30, 27, 46, 80},
+
+    {90, 80, 180},
+    {120, 108, 220},
+    {150, 138, 240},
+    {55, 52, 80},
+    {90, 80, 180, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {36, 32, 58, 255},
+    {58, 50, 98, 255}
+};
+
+constexpr CanvasStyle CANVAS_CARBON_CYAN =
+{
+    {20, 22, 26},
+    {28, 32, 38},
+    {12, 60, 72},
+    {18, 18, 20},
+    {20, 22, 26, 80},
+
+    {30, 180, 200},
+    {50, 210, 225},
+    {80, 230, 240},
+    {40, 55, 58},
+    {30, 180, 200, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {22, 26, 31, 255},
+    {16, 50, 58, 255}
+};
+
+constexpr CanvasStyle CANVAS_OBSIDIAN_EMBER =
+{
+    {22, 20, 18},
+    {34, 28, 22},
+    {80, 42, 14},
+    {20, 18, 16},
+    {22, 20, 18, 80},
+
+    {200, 100, 40},
+    {230, 120, 50},
+    {250, 140, 60},
+    {55, 45, 35},
+    {200, 100, 40, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {28, 23, 18, 255},
+    {62, 36, 18, 255}
+};
+
+constexpr CanvasStyle CANVAS_MIDNIGHT_ROSE =
+{
+    {22, 18, 26},
+    {36, 26, 40},
+    {80, 24, 50},
+    {20, 16, 22},
+    {22, 18, 26, 80},
+
+    {180, 60, 100},
+    {210, 80, 120},
+    {240, 100, 140},
+    {55, 40, 52},
+    {180, 60, 100, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {29, 21, 33, 255},
+    {62, 22, 42, 255}
+};
+
+constexpr CanvasStyle CANVAS_EMERALD_FOREST =
+{
+    {24, 32, 26},
+    {47, 54, 49},
+    {36, 97, 64},
+    {18, 24, 20},
+    {24, 32, 26, 80},
+
+    {38, 109, 71},
+    {71, 131, 99},
+    {103, 153, 126},
+    {17, 49, 32},
+    {38, 109, 71, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {36, 42, 38, 255},
+    {28, 68, 46, 255}
+};
+
+constexpr CanvasStyle CANVAS_GOLDEN_AMBER =
+{
+    {34, 28, 18},
+    {56, 51, 42},
+    {128, 95, 30},
+    {26, 21, 14},
+    {34, 28, 18, 80},
+
+    {145, 107, 32},
+    {162, 129, 65},
+    {178, 151, 99},
+    {65, 48, 14},
+    {145, 107, 32, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {44, 39, 31, 255},
+    {92, 68, 24, 255}
+};
+
+constexpr CanvasStyle CANVAS_CRIMSON_ASH =
+{
+    {32, 20, 20},
+    {54, 44, 44},
+    {122, 39, 41},
+    {24, 15, 15},
+    {32, 20, 20, 80},
+
+    {138, 43, 45},
+    {156, 75, 76},
+    {173, 107, 108},
+    {62, 19, 20},
+    {138, 43, 45, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {42, 33, 33, 255},
+    {86, 30, 31, 255}
+};
+
+constexpr CanvasStyle CANVAS_STEEL_GRAPHITE =
+{
+    {24, 26, 30},
+    {47, 49, 52},
+    {69, 80, 96},
+    {18, 20, 22},
+    {24, 26, 30, 80},
+
+    {77, 90, 108},
+    {104, 115, 130},
+    {130, 140, 152},
+    {35, 40, 49},
+    {77, 90, 108, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {36, 38, 41, 255},
+    {50, 58, 68, 255}
+};
+
+constexpr CanvasStyle CANVAS_LAVENDER_DUSK =
+{
+    {28, 24, 34},
+    {51, 47, 56},
+    {98, 80, 123},
+    {21, 18, 26},
+    {28, 24, 34, 80},
+
+    {111, 90, 139},
+    {133, 115, 156},
+    {154, 140, 174},
+    {50, 40, 63},
+    {111, 90, 139, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {38, 35, 44, 255},
+    {66, 56, 84, 255}
+};
+
+constexpr CanvasStyle CANVAS_SKY_AZURE =
+{
+    {18, 24, 34},
+    {42, 47, 56},
+    {41, 85, 139},
+    {14, 18, 26},
+    {18, 24, 34, 80},
+
+    {45, 96, 158},
+    {76, 120, 173},
+    {108, 144, 187},
+    {20, 43, 71},
+    {45, 96, 158, 120},
+
+    2.0f,
+    2.0f,
+    2.0f,
+    1.0f,
+    2.0f,
+
+    {30, 35, 44, 255},
+    {28, 58, 94, 255}
+};
+
+constexpr CanvasStyle CANVAS_ARCTIC_FROST =
+{
+    {246, 248, 250},
+    {229, 231, 232},
+    {209, 225, 241},
+    {231, 233, 235},
+    {246, 248, 250, 15},
+
+    {212, 213, 215},
+    {197, 198, 200},
+    {144, 186, 225},
+    {212, 213, 215},
+    {212, 213, 215, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+
+    {214, 216, 218, 255},
+    {196, 216, 238, 255}
+};
+
+constexpr CanvasStyle CANVAS_SANDSTONE_DUNE =
+{
+    {250, 244, 235},
+    {232, 227, 219},
+    {240, 217, 202},
+    {235, 229, 221},
+    {250, 244, 235, 15},
+
+    {215, 210, 202},
+    {200, 195, 188},
+    {222, 170, 144},
+    {215, 210, 202},
+    {215, 210, 202, 70},
+
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+
+    {216, 211, 203, 255},
+    {232, 202, 178, 255}
+};
+}
+
 namespace tooltip_style
 {
 constexpr ToolTipStyle TOOLTIP_DEFAULT_DARK = 
@@ -2374,20 +2739,20 @@ constexpr sfml_widgets::CellColor DARK_CELL = {
     1.f, 1.f, 0.f, 0.f
 };
 
-inline static std::shared_ptr<WidgetTheme> dark_theme = WidgetTheme::make_theme(button_style::BUTTON_DARK_STYLE, texture_style::DEFAULT_DARK_STYLE, checkbox_style::CHECKBOX_DARK_STYLE, entry_style::ENTRY_DARK_STYLE, label_style::LABEL_DARK_STYLE);
-inline static std::shared_ptr<WidgetTheme> light_theme = WidgetTheme::make_theme(button_style::BUTTON_LIGHT_STYLE, texture_style::DEFAULT_LIGHT_STYLE, checkbox_style::CHECKBOX_LIGHT_STYLE, entry_style::ENTRY_LIGHT_STYLE, label_style::LABEL_LIGHT_STYLE);
-inline static std::shared_ptr<WidgetTheme> stale_violet_theme = WidgetTheme::make_theme(button_style::BUTTON_STALE_VIOLET, texture_style::STYLE_STALE_VIOLET, checkbox_style::CHECKBOX_STALE_VIOLET, entry_style::ENTRY_STALE_VIOLET, label_style::LABEL_SLATE_VIOLET);
-inline static std::shared_ptr<WidgetTheme> carbon_cyan_theme = WidgetTheme::make_theme(button_style::BUTTON_CARBON_CYAN, texture_style::STYLE_CARBON_CYAN, checkbox_style::CHECKBOX_CARBON_CYAN, entry_style::ENTRY_CARBON_CYAN, label_style::LABEL_CARBON_CYAN);
-inline static std::shared_ptr<WidgetTheme> midnight_rose_theme = WidgetTheme::make_theme(button_style::BUTTON_MIDNIGHT_ROSE, texture_style::STYLE_MIDNIGHT_ROSE, checkbox_style::CHECKBOX_MIDNIGHT_ROSE, entry_style::ENTRY_MIDNIGHT_ROSE, label_style::LABEL_MIDNIGHT_ROSE);
-inline static std::shared_ptr<WidgetTheme> obsidian_ember_theme = WidgetTheme::make_theme(button_style::BUTTON_OBSIDIAN_EMBER, texture_style::STYLE_OBSIDIAN_EMBER, checkbox_style::CHECKBOX_OBSIDIAN_EMBER, entry_style::ENTRY_OBSIDIAN_EMBER, label_style::LABEL_OBSIDIAN_EMBER);
-inline static std::shared_ptr<WidgetTheme> emerald_forest_theme = WidgetTheme::make_theme(button_style::BUTTON_EMERALD_FOREST, texture_style::TEXTURE_EMERALD_FOREST, checkbox_style::CHECKBOX_EMERALD_FOREST, entry_style::ENTRY_EMERALD_FOREST, label_style::LABEL_EMERALD_FOREST);
-inline static std::shared_ptr<WidgetTheme> golden_amber_theme = WidgetTheme::make_theme(button_style::BUTTON_GOLDEN_AMBER, texture_style::TEXTURE_GOLDEN_AMBER, checkbox_style::CHECKBOX_GOLDEN_AMBER, entry_style::ENTRY_GOLDEN_AMBER, label_style::LABEL_GOLDEN_AMBER);
-inline static std::shared_ptr<WidgetTheme> crimson_ash_theme = WidgetTheme::make_theme(button_style::BUTTON_CRIMSON_ASH, texture_style::TEXTURE_CRIMSON_ASH, checkbox_style::CHECKBOX_CRIMSON_ASH, entry_style::ENTRY_CRIMSON_ASH, label_style::LABEL_CRIMSON_ASH);
-inline static std::shared_ptr<WidgetTheme> steel_graphite_theme = WidgetTheme::make_theme(button_style::BUTTON_STEEL_GRAPHITE, texture_style::TEXTURE_STEEL_GRAPHITE, checkbox_style::CHECKBOX_STEEL_GRAPHITE, entry_style::ENTRY_STEEL_GRAPHITE, label_style::LABEL_STEEL_GRAPHITE);
-inline static std::shared_ptr<WidgetTheme> lavender_dusk_theme = WidgetTheme::make_theme(button_style::BUTTON_LAVENDER_DUSK, texture_style::TEXTURE_LAVENDER_DUSK, checkbox_style::CHECKBOX_LAVENDER_DUSK, entry_style::ENTRY_LAVENDER_DUSK, label_style::LABEL_LAVENDER_DUSK);
-inline static std::shared_ptr<WidgetTheme> sky_azure_theme = WidgetTheme::make_theme(button_style::BUTTON_SKY_AZURE, texture_style::TEXTURE_SKY_AZURE, checkbox_style::CHECKBOX_SKY_AZURE, entry_style::ENTRY_SKY_AZURE, label_style::LABEL_SKY_AZURE);
-inline static std::shared_ptr<WidgetTheme> arctic_frost_theme = WidgetTheme::make_theme(button_style::BUTTON_ARCTIC_FROST, texture_style::TEXTURE_ARCTIC_FROST, checkbox_style::CHECKBOX_ARCTIC_FROST, entry_style::ENTRY_ARCTIC_FROST, label_style::LABEL_ARCTIC_FROST);
-inline static std::shared_ptr<WidgetTheme> sandstone_dune_theme = WidgetTheme::make_theme(button_style::BUTTON_SANDSTONE_DUNE, texture_style::TEXTURE_SANDSTONE_DUNE, checkbox_style::CHECKBOX_SANDSTONE_DUNE, entry_style::ENTRY_SANDSTONE_DUNE, label_style::LABEL_SANDSTONE_DUNE);
+inline static std::shared_ptr<WidgetTheme> dark_theme = WidgetTheme::make_theme(button_style::BUTTON_DARK_STYLE, texture_style::DEFAULT_DARK_STYLE, checkbox_style::CHECKBOX_DARK_STYLE, entry_style::ENTRY_DARK_STYLE, label_style::LABEL_DARK_STYLE, canvas_style::CANVAS_DARK_STYLE);
+inline static std::shared_ptr<WidgetTheme> light_theme = WidgetTheme::make_theme(button_style::BUTTON_LIGHT_STYLE, texture_style::DEFAULT_LIGHT_STYLE, checkbox_style::CHECKBOX_LIGHT_STYLE, entry_style::ENTRY_LIGHT_STYLE, label_style::LABEL_LIGHT_STYLE, canvas_style::CANVAS_LIGHT_STYLE);
+inline static std::shared_ptr<WidgetTheme> stale_violet_theme = WidgetTheme::make_theme(button_style::BUTTON_STALE_VIOLET, texture_style::STYLE_STALE_VIOLET, checkbox_style::CHECKBOX_STALE_VIOLET, entry_style::ENTRY_STALE_VIOLET, label_style::LABEL_SLATE_VIOLET, canvas_style::CANVAS_STALE_VIOLET);
+inline static std::shared_ptr<WidgetTheme> carbon_cyan_theme = WidgetTheme::make_theme(button_style::BUTTON_CARBON_CYAN, texture_style::STYLE_CARBON_CYAN, checkbox_style::CHECKBOX_CARBON_CYAN, entry_style::ENTRY_CARBON_CYAN, label_style::LABEL_CARBON_CYAN, canvas_style::CANVAS_CARBON_CYAN);
+inline static std::shared_ptr<WidgetTheme> midnight_rose_theme = WidgetTheme::make_theme(button_style::BUTTON_MIDNIGHT_ROSE, texture_style::STYLE_MIDNIGHT_ROSE, checkbox_style::CHECKBOX_MIDNIGHT_ROSE, entry_style::ENTRY_MIDNIGHT_ROSE, label_style::LABEL_MIDNIGHT_ROSE, canvas_style::CANVAS_MIDNIGHT_ROSE);
+inline static std::shared_ptr<WidgetTheme> obsidian_ember_theme = WidgetTheme::make_theme(button_style::BUTTON_OBSIDIAN_EMBER, texture_style::STYLE_OBSIDIAN_EMBER, checkbox_style::CHECKBOX_OBSIDIAN_EMBER, entry_style::ENTRY_OBSIDIAN_EMBER, label_style::LABEL_OBSIDIAN_EMBER, canvas_style::CANVAS_OBSIDIAN_EMBER);
+inline static std::shared_ptr<WidgetTheme> emerald_forest_theme = WidgetTheme::make_theme(button_style::BUTTON_EMERALD_FOREST, texture_style::TEXTURE_EMERALD_FOREST, checkbox_style::CHECKBOX_EMERALD_FOREST, entry_style::ENTRY_EMERALD_FOREST, label_style::LABEL_EMERALD_FOREST, canvas_style::CANVAS_EMERALD_FOREST);
+inline static std::shared_ptr<WidgetTheme> golden_amber_theme = WidgetTheme::make_theme(button_style::BUTTON_GOLDEN_AMBER, texture_style::TEXTURE_GOLDEN_AMBER, checkbox_style::CHECKBOX_GOLDEN_AMBER, entry_style::ENTRY_GOLDEN_AMBER, label_style::LABEL_GOLDEN_AMBER, canvas_style::CANVAS_GOLDEN_AMBER);
+inline static std::shared_ptr<WidgetTheme> crimson_ash_theme = WidgetTheme::make_theme(button_style::BUTTON_CRIMSON_ASH, texture_style::TEXTURE_CRIMSON_ASH, checkbox_style::CHECKBOX_CRIMSON_ASH, entry_style::ENTRY_CRIMSON_ASH, label_style::LABEL_CRIMSON_ASH, canvas_style::CANVAS_CRIMSON_ASH);
+inline static std::shared_ptr<WidgetTheme> steel_graphite_theme = WidgetTheme::make_theme(button_style::BUTTON_STEEL_GRAPHITE, texture_style::TEXTURE_STEEL_GRAPHITE, checkbox_style::CHECKBOX_STEEL_GRAPHITE, entry_style::ENTRY_STEEL_GRAPHITE, label_style::LABEL_STEEL_GRAPHITE, canvas_style::CANVAS_STEEL_GRAPHITE);
+inline static std::shared_ptr<WidgetTheme> lavender_dusk_theme = WidgetTheme::make_theme(button_style::BUTTON_LAVENDER_DUSK, texture_style::TEXTURE_LAVENDER_DUSK, checkbox_style::CHECKBOX_LAVENDER_DUSK, entry_style::ENTRY_LAVENDER_DUSK, label_style::LABEL_LAVENDER_DUSK, canvas_style::CANVAS_LAVENDER_DUSK);
+inline static std::shared_ptr<WidgetTheme> sky_azure_theme = WidgetTheme::make_theme(button_style::BUTTON_SKY_AZURE, texture_style::TEXTURE_SKY_AZURE, checkbox_style::CHECKBOX_SKY_AZURE, entry_style::ENTRY_SKY_AZURE, label_style::LABEL_SKY_AZURE, canvas_style::CANVAS_SKY_AZURE);
+inline static std::shared_ptr<WidgetTheme> arctic_frost_theme = WidgetTheme::make_theme(button_style::BUTTON_ARCTIC_FROST, texture_style::TEXTURE_ARCTIC_FROST, checkbox_style::CHECKBOX_ARCTIC_FROST, entry_style::ENTRY_ARCTIC_FROST, label_style::LABEL_ARCTIC_FROST, canvas_style::CANVAS_ARCTIC_FROST);
+inline static std::shared_ptr<WidgetTheme> sandstone_dune_theme = WidgetTheme::make_theme(button_style::BUTTON_SANDSTONE_DUNE, texture_style::TEXTURE_SANDSTONE_DUNE, checkbox_style::CHECKBOX_SANDSTONE_DUNE, entry_style::ENTRY_SANDSTONE_DUNE, label_style::LABEL_SANDSTONE_DUNE, canvas_style::CANVAS_SANDSTONE_DUNE);
 }
 }
 #endif

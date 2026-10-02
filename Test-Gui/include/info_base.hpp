@@ -27,7 +27,7 @@ using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, st
                            Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
                            DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign, Cell*,
                            sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>, Canvas::CellHandle, CoordRange, const Frame*, const sf::RenderWindow*>;
+                           std::optional<sf::Vector2u>, Canvas::cell_ptr, RectRange<unsigned int>, const Frame*, const sf::RenderWindow*>;
 
 // Compile time check if a type is part of our variant
 template<typename T, typename variant_t> struct is_part_of_variant;
@@ -1016,6 +1016,7 @@ struct AccessorsLink<Canvas>
         set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapLocalToView(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "coords to grid" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapCoordsToGrid(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
+        set_lookup(vec, "hovered cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getHoveredCell();}, EnumSection::Pointer);
         set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getSelectedCell();}, EnumSection::Pointer);
         set_lookup(vec, "cell count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getCellsCount();}, EnumSection::State);
         set_lookup(vec, "cell max count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getMaxCellsCount();}, EnumSection::State);
@@ -1023,13 +1024,13 @@ struct AccessorsLink<Canvas>
         /* Setters */
         set_lookup(vec, "draw line" ,+[](void* w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<CoordRange>(&v))
+            if(const auto* s = std::get_if<RectRange<unsigned int>>(&v))
                 return invoke_setter([&]{return static_cast<Canvas*>(w)->drawLine(*s);});
             return false;
         }, EnumSection::Any);
         set_lookup(vec, "remove line" ,+[](void* w, const Accessed_t& v) -> bool
         {
-            if(const auto* s = std::get_if<CoordRange>(&v))
+            if(const auto* s = std::get_if<RectRange<unsigned int>>(&v))
                 return invoke_setter([&]{return static_cast<Canvas*>(w)->removeLine(*s);});
             return false;
         }, EnumSection::Any);

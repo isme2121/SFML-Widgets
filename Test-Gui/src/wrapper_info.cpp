@@ -176,12 +176,12 @@ void InfoWrapper::trySetFromText(const std::string& key, const std::string& text
             if(try_set_from_val(Accessed_t(sf::Vector2f(fx, fy)))) return;
     }
 
-    // CoordRange
+    // RectRange
     {
         sf::Vector2u start, end;
         if(std::sscanf(text.c_str(), "%u , %u , %u , %u", &start.x, &start.y, &end.x, &end.y) == 4 ||
            std::sscanf(text.c_str(), "%u %u %u %u", &start.x, &start.y, &end.x, &end.y) == 4)
-            if(try_set_from_val(Accessed_t(CoordRange(start, end)))) return;
+            if(try_set_from_val(Accessed_t(RectRange<unsigned int>{start.x, start.y, end.x, end.y}))) return;
     }
     // unsigned int types
     if(!text.empty())
@@ -1496,14 +1496,14 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
             else ImGui::TextUnformatted("(Nan, Nan)");
         },
-        [&](Canvas::CellHandle p)
+        [&](Canvas::cell_ptr p)
         {
             if(p) ImGui::Text("Cell ID: %lu", p->getID());
             else ImGui::TextUnformatted("None");
         },
-        [&](CoordRange& v)
+        [&](RectRange<unsigned int>& v)
         {
-            ImGui::Text("start(%u, %u) end(%u, %u)", v.start.x, v.start.y, v.end.x, v.end.y);
+            ImGui::Text("start(%u, %u) end(%u, %u)", v.x0, v.y0, v.x1, v.y1);
         },
         [&](const sf::RenderWindow* p)
         {

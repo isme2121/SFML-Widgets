@@ -1,45 +1,75 @@
 #include "frame.hpp"
 #include "grid_canvas.hpp"
+#include <iostream>
 
 namespace
 {
+///////////////////////////////////////////////////////////////////
+/// @brief Multiplies bit mask with flags then right shifts (reduce) with offset,
+/// Used to convert a flag to uint value
+///
+/// @param flags line state value 
+/// @param mask desired range to keep
+/// @param offset right shift bit offset
+/// @return uint value representing flag value
+///////////////////////////////////////////////////////////////////
 constexpr sfml_widgets::LineState apply_mask(sfml_widgets::LineState flags, sfml_widgets::LineState mask, unsigned int offset = 0)
 {
     return (flags & mask) >> offset;
 }
 
+///////////////////////////////////////////////////////////////////
+/// @brief Left shifts flags value by shift bits, used to convert a
+/// uint value to it's corresponding flag value
+///
+/// @param flags value to shift
+/// @param shift number of bits to shift
+/// @return shifted value
+///////////////////////////////////////////////////////////////////
 constexpr sfml_widgets::LineState apply_shift(sfml_widgets::LineState flags, unsigned int shift = 0)
 {
     return flags << shift;
 }
 
-void append_rectangle(sf::VertexArray& array, sf::FloatRect rect, sf::Color color = sf::Color::Black)
+///////////////////////////////////////////////////////////////////
+/// @brief Adds a double triangle vertex block to array representing
+/// a rectangular shape
+///
+/// @param array array reference 
+/// @param rect vertex rect position + size in pixels
+/// @param color rectangle fill color
+///
+///////////////////////////////////////////////////////////////////
+void append_rectangle(sf::VertexArray& array, sfml_widgets::RectRange<float> rect, sf::Color color = sf::Color::Black)
 {
-    const float X0 = rect.position.x;
-    const float Y0 = rect.position.y;
-    const float X1 = X0 + rect.size.x;
-    const float Y1 = Y0 + rect.size.y;
-
     const std::size_t offset = array.getVertexCount();
     array.resize(offset + 6);
-    array[offset + 0] = sf::Vertex{{X0, Y0}, color};
-    array[offset + 1] = sf::Vertex{{X1, Y0}, color};
-    array[offset + 2] = sf::Vertex{{X1, Y1}, color};
-    array[offset + 3] = sf::Vertex{{X1, Y1}, color};
-    array[offset + 4] = sf::Vertex{{X0, Y1}, color};
-    array[offset + 5] = sf::Vertex{{X0, Y0}, color};
-}
- 
-std::uint64_t pack_bounds(unsigned int r0, unsigned int c0, unsigned int r1, unsigned int c1)
-{
-    return (static_cast<std::uint64_t>(r0) << 48) |
-           (static_cast<std::uint64_t>(c0) << 32) |
-           (static_cast<std::uint64_t>(r1) << 16) |
-            static_cast<std::uint64_t>(c1);
+    array[offset + 0] = sf::Vertex{{rect.x0, rect.y0}, color};
+    array[offset + 1] = sf::Vertex{{rect.x1, rect.y0}, color};
+    array[offset + 2] = sf::Vertex{{rect.x1, rect.y1}, color};
+    array[offset + 3] = sf::Vertex{{rect.x1, rect.y1}, color};
+    array[offset + 4] = sf::Vertex{{rect.x0, rect.y1}, color};
+    array[offset + 5] = sf::Vertex{{rect.x0, rect.y0}, color};
 }
 
+///////////////////////////////////////////////////////////////////
+/// @brief Creates a uint64 value to represents the rect's bounds
+///
+///////////////////////////////////////////////////////////////////
+std::uint64_t pack_bounds(sfml_widgets::RectRange<unsigned int> rect)
+{
+    return (static_cast<std::uint64_t>(rect.x0) << 48) |
+           (static_cast<std::uint64_t>(rect.y0) << 32) |
+           (static_cast<std::uint64_t>(rect.x1) << 16) |
+            static_cast<std::uint64_t>(rect.y1);
+}
+
+///////////////////////////////////////////////////////////////////
+/// @brief iota generator
+///
+///////////////////////////////////////////////////////////////////
 template<typename NumIterator, typename Num>
-void walmart_iota(NumIterator first, NumIterator last, Num val)
+void gen_iota(NumIterator first, NumIterator last, Num val)
 {
     for(;first != last; ++first)
     {
@@ -51,72 +81,117 @@ void walmart_iota(NumIterator first, NumIterator last, Num val)
 
 namespace sfml_widgets // GridCell
 {
-GridCell::GridCell(Canvas& root_canvas, std::size_t id) : m_root(&root_canvas), m_id(id)
-{
-
-}
-
-bool GridCell::setOutlineThickness(DIRECTION _s, LineState thickness)
-{
-
-}
-
-bool GridCell::setOutlineColor(DIRECTION _s, sf::Color color)
-{
-
-}
-
-bool GridCell::setOutlineType(DIRECTION _s, STATES line_type)
+GridCell::GridCell(Canvas& root_canvas, std::size_t id) : Proot(&root_canvas), id(id)
 {
 
 }
 
 bool GridCell::setCellColor(sf::Color color)
 {
-
+    fill_color = color;
+    Proot->_refreshCellColor(id);
+    return true;
 }
 
-std::size_t GridCell::getID() const
+bool GridCell::setOutlineThickness(DIRECTION _s, LineState thickness)
 {
-    return m_id;
+    return Proot->setLineThickness(getLineRange(_s), thickness);
+}
+
+bool GridCell::setOutlineColor(DIRECTION _s, sf::Color color)
+{
+    return Proot->setLineColor(getLineRange(_s), color);
+}
+
+bool GridCell::setOutlineType(DIRECTION _s, LineType line_type)
+{
+    return Proot->setLineType(getLineRange(_s), line_type);
 }
 
 bool GridCell::inRange(sf::Vector2u grid_coords) const
 {
-    return m_gridBounds.inRange(grid_coords);
+    return grid.inRange(grid_coords);
 }
 
 bool GridCell::inRange(sf::Vector2f pixel_coords) const
 {
-    RectRange<float> frange = m_root->mapGridRectToCoords(m_gridBounds);
+    RectRange<float> frange = Proot->mapGridRectToCoords(grid);
     return frange.inRange(pixel_coords);
+}
+
+std::size_t GridCell::getID() const
+{
+    return id;
 }
 
 bool GridCell::operator==(const GridCell& other) const
 {
-    return m_id == other.m_id;
+    return this->id == other.id;
 }
 
 bool GridCell::operator==(std::size_t id) const
 {
-    return m_id == id;
+    return this->id == id;
+}
+
+RectRange<unsigned int> GridCell::getLineRange(DIRECTION _s) const
+{
+    RectRange<unsigned int> rect;
+
+    /* rect and canvas identify ranges differently where
+    * rect ==> [x0, x1]
+    * canvas ==> [x0, x1[
+    * so +1 is added to the end range when talking to canvas
+    */
+
+    switch (_s)
+    {
+    case DIRECTION::TOP:
+        rect.x0 = grid.x0;
+        rect.x1 = grid.x0;
+        rect.y0 = grid.y0;
+        rect.y1 = grid.y1 + 1;
+        break;
+
+    case DIRECTION::BOTTOM:
+        rect.x0 = grid.x1 + 1;
+        rect.x1 = grid.x1 + 1;
+        rect.y0 = grid.y0;
+        rect.y1 = grid.y1 + 1;
+        break;
+
+    case DIRECTION::LEFT:
+        rect.x0 = grid.x0;
+        rect.x1 = grid.x1 + 1;
+        rect.y0 = grid.y0;
+        rect.y1 = grid.y0;
+        break;
+
+    case DIRECTION::RIGHT:
+        rect.x0 = grid.x0;
+        rect.x1 = grid.x1 + 1;
+        rect.y0 = grid.y1 + 1;
+        rect.y1 = grid.y1 + 1;
+        break;
+    }
+    return rect;
 }
 }
 
-namespace sfml_widgets // CellHandle
+namespace sfml_widgets // cell_ptr
 {
-Canvas::CellHandle::CellHandle(std::weak_ptr<Access> access, std::size_t index, std::uint32_t generation) :
+Canvas::cell_ptr::cell_ptr(std::weak_ptr<Access> access, std::size_t index, std::uint32_t generation) :
 m_access(std::move(access)), m_index(index), m_generation(generation)
 {
 
 }
 
-Canvas::CellHandle::operator bool() const
+Canvas::cell_ptr::operator bool() const
 {
     return resolve() != nullptr;
 }
 
-GridCell* Canvas::CellHandle::operator->() const
+GridCell* Canvas::cell_ptr::operator->() const
 {
     GridCell* cell = resolve();
     if(!cell)
@@ -127,12 +202,12 @@ GridCell* Canvas::CellHandle::operator->() const
     return cell;
 }
 
-GridCell& Canvas::CellHandle::operator*() const
+GridCell& Canvas::cell_ptr::operator*() const
 {
     return *operator->();
 }
 
-GridCell* Canvas::CellHandle::resolve() const
+GridCell* Canvas::cell_ptr::resolve() const
 {
     const std::shared_ptr<Access> locked = m_access.lock();
     if(!locked || locked->generation != m_generation) return nullptr;
@@ -143,14 +218,14 @@ GridCell* Canvas::CellHandle::resolve() const
 namespace sfml_widgets // Canvas
 {
 Canvas::Canvas(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid) : Widget(window, position, size),
-m_texture(size), m_sprite(m_texture.getTexture()),MAX_CELL_COUNT(grid.x * grid.y), m_grid(grid) 
+m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * grid.y), m_grid(grid) 
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
     m_lines.assign(static_cast<std::size_t>(m_grid.x * m_grid.y * 2 + m_grid.x + m_grid.y), 0u);
-    m_cells.reserve(MAX_CELL_COUNT);
+    m_cells.reserve(m_MAX_CELL_COUNT);
     m_access = std::make_shared<Access>(Access{this, 0u});
 
     setWidgetPosition(m_position);
@@ -160,14 +235,14 @@ m_texture(size), m_sprite(m_texture.getTexture()),MAX_CELL_COUNT(grid.x * grid.y
 }
 
 Canvas::Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid) : Widget(root, position, size),
-m_texture(size), m_sprite(m_texture.getTexture()),MAX_CELL_COUNT(grid.x * grid.y), m_grid(grid)
+m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * grid.y), m_grid(grid)
 {
     m_currentBgColorPtr = &m_style.fill_color;
     m_currentOutlineColorPtr = &m_style.outline_color;
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
     m_lines.assign(static_cast<std::size_t>(m_grid.x * m_grid.y * 2 + m_grid.x + m_grid.y), 0u);
-    m_cells.reserve(MAX_CELL_COUNT);
+    m_cells.reserve(m_MAX_CELL_COUNT);
     m_access = std::make_shared<Access>(Access{this, 0u});
 
     setWidgetPosition(m_position);
@@ -181,100 +256,91 @@ Canvas::~Canvas()
 
 }
 
-bool Canvas::drawLine(CoordRange line_range, LineState thickness, sf::Color color, STATES state)
+bool Canvas::drawLine(RectRange<unsigned int> line_range, LineState thickness, sf::Color color, LineType state)
 {
     LineState val{LINE_SET};
 
     if(thickness < (1 << THICKNESS_LAST_BIT))
         val |= apply_mask(apply_shift(thickness, THICKNESS_OFFSET), THICKNESS_MASK);
 
-    if(state != STATES::None)
-        val |= apply_mask(apply_shift(static_cast<LineState>(state), STATES_OFFSET), STATES_MASK);
-
     if(color != DEFAULT_COLOR)
     {
-        int idx = getColorIndex(color);
+        int idx = _getColorIndex(color);
+        // -1 ==> take canvas outline color
+        // 0-13 ==> index for color
         if(idx != -1) val |= apply_mask(apply_shift(idx + 1, COLORS_OFFSET), COLORS_MASK);
     }
 
-    return setLine(line_range.start, line_range.end, val);
+    if(state != LineType::None)
+        val |= apply_mask(apply_shift(static_cast<LineState>(state), TYPE_OFFSET), TYPE_MASK);
+
+    return setLine(line_range, val);
 }
 
-bool Canvas::removeLine(CoordRange line_range)
+bool Canvas::removeLine(RectRange<unsigned int> line_range)
 {
-    return setLine(line_range.start, line_range.end, 0u);
+    return setLine(line_range, 0u);
 }
 
 void Canvas::clearCanvas()
 {
     std::fill(m_lines.begin(), m_lines.end(), 0u);
-    setFlag(m_flags, FLAGS::UPDATE);
+    m_updateLines = true;
+    m_updateCells = true;
 }
 
-bool Canvas::setLineThickness(CoordRange line_range, LineState thickness)
+bool Canvas::setLineThickness(RectRange<unsigned int> line_range, LineState thickness)
 {
+    LineState val{LINE_SET};
 
+    if(thickness < (1 << THICKNESS_LAST_BIT))
+    {
+        val |= apply_mask(apply_shift(thickness, THICKNESS_OFFSET), THICKNESS_MASK);
+        return _setLineValue(line_range, val, THICKNESS_OFF, false);
+    }
+    return false;
 }
 
-bool Canvas::setLineColor(CoordRange line_range, sf::Color)
+bool Canvas::setLineColor(RectRange<unsigned int> line_range, sf::Color color)
 {
+    LineState val{LINE_SET};
 
+    int idx = _getColorIndex(color);
+    if(idx != -1) val |= apply_mask(apply_shift(idx + 1, COLORS_OFFSET), COLORS_MASK);
+    return _setLineValue(line_range, val, COLORS_OFF, false);
 }
 
-bool Canvas::setLineType(CoordRange line_range, STATES Line_type)
+bool Canvas::setLineType(RectRange<unsigned int> line_range, LineType Line_type)
 {
+    LineState val{LINE_SET};
 
+    if(Line_type != LineType::None) val |= apply_mask(apply_shift(static_cast<LineState>(Line_type), TYPE_OFFSET), TYPE_MASK);
+    return _setLineValue(line_range, val, TYPE_OFF, false);
 }
 
-std::optional<std::size_t> Canvas::findIndex(sf::Vector2u grid_coords) const
+Canvas::cell_ptr Canvas::at(sf::Vector2u grid_coords) const
 {
-    for(std::size_t i{0}; i < m_cells.size(); ++i)
-        if(m_cells[i].inRange(grid_coords)) return i;
-    return std::nullopt;
+    return makeHandle(getCellIndex(grid_coords));
 }
 
-std::optional<std::size_t> Canvas::findIndex(sf::Vector2f pixel_coords) const
+Canvas::cell_ptr Canvas::at(sf::Vector2f pixel_coords) const
 {
-    for(std::size_t i{0}; i < m_cells.size(); ++i)
-        if(m_cells[i].inRange(pixel_coords)) return i;
-    return std::nullopt;
+    return makeHandle(getCellIndex(pixel_coords));
 }
 
-GridCell* Canvas::getCell(std::size_t index) const
+Canvas::cell_ptr Canvas::at(std::size_t cell_id) const
 {
-    return index < m_cells.size() ? &m_cells[index] : nullptr;
+    return makeHandle(cell_id < m_cells.size() ? cell_id : NULL_CELL);
 }
 
-Canvas::CellHandle Canvas::makeHandle(std::optional<std::size_t> index) const
+Canvas::cell_ptr Canvas::getHoveredCell() const
 {
-    if(!index) return CellHandle{};
-    return CellHandle(m_access, *index, m_access->generation);
+    return m_hoveredCellID == NULL_CELL ? cell_ptr{} : at(m_hoveredCellID);
 }
 
-Canvas::CellHandle Canvas::at(sf::Vector2u grid_coords) const
+Canvas::cell_ptr Canvas::getSelectedCell() const
 {
-    return makeHandle(findIndex(grid_coords));
-}
-
-Canvas::CellHandle Canvas::at(sf::Vector2f pixel_coords) const
-{
-    return makeHandle(findIndex(pixel_coords));
-}
-
-Canvas::CellHandle Canvas::at(std::size_t cell_id) const
-{
-    // id doubles as the slot index now, so this is a bounds check, not a search
-    return makeHandle(cell_id < m_cells.size() ? std::optional<std::size_t>(cell_id) : std::nullopt);
-}
-
-Canvas::CellHandle Canvas::getHoveredCell() const
-{
-    return m_hoveredCellID == constants::KSTALE ? CellHandle{} : at(m_hoveredCellID);
-}
-
-Canvas::CellHandle Canvas::getSelectedCell() const
-{
-    return m_selectedCellID == constants::KSTALE ? CellHandle{} : at(m_selectedCellID);
+    return m_selectedCellID == NULL_CELL ? cell_ptr{} : at(m_selectedCellID);
 }
 
 std::size_t Canvas::getCellsCount() const
@@ -337,11 +403,34 @@ std::optional<sf::Vector2u> Canvas::mapCoordsToGrid(sf::Vector2i mouse_position)
 
 std::optional<sf::Vector2f> Canvas::mapGridToCoords(sf::Vector2u grid_coordinates) const
 {
-    if(grid_coordinates.x > m_grid.x || grid_coordinates.y > m_grid.y) return std::nullopt;
- 
-    return sf::Vector2f{
+    if(grid_coordinates.x >= m_grid.x || grid_coordinates.y >= m_grid.y) return std::nullopt;
+
+    return sf::Vector2f
+    {
         m_deadZone + static_cast<float>(grid_coordinates.y) * m_cellMinSize.x,
         m_deadZone + static_cast<float>(grid_coordinates.x) * m_cellMinSize.y
+    };
+}
+
+RectRange<float> Canvas::mapGridRectToCoords(RectRange<unsigned int> grid_rect) const
+{
+    return
+    {
+        m_deadZone + static_cast<float>(grid_rect.y0) * m_cellMinSize.x,
+        m_deadZone + static_cast<float>(grid_rect.x0) * m_cellMinSize.y,
+        m_deadZone + static_cast<float>(grid_rect.y1 + 1) * m_cellMinSize.x,
+        m_deadZone + static_cast<float>(grid_rect.x1 + 1) * m_cellMinSize.y
+    };
+}
+
+RectRange<unsigned int> Canvas::mapCoordsRectToGrid(RectRange<float> coords_rect) const
+{
+    return
+    {
+        static_cast<unsigned int>((coords_rect.y0 - m_deadZone) / m_cellMinSize.x),
+        static_cast<unsigned int>((coords_rect.x0 - m_deadZone) / m_cellMinSize.y),
+        static_cast<unsigned int>((coords_rect.y1 - m_deadZone) / m_cellMinSize.x) + 1,
+        static_cast<unsigned int>((coords_rect.x1 - m_deadZone) / m_cellMinSize.y) + 1
     };
 }
 
@@ -351,11 +440,16 @@ void Canvas::setDeadZone(float surface)
     m_deadZone = surface * std::min<float>(m_size.x, m_size.y);
     updateCellSize();
     if(checkFlag(m_flags, FLAGS::GRID)) m_updateGridLines = true;
+    m_updateLines = true;
+    m_updateCells = true;
 }
 
-void Canvas::setTheme(TextureStyle s_canvas)
+void Canvas::setTheme(CanvasStyle s_canvas)
 {
     m_style = s_canvas;
+    _refreshGridColor();
+    _refreshCellColor(m_hoveredCellID);
+    _refreshCellColor(m_selectedCellID);
     setFlag(m_flags, FLAGS::MODIFIED);
 }
 
@@ -364,19 +458,27 @@ void Canvas::fetchTheme()
     if(auto t = m_themePtr.lock()) setTheme(t->getStyle<Canvas>());
 }
 
-TextureStyle& Canvas::style()
+CanvasStyle& Canvas::style()
 {
     return m_style;
+}
+
+void Canvas::poke()
+{
+    m_flags |= FLAGS::MODIFIED;
+    _refreshGridColor();
+    _refreshCellColor(m_hoveredCellID);
+    _refreshCellColor(m_selectedCellID);
 }
 
 bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     sf::Vector2f local_view_pixel = mapLocalToView(getLocalPixel(mouse_position));
-    std::size_t hovered_cell_id{constants::KSTALE};
+    std::size_t hovered_cell_id{NULL_CELL};
 
     if(checkFlag(m_flags, FLAGS::HOVERED))
     {
-        if(const std::optional<std::size_t> idx = findIndex(local_view_pixel))
+        if(const std::optional<std::size_t> idx = getCellIndex(local_view_pixel))
         {
             hovered_cell_id = *idx;
         }
@@ -384,17 +486,7 @@ bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& m
 
     if(hovered_cell_id != m_hoveredCellID)
     {
-        if(GridCell* prev_cell = getCell(m_hoveredCellID))
-        {
-            // cell lost hover event
-        }
-
-        m_hoveredCellID = hovered_cell_id;
-
-        if(m_hoveredCellID != constants::KSTALE)
-        {
-            // cell hover event
-        }
+        _onCellHover(hovered_cell_id);
     }
 
     return false;
@@ -408,12 +500,30 @@ bool Canvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf
 
     if(details.event_type == W_MouseEventType::Press)
     {
-        
+        if(!checkFlag(m_flags, FLAGS::HOVERED)) return event_used;
+        if(details.button != s_FOCUS_BUTTON) return event_used;
+
+        m_clickedCellID = m_hoveredCellID;
+
+        if(m_clickedCellID != m_selectedCellID)
+        {
+            _onCellSelect(NULL_CELL);
+        }
+
+        m_memMousePos = local_mouse_position;
     }
 
     else if(details.event_type == W_MouseEventType::Release)
     {
-        // indicator takes effect when first selecting cell
+        if(checkFlag(m_flags, FLAGS::HOVERED))
+        {
+            if(m_clickedCellID == m_hoveredCellID && details.button == s_FOCUS_BUTTON)
+            {
+                _onCellSelect(m_clickedCellID);
+            }
+
+            if(m_selectedCellID == NULL_CELL) m_clickedCellID = NULL_CELL;
+        }
     }
 
     else if(details.event_type == W_MouseEventType::Scroll)
@@ -448,8 +558,8 @@ void Canvas::drawWidget()
     
     if(checkFlag(m_flags, FLAGS::GRID)) m_texture.draw(m_renderedGridLines);
 
-    if(m_renderedlines.getVertexCount()) m_texture.draw(m_renderedlines);
     if(m_renderedCells.getVertexCount()) m_texture.draw(m_renderedCells);
+    if(m_renderedlines.getVertexCount()) m_texture.draw(m_renderedlines);
 
     m_texture.display();
     m_sprite.setTexture(m_texture.getTexture());
@@ -459,9 +569,10 @@ void Canvas::drawWidget()
 
 void Canvas::config(FLAGS mask)
 {
-    if(checkFlag(mask, FLAGS::INDICATOR) && m_selectedCellID)
+    if(checkFlag(mask, FLAGS::INDICATOR))
     {
-        // indicator color stored in canvas
+        _onCellSelect(m_selectedCellID);
+        _onCellHover(m_hoveredCellID);
     }
 
     if(checkFlag(mask, FLAGS::GRID))
@@ -483,7 +594,7 @@ void Canvas::updateSize()
     m_sprite.setOrigin(m_size / 2.f);
     updateClipShader();
     updateCellSize();
-    if(checkFlag(m_flags, FLAGS::GRID)) m_updateGridLines = true;
+    if(checkFlag(m_flags, FLAGS::GRID)) m_updateGridLines = true;   
 }
 
 void Canvas::updateRotation()
@@ -544,268 +655,30 @@ void Canvas::updateTheme()
 {
     if(auto t = m_themePtr.lock())
     {
-        const std::size_t synced_token = t->getToken<GridCanvas>();
+        const std::size_t synced_token = t->getToken<Canvas>();
         if(synced_token == m_generationToken) return;
 
         m_generationToken = synced_token;
-        setTheme(t->getStyle<GridCanvas>());
+        setTheme(t->getStyle<Canvas>());
     }
 }
 
-void Canvas::_updateLines()
+void Canvas::updateBoard()
 {
-    if(!m_updateLines) return;
-    m_updateLines = false;
-
-    m_renderedlines.clear();
-
-    for(std::size_t row{0}; row <= m_grid.x; ++row)
-    {
-        unsigned int col{0};
-        while(col < m_grid.y)
-        {
-            if(LineState& line_flags = getLine(row, col, 0))
-            {
-                const std::size_t line_start{col};
-                while(col < m_grid.y && getLine(row, col, 0) == line_flags) ++col;
-
-                float thickness = getThickness(line_flags);
-                sf::Color color = getColor(line_flags);
-                STATES state = getState(line_flags);
-
-                const float half = thickness / 2.f;
-                const float x0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.x;
-                const float x1 = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
-                const float y = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
-                sf::FloatRect rect({x0 - half, y - half}, {(x1 - x0) + half * 2.f, half * 2.f});
-                append_rectangle(m_renderedlines, rect, color);
-            }
-            ++col;
-        }
-    }
-
-    for(std::size_t col{0}; col <= m_grid.y; ++col)
-    {
-        unsigned int row{0};
-        while(row < m_grid.x)
-        {
-            if(LineState& line_flags = getLine(row, col, 1))
-            {
-                const std::size_t line_start{row};
-                while(row < m_grid.x && getLine(row, col, 1) == line_flags) ++row;
-
-                float thickness = getThickness(line_flags);
-                sf::Color color = getColor(line_flags);
-                STATES state = getState(line_flags);
-
-                const float half = thickness / 2.f;
-                const float y0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.y;
-                const float y1 = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
-                const float x = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
-                sf::FloatRect rect({x - half, y0 - half}, {half * 2.f, (y1 - y0) + half * 2.f});
-                append_rectangle(m_renderedlines, rect, color);
-            }
-            ++row;
-        }
-    }
+    _updateGrid();
+    _updateLines();
     _updateCells();
 }
 
-float Canvas::getThickness(LineState line_flags)
+void Canvas::updateCellSize()
 {
-    return static_cast<float>(apply_mask(line_flags, THICKNESS_MASK, THICKNESS_OFFSET));
-}
+    sf::Vector2f cells_space = {m_size.x - m_deadZone * 2.f,
+                                m_size.y - m_deadZone * 2.f};
 
-sf::Color Canvas::getColor(LineState line_flags)
-{
-    LineState idx = apply_mask(line_flags, COLORS_MASK, COLORS_OFFSET);
-    if(idx && m_sharedColors[idx - 1u].has_value())
-        return *m_sharedColors[idx - 1u];
-    else
-        return *m_currentOutlineColorPtr;
-}
-
-STATES Canvas::getState(LineState line_flags)
-{
-    return static_cast<STATES>(apply_mask(line_flags, STATES_MASK, STATES_OFFSET));
-}
-
-int Canvas::getColorIndex(sf::Color color)
-{
-    for(std::size_t i{0}; i < MAX_COLOR_STORAGE; ++i)
-    {
-        if(!m_sharedColors[i].has_value())
-        {
-            m_sharedColors[i].emplace(color);
-            return i;
-        }
-
-        if(m_sharedColors[i].has_value() && *m_sharedColors[i] == color)
-            return i;
-    }
-    return -1;
-}
-
-bool Canvas::isClear(const RectRange<unsigned int>& rect) const
-{
-    for(unsigned int row{rect.x0 + 1}; row <= rect.x1; ++row)
-        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
-            if(getLine(row, col, 0)) return false;
- 
-    for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
-        for(unsigned int col{rect.y0 + 1}; col <= rect.y1; ++col)
-            if(getLine(row, col, 1)) return false;
- 
-    return true;
-}
-
-bool Canvas::isBoundarySealed(const RectRange<unsigned int>& rect) const
-{
-    if(rect.x0 == 0)
-        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
-            if(!getLine(0, col, 0)) return false;
- 
-    if(rect.x1 == m_grid.x - 1)
-        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
-            if(!getLine(m_grid.x, col, 0)) return false;
- 
-    if(rect.y0 == 0)
-        for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
-            if(!getLine(row, 0, 1)) return false;
- 
-    if(rect.y1 == m_grid.y - 1)
-        for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
-            if(!getLine(row, m_grid.y, 1)) return false;
- 
-    return true;
-}
-
-void Canvas::_updateCells()
-{
-    const std::size_t cells_count = getMaxCellsCount();
-
-    std::vector<std::uint32_t> dsu(cells_count);
-    walmart_iota(dsu.begin(), dsu.end(), 0u);
-
-    auto find = [&dsu](std::uint32_t idx) -> std::uint32_t
-    {
-        while(dsu[idx] != idx)
-        {
-            dsu[idx] = dsu[dsu[idx]];
-            idx = dsu[idx];
-        }
-        return idx; 
-    };
-
-    for(std::size_t row{0}; row < m_grid.x; ++row)
-    {
-        for(std::size_t col{0}; col < m_grid.y; ++col)
-        {
-            const std::uint32_t idx = row * m_grid.y + col;
-            if(col + 1 < m_grid.y && !getLine(row, col + 1, 1))
-                dsu[find(idx + 1)] = find(idx);
-
-            if(row + 1 < m_grid.x && !getLine(row + 1, col, 0))
-                dsu[find(idx + m_grid.y)] = find(idx);
-        }
-    }
-
-    struct Bounds
-    {
-        RectRange<unsigned int> box;
-        std::uint32_t count{0};
-    };
-
-    std::vector<Bounds> bounds(cells_count);
-    for(unsigned int row{0}; row < m_grid.x; ++row)
-    {
-        for(unsigned int col{0}; col < m_grid.y; ++col)
-        {
-            Bounds& b = bounds[find(row * m_grid.y + col)];
-            if(b.count == 0)
-            {
-                b.box.x0 = b.box.x1 = row;
-                b.box.y0 = b.box.y1 = col;
-            }
-            else
-            {
-                b.box.x0 = std::min(b.box.x0, row);
-                b.box.x1 = std::max(b.box.x1, row);
-                b.box.y0 = std::min(b.box.y0, col);
-                b.box.y1 = std::max(b.box.y1, col);
-            }
-            ++b.count;
-        }
-    }
-
-    std::vector<GridCell> cached = std::move(m_cells);
-    m_cells.clear();
-
-    std::unordered_map<std::uint64_t, std::size_t> previous_by_bounds;
-    previous_by_bounds.reserve(cached.size());
-    for(std::size_t i{0}; i < cached.size(); ++i)
-    {
-        const auto& b = cached[i].m_gridBounds;
-        previous_by_bounds.emplace(pack_bounds(b.x0, b.y0, b.x1, b.y1), i);
-    }
-
-    m_renderedCells.clear();
-
-    for(std::size_t root{0}; root < cells_count; ++root)
-    {
-        const Bounds& bound = bounds[root];
-
-        if(bound.count == 0) continue;
-        // bad shape
-        if(bound.count != (bound.box.x1 - bound.box.x0 + 1) * (bound.box.y1 - bound.box.y0 + 1)) continue;
-        // internal line(s)
-        if(!isClear(bound.box)) continue;
-        // not sealed (edge)
-        if(!isBoundarySealed(bound.box)) continue;
-
-        GridCell& cell = m_cells.emplace_back(*this, m_cells.size());
-
-        cell.m_gridBounds.x0 = bound.box.x0;
-        cell.m_gridBounds.x1 = bound.box.x1;
-        cell.m_gridBounds.y0 = bound.box.y0;
-        cell.m_gridBounds.y1 = bound.box.y1;
-
-        const std::uint64_t key = pack_bounds(bound.box.x0, bound.box.y0, bound.box.x1, bound.box.y1);
-        if(const auto it = previous_by_bounds.find(key); it != previous_by_bounds.end())
-            cell.bg_color = cached[it->second].bg_color;
-
-        const float x0 = m_deadZone + static_cast<float>(bound.box.y0) * m_cellMinSize.x;
-        const float y0 = m_deadZone + static_cast<float>(bound.box.x0) * m_cellMinSize.y;
-        const float x1 = m_deadZone + static_cast<float>(bound.box.y1 + 1) * m_cellMinSize.x;
-        const float y1 = m_deadZone + static_cast<float>(bound.box.x1 + 1) * m_cellMinSize.y;
-        append_rectangle(m_renderedCells, sf::FloatRect({x0, y0}, {x1 - x0, y1 - y0}), cell.bg_color);
-    }
-
-    m_hoveredCellID = m_selectedCellID = m_clickedCellID = constants::KSTALE;
-    ++m_access->generation;
-}
-
-void Canvas::_updateGrid()
-{
-    if(!m_updateGridLines || !checkFlag(m_flags, FLAGS::GRID)) return;
-    m_renderedGridLines.clear();
-    const sf::Color color = *m_currentOutlineColorPtr;
-    m_renderedGridLines.resize((m_grid.x + 1) * 2 + (m_grid.y + 1) * 2);
-    std::size_t offset{0};
-    for(unsigned int r{0}; r <= m_grid.x ; ++r)
-    {
-        const float y = m_deadZone + static_cast<float>(r) * m_cellMinSize.y;
-        m_renderedGridLines[offset++] = sf::Vertex{{m_deadZone, y}, color};
-        m_renderedGridLines[offset++] = sf::Vertex{{m_size.x - m_deadZone, y}, color};
-    }
-    for(unsigned int c{0}; c <= m_grid.y; ++c)
-    {
-        const float x = m_deadZone + static_cast<float>(c) * m_cellMinSize.x;
-        m_renderedGridLines[offset++] = sf::Vertex{{x, m_deadZone}, color};
-        m_renderedGridLines[offset++] = sf::Vertex{{x, m_size.y - m_deadZone}, color};
-    }
- 
-    m_updateGridLines = false;
+    m_cellMinSize.x = cells_space.x / static_cast<float>(m_grid.y);
+    m_cellMinSize.y = cells_space.y / static_cast<float>(m_grid.x);
+    m_updateLines = true;
+    m_updateCells = true;
 }
 
 void Canvas::zoom(float delta, sf::Vector2i local_mouse_position)
@@ -841,14 +714,14 @@ void Canvas::zoom(float delta, sf::Vector2i local_mouse_position)
     limitView(v);
 }
 
-void Canvas::pan(sf::Vector2i local_mous_position)
+void Canvas::pan(sf::Vector2i local_mouse_position)
 {
     if(!checkFlag(m_flags, FLAGS::PAN)) return;
 
     sf::Vector2f previous_state = mapLocalToView(m_memMousePos);
-    sf::Vector2f current_state = m_texture.mapPixelToCoords(local_mous_position);
+    sf::Vector2f current_state = m_texture.mapPixelToCoords(local_mouse_position);
     sf::Vector2f delta = previous_state - current_state;
-    m_memMousePos = local_mous_position;
+    m_memMousePos = local_mouse_position;
 
     sf::View v = m_texture.getView();
     v.move(delta);
@@ -868,19 +741,15 @@ void Canvas::limitView(sf::View& v)
     m_texture.setView(v);
 }
 
-void Canvas::updateCellSize()
+bool Canvas::setLine(RectRange<unsigned int> rect, LineState val)
 {
-    sf::Vector2f cells_space = {m_size.x - m_deadZone * 2.f,
-                                m_size.y - m_deadZone * 2.f};
-
-    m_cellMinSize.x = cells_space.x / static_cast<float>(m_grid.y);
-    m_cellMinSize.y = cells_space.y / static_cast<float>(m_grid.x);
+    return _setLineValue(rect, val);
 }
 
-void Canvas::updateBoard()
+Canvas::cell_ptr Canvas::makeHandle(std::size_t index) const
 {
-    _updateGrid();
-    _updateLines();
+    if(index == NULL_CELL) return cell_ptr{};
+    return cell_ptr(m_access, index, m_access->generation);
 }
 
 LineState& Canvas::getLine(std::size_t row, std::size_t col, std::size_t axis)
@@ -895,47 +764,407 @@ const LineState& Canvas::getLine(std::size_t row, std::size_t col, std::size_t a
            axis * ((m_grid.x + 1) * m_grid.y + row * (m_grid.y + 1) + col)];
 }
 
-bool Canvas::setLine(sf::Vector2u start, sf::Vector2u end, LineState val)
+GridCell* Canvas::getCell(std::size_t index) const
 {
-    if(start.x > m_grid.x || end.x > m_grid.x || start.y > m_grid.y || end.y > m_grid.y) return false;
-    if(start.x != end.x && start.y != end.y) return false;
-    if(start == end) return false;
+    return index < m_cells.size() ? &m_cells[index] : nullptr;
+}
 
-    bool grid_updated{false};
-
-    std::size_t axis = start.x == end.x ? 0 : 1;
-    unsigned int start_line, end_line;
-    if(!axis) // horizontal
+std::size_t Canvas::getCellIndex(sf::Vector2u grid_coords) const
+{
+    for(std::size_t i{0}; i < m_cells.size(); ++i)
     {
-        start_line = std::min(start.y, end.y);
-        end_line = std::max(start.y, end.y);
-        for(unsigned int col{start_line}; col < end_line; ++col)
-        {
-            LineState& line = getLine(start.x, col, axis);
-            if(line != val)
-            {
-                line = val;
-                grid_updated = true;
-            }
-        }
+        if(m_cells[i].inRange(grid_coords)) return i;
     }
+    return NULL_CELL;
+}
+
+std::size_t Canvas::getCellIndex(sf::Vector2f pixel_coords) const
+{
+    for(std::size_t i{0}; i < m_cells.size(); ++i)
+    {
+        if(m_cells[i].inRange(pixel_coords)) return i;
+    }
+    return NULL_CELL;
+}
+
+float Canvas::LineExtractThickness(LineState line_flags)
+{
+    return static_cast<float>(apply_mask(line_flags, THICKNESS_MASK, THICKNESS_OFFSET));
+}
+
+sf::Color Canvas::LineExtractColor(LineState line_flags)
+{
+    LineState idx = apply_mask(line_flags, COLORS_MASK, COLORS_OFFSET);
+    if(idx && m_sharedColors[idx - 1u].has_value())
+        return *m_sharedColors[idx - 1u];
     else
+        return m_style.outline_color;
+}
+
+LineType Canvas::LineExtractType(LineState line_flags)
+{
+    return static_cast<LineType>(apply_mask(line_flags, TYPE_MASK, TYPE_OFFSET));
+}
+
+bool Canvas::isRectClear(const RectRange<unsigned int>& rect) const
+{
+    for(unsigned int row{rect.x0 + 1}; row <= rect.x1; ++row)
+        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
+            if(getLine(row, col, 0)) return false;
+ 
+    for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
+        for(unsigned int col{rect.y0 + 1}; col <= rect.y1; ++col)
+            if(getLine(row, col, 1)) return false;
+ 
+    return true;
+}
+
+bool Canvas::isRectSealed(const RectRange<unsigned int>& rect) const
+{
+    if(rect.x0 == 0)
+        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
+            if(!getLine(0, col, 0)) return false;
+ 
+    if(rect.x1 == m_grid.x - 1)
+        for(unsigned int col{rect.y0}; col <= rect.y1; ++col)
+            if(!getLine(m_grid.x, col, 0)) return false;
+ 
+    if(rect.y0 == 0)
+        for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
+            if(!getLine(row, 0, 1)) return false;
+ 
+    if(rect.y1 == m_grid.y - 1)
+        for(unsigned int row{rect.x0}; row <= rect.x1; ++row)
+            if(!getLine(row, m_grid.y, 1)) return false;
+ 
+    return true;
+}
+
+bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, std::uint16_t mask, bool replace)
+{
+    if(rect.x0 > m_grid.x || rect.x1 > m_grid.x || rect.y0 > m_grid.y || rect.y1 > m_grid.y) return false;
+    if(rect.x0 != rect.x1 && rect.y0 != rect.y1) return false;
+    if(rect.distance().x == 0 && rect.distance().y == 0) return false;
+
+    bool board_updated{false};
+    const std::size_t AXIS = rect.x0 == rect.x1 ? 0u : 1u;
+    const std::size_t FIXED_POINT = AXIS ? rect.y0 : rect.x0;
+    const std::size_t START_POINT = AXIS ? rect.x0 : rect.y0;
+    const std::size_t END_POINT = AXIS ? rect.x1 : rect.y1;
+    const std::size_t START_LINE = std::min(START_POINT, END_POINT);
+    const std::size_t END_LINE = std::max(START_POINT, END_POINT);
+
+    for(std::size_t i{START_LINE}; i < END_LINE; ++i)
     {
-        start_line = std::min(start.x, end.x);
-        end_line = std::max(start.x, end.x);
-        for(unsigned int row{start_line}; row < end_line; ++row)
+        LineState& line = AXIS ? getLine(i, FIXED_POINT, AXIS) : getLine(FIXED_POINT, i, AXIS);
+        if(line != val)
         {
-            LineState& line = getLine(row, start.y, axis);
-            if(line != val)
-            {
+            if((line ^ val) & LINE_SET)
+                m_updateCells = true;
+
+            if(replace)
                 line = val;
-                grid_updated = true;
+            else
+            {
+                line &= mask;
+                line |= val;
             }
+
+            board_updated = true;
         }
     }
 
-    if(grid_updated) m_updateLines = true;
-    return grid_updated;
+    if(board_updated) m_updateLines = true;
+    return board_updated;
+}
+
+bool Canvas::_setCellColor(std::size_t cell_id, sf::Color color)
+{
+    GridCell* Pcell = getCell(cell_id);
+    if(Pcell)
+    {
+        m_renderedCells[cell_id * 6].color = color;
+        m_renderedCells[cell_id * 6 + 1].color = color;
+        m_renderedCells[cell_id * 6 + 2].color = color;
+        m_renderedCells[cell_id * 6 + 3].color = color;
+        m_renderedCells[cell_id * 6 + 4].color = color;
+        m_renderedCells[cell_id * 6 + 5].color = color;
+        return true;
+    }
+    return false;
+}
+
+int Canvas::_getColorIndex(sf::Color color)
+{
+    if(color == DEFAULT_COLOR) return -1;
+
+    for(std::size_t i{0}; i < MAX_COLOR_STORAGE; ++i)
+    {
+        if(!m_sharedColors[i].has_value())
+        {
+            m_sharedColors[i].emplace(color);
+            return i;
+        }
+
+        if(m_sharedColors[i].has_value() && *m_sharedColors[i] == color)
+            return i;
+    }
+    return -1;
+}
+
+void Canvas::_refreshCellColor(std::size_t cell_id)
+{
+    const GridCell* cell = getCell(cell_id);
+    if(!cell) return;
+
+    sf::Color color = cell->fill_color;
+    if(cell_id == m_selectedCellID && checkFlag(m_flags, FLAGS::INDICATOR)) color = m_style.selected_cell_color;
+    else if(cell_id == m_hoveredCellID) color = m_style.hovered_cell_color;
+
+    _setCellColor(cell_id, color);
+}
+
+void Canvas::_onCellHover(std::size_t hovered_cell_id)
+{
+    const std::size_t previous = m_hoveredCellID;
+    m_hoveredCellID = hovered_cell_id;
+    _refreshCellColor(previous);
+    _refreshCellColor(hovered_cell_id);
+}
+
+void Canvas::_onCellSelect(std::size_t selected_cell_id)
+{
+    const std::size_t previous = m_selectedCellID;
+    m_selectedCellID = selected_cell_id;
+    _refreshCellColor(previous);
+    _refreshCellColor(selected_cell_id);
+}
+
+void Canvas::_refreshGridColor()
+{
+    if(!checkFlag(m_flags, FLAGS::GRID)) return;
+
+    const std::size_t VERTEX_COUNT = m_renderedGridLines.getVertexCount();
+    for(std::size_t i{0}; i < VERTEX_COUNT; ++i)
+        m_renderedGridLines[i].color = m_style.fill_color;
+}
+
+void Canvas::_refreshLinesColor()
+{
+
+}
+
+void Canvas::_updateLines()
+{
+    if(!m_updateLines) return;
+    m_updateLines = false;
+
+    m_renderedlines.clear();
+
+    for(std::size_t row{0}; row <= m_grid.x; ++row)
+    {
+        unsigned int col{0};
+        while(col < m_grid.y)
+        {
+            if(LineState& line_flags = getLine(row, col, 0))
+            {
+                const std::size_t line_start{col};
+                while(col < m_grid.y && getLine(row, col, 0) == line_flags) ++col;
+
+                float thickness = LineExtractThickness(line_flags);
+                sf::Color color = LineExtractColor(line_flags);
+                LineType state = LineExtractType(line_flags);
+
+                const float half = thickness / 2.f;
+                const float x0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.x;
+                const float x1 = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
+                const float y = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
+
+                RectRange<float> rect;
+                rect.x0 = x0 - half;
+                rect.y0 = y - half;
+                rect.x1 = x1 + half;
+                rect.y1 = y + half;
+                append_rectangle(m_renderedlines, rect, color);
+            }
+            else ++col;
+        }
+    }
+
+    for(std::size_t col{0}; col <= m_grid.y; ++col)
+    {
+        unsigned int row{0};
+        while(row < m_grid.x)
+        {
+            if(LineState& line_flags = getLine(row, col, 1))
+            {
+                const std::size_t line_start{row};
+                while(row < m_grid.x && getLine(row, col, 1) == line_flags) ++row;
+
+                float thickness = LineExtractThickness(line_flags);
+                sf::Color color = LineExtractColor(line_flags);
+                LineType state = LineExtractType(line_flags);
+
+                const float half = thickness / 2.f;
+                const float y0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.y;
+                const float y1 = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
+                const float x = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
+
+                RectRange<float> rect;
+                rect.x0 = x - half;
+                rect.y0 = y0 - half;
+                rect.x1 = x + half;
+                rect.y1 = y1 + half;
+                append_rectangle(m_renderedlines, rect, color);
+            }
+            else ++row;
+        }
+    }
+}
+
+void Canvas::_updateCells()
+{
+    if(!m_updateCells) return;
+    m_updateCells = false;
+
+    struct Bounds
+    {
+        RectRange<unsigned int> box;
+        std::uint32_t count{0};
+    };
+
+    std::vector<std::uint32_t> dsu(m_MAX_CELL_COUNT);
+    std::vector<Bounds> bounds(m_MAX_CELL_COUNT);
+    std::vector<GridCell> cached_cells = std::move(m_cells);
+    std::unordered_map<std::uint64_t, std::size_t> hashed_cells;
+    hashed_cells.reserve(cached_cells.size());
+    m_renderedCells.clear();
+    m_cells.clear();
+
+    std::size_t hovered_id = m_hoveredCellID;
+    std::size_t clicked_id = m_clickedCellID;
+    std::size_t selected_id = m_selectedCellID;
+    m_hoveredCellID = m_selectedCellID = m_clickedCellID = NULL_CELL;
+
+    gen_iota(dsu.begin(), dsu.end(), 0u);
+
+    auto find_dsu = [&dsu](std::uint32_t idx) -> std::uint32_t
+    {
+        while(dsu[idx] != idx)
+        {
+            dsu[idx] = dsu[dsu[idx]];
+            idx = dsu[idx];
+        }
+        return idx; 
+    };
+
+    // group units
+    for(std::size_t row{0}; row < m_grid.x; ++row)
+    {
+        for(std::size_t col{0}; col < m_grid.y; ++col)
+        {
+            const std::uint32_t idx = row * m_grid.y + col;
+            if(col + 1 < m_grid.y && !getLine(row, col + 1, 1))
+                dsu[find_dsu(idx + 1)] = find_dsu(idx);
+
+            if(row + 1 < m_grid.x && !getLine(row + 1, col, 0))
+                dsu[find_dsu(idx + m_grid.y)] = find_dsu(idx);
+        }
+    }
+
+    // identify rect surface for each group
+    for(unsigned int row{0}; row < m_grid.x; ++row)
+    {
+        for(unsigned int col{0}; col < m_grid.y; ++col)
+        {
+            Bounds& b = bounds[find_dsu(row * m_grid.y + col)];
+            if(b.count == 0)
+            {
+                b.box.x0 = b.box.x1 = row;
+                b.box.y0 = b.box.y1 = col;
+            }
+            else
+            {
+                b.box.x0 = std::min(b.box.x0, row);
+                b.box.x1 = std::max(b.box.x1, row);
+                b.box.y0 = std::min(b.box.y0, col);
+                b.box.y1 = std::max(b.box.y1, col);
+            }
+            ++b.count;
+        }
+    }
+
+    // get previous cells' rect hashes
+    for(std::size_t i{0}; i < cached_cells.size(); ++i)
+    {
+        hashed_cells.emplace(pack_bounds(cached_cells[i].grid), i);
+    }
+
+    // create/inherit new gen cells
+    for(std::size_t unit_idx{0}; unit_idx < m_MAX_CELL_COUNT; ++unit_idx)
+    {
+        const Bounds& bound = bounds[unit_idx];
+
+        // non-owning space
+        if(bound.count == 0) continue;
+        // bad shape
+        if(bound.count != (bound.box.x1 - bound.box.x0 + 1) * (bound.box.y1 - bound.box.y0 + 1)) continue;
+        // internal line(s)
+        if(!isRectClear(bound.box)) continue;
+        // not sealed (on canvas edges)
+        if(!isRectSealed(bound.box)) continue;
+
+        GridCell& cell = m_cells.emplace_back(*this, m_cells.size());
+
+        cell.grid.x0 = bound.box.x0;
+        cell.grid.x1 = bound.box.x1;
+        cell.grid.y0 = bound.box.y0;
+        cell.grid.y1 = bound.box.y1;
+
+        // pass old attributes to the same cell
+        const std::uint64_t key = pack_bounds(bound.box);
+        auto it = hashed_cells.find(key);
+        if(it != hashed_cells.end())
+        {
+            if(hovered_id == it->second) m_hoveredCellID = cell.id;
+            if(clicked_id == it->second) m_clickedCellID = cell.id;
+            if(selected_id == it->second) m_selectedCellID = cell.id;
+            cell.fill_color = cached_cells[it->second].fill_color;
+        }
+
+        RectRange<float> rect;
+        rect.x0 = m_deadZone + static_cast<float>(bound.box.y0) * m_cellMinSize.x;
+        rect.y0 = m_deadZone + static_cast<float>(bound.box.x0) * m_cellMinSize.y;
+        rect.x1 = m_deadZone + static_cast<float>(bound.box.y1 + 1) * m_cellMinSize.x;
+        rect.y1 = m_deadZone + static_cast<float>(bound.box.x1 + 1) * m_cellMinSize.y;
+        append_rectangle(m_renderedCells, rect, cell.fill_color);
+    }
+    _refreshCellColor(m_hoveredCellID);
+    _refreshCellColor(m_selectedCellID);
+    ++m_access->generation;
+}
+
+void Canvas::_updateGrid()
+{
+    if(!m_updateGridLines || !checkFlag(m_flags, FLAGS::GRID)) return;
+    m_renderedGridLines.clear();
+    const sf::Color color = m_style.outline_color;
+    m_renderedGridLines.resize((m_grid.x + 1) * 2 + (m_grid.y + 1) * 2);
+    std::size_t offset{0};
+    for(unsigned int r{0}; r <= m_grid.x ; ++r)
+    {
+        const float y = m_deadZone + static_cast<float>(r) * m_cellMinSize.y;
+        m_renderedGridLines[offset++] = sf::Vertex{{m_deadZone, y}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{m_size.x - m_deadZone, y}, color};
+    }
+    for(unsigned int c{0}; c <= m_grid.y; ++c)
+    {
+        const float x = m_deadZone + static_cast<float>(c) * m_cellMinSize.x;
+        m_renderedGridLines[offset++] = sf::Vertex{{x, m_deadZone}, color};
+        m_renderedGridLines[offset++] = sf::Vertex{{x, m_size.y - m_deadZone}, color};
+    }
+ 
+    m_updateGridLines = false;
 }
 }
 
