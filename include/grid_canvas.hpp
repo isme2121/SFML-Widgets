@@ -127,12 +127,14 @@ public:
     /// @brief Constructs a cell on canvas
     ///
     ///////////////////////////////////////////////////////////////////
-    GridCell(Canvas& root_canvas, std::size_t id);
+    GridCell(std::size_t id);
 
-    GridCell(GridCell&& other) = default;
-    GridCell& operator=(GridCell&& other) = default;
+    GridCell(GridCell&& other) = delete;
+    GridCell& operator=(GridCell&& other) = delete;
     GridCell(const GridCell& other) = delete;
     GridCell& operator=(const GridCell& other) = delete;
+
+    ~GridCell();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the cell's fill color
@@ -200,6 +202,21 @@ public:
     bool operator==(const GridCell& other) const;
     bool operator==(std::size_t id) const;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns a texture to cell
+    ///
+    /// @param image_path path to image 
+    /// @return true if process is successful, otherwise false
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool setCellTexture(const std::string& image_path);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears texture from this cell 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool clearCellTexture();
+
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Returned the line coordinates for canvas to identify
@@ -210,10 +227,27 @@ private:
     ///////////////////////////////////////////////////////////////////
     RectRange<unsigned int> getLineRange(DIRECTION _s) const;
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief partial move between different cell generations and moves
+    /// texture membership to other
+    /// 
+    /// @param other inheriting cell 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void inheritTo(GridCell& other);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Clears texture from cell while updating canvas reference count
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void releaseTexture();
+
     Canvas* Proot;
     std::size_t id{0};
     RectRange<unsigned int> grid{};     //!< boundaries included in range
     sf::Color fill_color{sf::Color::Transparent};
+    const sf::Texture* texture{nullptr};
+    std::string texture_key;
 };
 
 class Canvas : public Widget
@@ -718,7 +752,17 @@ private:
     /// @return true if cell exists, otherwise false
     ///
     ///////////////////////////////////////////////////////////////////
-    bool _setCellColor(std::size_t cell_id, sf::Color color);
+    bool setCellColor(std::size_t cell_id, sf::Color color);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Fetches and assigns a texture to the cell with cell_id
+    ///  
+    /// @param cell_id cell id 
+    /// @param image_path path to image
+    /// @return true if process is successful, otherwise false
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    bool setCellTexture(std::size_t cell_id, const std::string& image_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns color index from colors storage
@@ -727,7 +771,7 @@ private:
     /// @return color index, or -1 if color is not found
     ///
     ///////////////////////////////////////////////////////////////////
-    int _getColorIndex(sf::Color color);
+    int getColorIndex(sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates cell color based on it's current state
@@ -754,12 +798,6 @@ private:
     void _refreshGridColor();
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates lines that use the default color
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void _refreshLinesColor();
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates line values visually
     ///
     ///////////////////////////////////////////////////////////////////
@@ -778,6 +816,38 @@ private:
     ///////////////////////////////////////////////////////////////////
     void _updateGrid();
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Creates texture layer for cell, fails if cell has no texture,
+    /// managed internally
+    ///
+    /// @param cell_id cell id
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void _emplaceCellTexture(std::size_t cell_id);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Loads texture content from disk or from canvas cache if the
+    /// same image with the same size is actively used
+    ///
+    /// Loaded texture is placed in cache for cells to reference.
+    ///
+    /// @param key  
+    /// @param path 
+    /// @param target_size 
+    /// @return 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::pair<std::string, const sf::Texture*> _getTexture(const std::string& path, sf::Vector2u target_size);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Decrements the texture's reference count, clears it from
+    /// memory if it reaches 0
+    ///
+    /// @param cell
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void _releaseTexture(GridCell& cell);
+
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
@@ -788,10 +858,16 @@ private:
         std::uint32_t generation{0};
     };
 
+    struct TexSource
+    {
+        sf::Texture texture;
+        std::size_t ref_count{0};
+    };
+
     sf::RenderTexture m_texture;
     sf::Sprite m_sprite;
     std::vector<LineState> m_lines;
-    mutable std::vector<GridCell> m_cells;
+    mutable std::deque<GridCell> m_cells;
 
 
     std::shared_ptr<Access> m_access;
@@ -799,8 +875,10 @@ private:
     // rendered data
     sf::VertexArray m_renderedlines{sf::PrimitiveType::Triangles};
     sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};
+    sf::VertexArray m_renderedCellTextures{sf::PrimitiveType::Triangles};
     sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};
     std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_sharedColors{};
+    std::unordered_map<std::string, TexSource> m_cache;
 
     
     // properties

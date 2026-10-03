@@ -396,10 +396,10 @@ void InfoWrapper::renderEditSection()
         {
             if(m_selected.enable_if_frame_ptr)
             {
-                addWidget<GridCanvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{16}, 0.f, true);
+                addWidget<GridCanvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{100}, 0.f, true);
                 refreshValues();
             }
-            else addWidget<GridCanvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{16}, 0.f, true);
+            else addWidget<GridCanvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{100}, 0.f, true);
         }
         ImGui::TableNextColumn();
         if(ImGui::Button("Canvas", ImVec2(-FLT_MIN, 0)))

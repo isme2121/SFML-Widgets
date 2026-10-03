@@ -576,7 +576,7 @@ bool Widget::setBackgroundTexture(const sf::String& file_path, const std::string
         return false;
     }
 
-    if(m_bgShaderPtr)
+    if(m_bgTexturePtr)
     {
         global_image_buffer.decrementRefCounter(m_bgImagePath);
         *m_bgTexturePtr = std::move(temp); //!< use existing memory
@@ -1327,7 +1327,7 @@ std::optional<const sf::Image*> Widget::ImageCache::getImage(const std::string& 
     std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
     if(it != m_cachedImages.end())
     {
-        if(increment_ref) ++(it->second.ref_count);
+        if(increment_ref) ++it->second.ref_count;
         return &it->second.image;
     }
 
@@ -1347,10 +1347,9 @@ void Widget::ImageCache::decrementRefCounter(const std::string& image_path)
     std::lock_guard<std::mutex> lock(m_guard);
 
     std::unordered_map<std::string, ImageReferenceCounter>::iterator it = m_cachedImages.find(image_path);
-    if(it != m_cachedImages.end())
+    if(it != m_cachedImages.end() && --it->second.ref_count == 0)
     {
-        --it->second.ref_count;
-        if(it->second.ref_count < 1) m_cachedImages.erase(it);
+        m_cachedImages.erase(it);
     }
 }
 }

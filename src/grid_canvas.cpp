@@ -76,14 +76,48 @@ void gen_iota(NumIterator first, NumIterator last, Num val)
         *first = val;
         ++val;
     }
-} 
+}
+
+///////////////////////////////////////////////////////////////////
+/// @brief Unique key for canvas textures
+///
+/// @param path image path 
+/// @param size cell size in pixels
+/// @return key identifier
+///
+///////////////////////////////////////////////////////////////////
+std::string make_texture_key(const std::string& path, sf::Vector2u size)
+{
+    return path + '|' + std::to_string(size.x) + 'x' + std::to_string(size.y);
+}
 }
 
 namespace sfml_widgets // GridCell
 {
-GridCell::GridCell(Canvas& root_canvas, std::size_t id) : Proot(&root_canvas), id(id)
+GridCell::GridCell(std::size_t id) : id(id)
 {
 
+}
+
+GridCell::~GridCell()
+{
+    releaseTexture();
+}
+
+void GridCell::releaseTexture()
+{
+    Proot->_releaseTexture(*this);
+}
+
+bool GridCell::setCellTexture(const std::string& image_path)
+{
+    return Proot->setCellTexture(id, image_path);
+}
+
+bool GridCell::clearCellTexture()
+{
+    releaseTexture();
+    return true;
 }
 
 bool GridCell::setCellColor(sf::Color color)
@@ -176,6 +210,18 @@ RectRange<unsigned int> GridCell::getLineRange(DIRECTION _s) const
     }
     return rect;
 }
+
+void GridCell::inheritTo(GridCell& other)
+{
+    if(&other == this) return;
+
+    other.fill_color = fill_color;
+    other.texture = texture;
+    other.texture_key = std::move(texture_key);
+
+    texture = nullptr;
+}
+
 }
 
 namespace sfml_widgets // cell_ptr
@@ -225,7 +271,6 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
     m_lines.assign(static_cast<std::size_t>(m_grid.x * m_grid.y * 2 + m_grid.x + m_grid.y), 0u);
-    m_cells.reserve(m_MAX_CELL_COUNT);
     m_access = std::make_shared<Access>(Access{this, 0u});
 
     setWidgetPosition(m_position);
@@ -242,7 +287,6 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     m_currentOutlineThicknessPtr = &m_style.outline_thickness;
 
     m_lines.assign(static_cast<std::size_t>(m_grid.x * m_grid.y * 2 + m_grid.x + m_grid.y), 0u);
-    m_cells.reserve(m_MAX_CELL_COUNT);
     m_access = std::make_shared<Access>(Access{this, 0u});
 
     setWidgetPosition(m_position);
@@ -265,7 +309,7 @@ bool Canvas::drawLine(RectRange<unsigned int> line_range, LineState thickness, s
 
     if(color != DEFAULT_COLOR)
     {
-        int idx = _getColorIndex(color);
+        int idx = getColorIndex(color);
         // -1 ==> take canvas outline color
         // 0-13 ==> index for color
         if(idx != -1) val |= apply_mask(apply_shift(idx + 1, COLORS_OFFSET), COLORS_MASK);
@@ -305,7 +349,7 @@ bool Canvas::setLineColor(RectRange<unsigned int> line_range, sf::Color color)
 {
     LineState val{LINE_SET};
 
-    int idx = _getColorIndex(color);
+    int idx = getColorIndex(color);
     if(idx != -1) val |= apply_mask(apply_shift(idx + 1, COLORS_OFFSET), COLORS_MASK);
     return _setLineValue(line_range, val, COLORS_OFF, false);
 }
@@ -447,10 +491,12 @@ void Canvas::setDeadZone(float surface)
 void Canvas::setTheme(CanvasStyle s_canvas)
 {
     m_style = s_canvas;
-    _refreshGridColor();
+    setFlag(m_flags, FLAGS::MODIFIED);
+
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
-    setFlag(m_flags, FLAGS::MODIFIED);
+    _refreshGridColor();
+    m_updateLines = true;
 }
 
 void Canvas::fetchTheme()
@@ -466,9 +512,11 @@ CanvasStyle& Canvas::style()
 void Canvas::poke()
 {
     m_flags |= FLAGS::MODIFIED;
-    _refreshGridColor();
+
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
+    _refreshGridColor();
+    m_updateLines = true;
 }
 
 bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
@@ -559,6 +607,12 @@ void Canvas::drawWidget()
     if(checkFlag(m_flags, FLAGS::GRID)) m_texture.draw(m_renderedGridLines);
 
     if(m_renderedCells.getVertexCount()) m_texture.draw(m_renderedCells);
+    for(const GridCell& cell : m_cells)
+    {
+        if(!cell.texture) continue;
+        m_texture.draw(&m_renderedCellTextures[cell.id * 6], 6, sf::PrimitiveType::Triangles, cell.texture);
+    }
+
     if(m_renderedlines.getVertexCount()) m_texture.draw(m_renderedlines);
 
     m_texture.display();
@@ -878,7 +932,7 @@ bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, s
     return board_updated;
 }
 
-bool Canvas::_setCellColor(std::size_t cell_id, sf::Color color)
+bool Canvas::setCellColor(std::size_t cell_id, sf::Color color)
 {
     GridCell* Pcell = getCell(cell_id);
     if(Pcell)
@@ -894,7 +948,7 @@ bool Canvas::_setCellColor(std::size_t cell_id, sf::Color color)
     return false;
 }
 
-int Canvas::_getColorIndex(sf::Color color)
+int Canvas::getColorIndex(sf::Color color)
 {
     if(color == DEFAULT_COLOR) return -1;
 
@@ -921,7 +975,7 @@ void Canvas::_refreshCellColor(std::size_t cell_id)
     if(cell_id == m_selectedCellID && checkFlag(m_flags, FLAGS::INDICATOR)) color = m_style.selected_cell_color;
     else if(cell_id == m_hoveredCellID) color = m_style.hovered_cell_color;
 
-    _setCellColor(cell_id, color);
+    setCellColor(cell_id, color);
 }
 
 void Canvas::_onCellHover(std::size_t hovered_cell_id)
@@ -947,11 +1001,6 @@ void Canvas::_refreshGridColor()
     const std::size_t VERTEX_COUNT = m_renderedGridLines.getVertexCount();
     for(std::size_t i{0}; i < VERTEX_COUNT; ++i)
         m_renderedGridLines[i].color = m_style.fill_color;
-}
-
-void Canvas::_refreshLinesColor()
-{
-
 }
 
 void Canvas::_updateLines()
@@ -1035,10 +1084,11 @@ void Canvas::_updateCells()
 
     std::vector<std::uint32_t> dsu(m_MAX_CELL_COUNT);
     std::vector<Bounds> bounds(m_MAX_CELL_COUNT);
-    std::vector<GridCell> cached_cells = std::move(m_cells);
+    std::deque<GridCell> cached_cells = std::move(m_cells);
     std::unordered_map<std::uint64_t, std::size_t> hashed_cells;
     hashed_cells.reserve(cached_cells.size());
     m_renderedCells.clear();
+    m_renderedCellTextures.clear();
     m_cells.clear();
 
     std::size_t hovered_id = m_hoveredCellID;
@@ -1114,7 +1164,9 @@ void Canvas::_updateCells()
         // not sealed (on canvas edges)
         if(!isRectSealed(bound.box)) continue;
 
-        GridCell& cell = m_cells.emplace_back(*this, m_cells.size());
+        GridCell& cell = m_cells.emplace_back(m_cells.size());
+
+        cell.Proot = this;
 
         cell.grid.x0 = bound.box.x0;
         cell.grid.x1 = bound.box.x1;
@@ -1129,7 +1181,7 @@ void Canvas::_updateCells()
             if(hovered_id == it->second) m_hoveredCellID = cell.id;
             if(clicked_id == it->second) m_clickedCellID = cell.id;
             if(selected_id == it->second) m_selectedCellID = cell.id;
-            cell.fill_color = cached_cells[it->second].fill_color;
+            cached_cells[it->second].inheritTo(cell);
         }
 
         RectRange<float> rect;
@@ -1139,8 +1191,20 @@ void Canvas::_updateCells()
         rect.y1 = m_deadZone + static_cast<float>(bound.box.x1 + 1) * m_cellMinSize.y;
         append_rectangle(m_renderedCells, rect, cell.fill_color);
     }
+    
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
+
+    /*
+    * assuming every cell can have a texture at anytime
+    * memory is allocated either way since it's cheap
+    * or do we ask for 120 bytes every time like broke lil bitches?
+    */
+    m_renderedCellTextures.resize(m_cells.size() * 6);
+    for(const GridCell& cell : m_cells)
+    {
+        if(cell.texture) _emplaceCellTexture(cell.id);
+    }
     ++m_access->generation;
 }
 
@@ -1165,6 +1229,85 @@ void Canvas::_updateGrid()
     }
  
     m_updateGridLines = false;
+}
+
+bool Canvas::setCellTexture(std::size_t cell_id, const std::string& image_path)
+{
+    GridCell* cell = getCell(cell_id);
+    if(!cell) return false;
+
+    const RectRange<float> PIXELS_RECT = mapGridRectToCoords(cell->grid);
+    const sf::Vector2f CELL_SIZE = PIXELS_RECT.distance();
+    if(CELL_SIZE.x < 1.f || CELL_SIZE.y < 1.f) return false;
+
+    const sf::Vector2u target_size{static_cast<unsigned int>(CELL_SIZE.x), static_cast<unsigned int>(CELL_SIZE.y)};
+
+    auto texture_pair = _getTexture(image_path, target_size);
+    if(!texture_pair.second) return false;
+
+    cell->releaseTexture();
+    cell->texture_key = texture_pair.first;
+    cell->texture = texture_pair.second;
+
+    _emplaceCellTexture(cell_id);
+    return true;
+}
+
+void Canvas::_emplaceCellTexture(std::size_t cell_id)
+{
+    const GridCell* cell = getCell(cell_id);
+    if(!cell || !cell->texture) return;
+
+    const RectRange<float> rect = mapGridRectToCoords(cell->grid);
+    const sf::Vector2f size(cell->texture->getSize());
+    const std::size_t base = cell_id * 6;
+
+    m_renderedCellTextures[base + 0] = sf::Vertex{{rect.x0, rect.y0}, sf::Color::White, {0.f, 0.f}};
+    m_renderedCellTextures[base + 1] = sf::Vertex{{rect.x1, rect.y0}, sf::Color::White, {size.x, 0.f}};
+    m_renderedCellTextures[base + 2] = sf::Vertex{{rect.x1, rect.y1}, sf::Color::White, {size.x, size.y}};
+    m_renderedCellTextures[base + 3] = sf::Vertex{{rect.x1, rect.y1}, sf::Color::White, {size.x, size.y}};
+    m_renderedCellTextures[base + 4] = sf::Vertex{{rect.x0, rect.y1}, sf::Color::White, {0.f, size.y}};
+    m_renderedCellTextures[base + 5] = sf::Vertex{{rect.x0, rect.y0}, sf::Color::White, {0.f, 0.f}};
+}
+
+
+std::pair<std::string, const sf::Texture*> Canvas::_getTexture(const std::string& path, sf::Vector2u target_size)
+{
+    const std::string key = make_texture_key(path, target_size);
+    std::unordered_map<std::string, TexSource>::iterator it = m_cache.find(key);
+    if(it != m_cache.end())
+    {
+        ++it->second.ref_count;
+        return {key, &it->second.texture};
+    }
+
+    sfml_widgets::Widget::ImageCache& image_cache = sfml_widgets::Widget::ImageCache::getInstance();
+    std::optional<const sf::Image*> source = image_cache.getImage(path);
+    if(!source) return {"", nullptr};
+
+    std::optional<sf::Image> resized = sfml_widgets::resize_image(**source, target_size);
+    image_cache.decrementRefCounter(path);
+    if(!resized) return {"", nullptr};
+
+    sf::Texture texture;
+    if(!texture.loadFromImage(*resized)) return {"", nullptr};
+    texture.setSmooth(true);
+
+    TexSource& entry = m_cache[key];
+    entry.texture = std::move(texture);
+    entry.ref_count = 1;
+    return {key, &entry.texture};
+}
+
+void Canvas::_releaseTexture(GridCell& cell)
+{
+    if(cell.texture_key.empty()) return;
+
+    std::unordered_map<std::string, TexSource>::iterator it = m_cache.find(cell.texture_key);
+    if(it != m_cache.end() && --it->second.ref_count == 0) m_cache.erase(it);
+    cell.texture = nullptr;
+    cell.texture_key.clear();
+    _refreshCellColor(cell.id);
 }
 }
 
