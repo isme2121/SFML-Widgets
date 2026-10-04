@@ -626,6 +626,9 @@ private:
     ///////////////////////////////////////////////////////////////////
     void _renderWidgetGroups();
 
+    void _renderCanvasLineSection(Canvas* canvas, CanvasCache& cache);
+    void _renderCanvasCellSection(Canvas* canvas, CanvasCache& cache);
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders a single shader type in the UI
     ///

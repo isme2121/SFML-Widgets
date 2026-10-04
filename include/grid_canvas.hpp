@@ -298,7 +298,11 @@ public:
     ///////////////////////////////////////////////////////////////////
     Canvas(Frame& root, sf::Vector2f position, sf::Vector2u size, const sf::Vector2u& grid);
 
-    ~Canvas() override;
+    Canvas(Canvas&& other) = delete;
+    Canvas& operator=(Canvas&& other) = delete;
+
+    Canvas(const Canvas& other) = delete;
+    Canvas& operator=(const Canvas& other) = delete;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws a hortizontal/vertical line
@@ -666,7 +670,7 @@ private:
     /// controlled
     /// 
     ///////////////////////////////////////////////////////////////////
-    const LineState& getLine(std::size_t row, std::size_t col, std::size_t axis) const; //!< CONST BEST FRIEND
+    const LineState& getLine(std::size_t row, std::size_t col, std::size_t axis) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a pointer to existing cell
@@ -792,12 +796,6 @@ private:
     void _onCellSelect(std::size_t selected_cell_id);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates grid lines color to match canvas outline
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void _refreshGridColor();
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates line values visually
     ///
     ///////////////////////////////////////////////////////////////////
@@ -901,11 +899,6 @@ private:
     bool m_updateLines{false};
     bool m_updateCells{false};
     bool m_updateGridLines{false};
-
-    Canvas(Canvas&& other) = delete;
-    Canvas& operator=(Canvas&& other) = delete;
-    Canvas(const Canvas& other) = delete;
-    Canvas& operator=(const Canvas& other) = delete;
 };
 
 template <>

@@ -27,7 +27,7 @@ using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, st
                            Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
                            DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign, Cell*,
                            sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>, Canvas::cell_ptr, RectRange<unsigned int>, const Frame*, const sf::RenderWindow*>;
+                           std::optional<sf::Vector2u>, Canvas::cell_ptr, const Frame*, const sf::RenderWindow*>;
 
 // Compile time check if a type is part of our variant
 template<typename T, typename variant_t> struct is_part_of_variant;
@@ -217,6 +217,8 @@ constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::strin
      {"Sprite Shader", SPRITE_SHADER_FRAG},
      {"Texture Shader", TEXTURE_SHADER_FRAG}}
 };
+
+constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 3>{"None", "Open", "Dotted"};
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -371,6 +373,24 @@ struct ShaderCache
     std::array<char, 256> file_path{};
 };
 
+struct CanvasCache
+{
+    unsigned int line_x0{0}, line_y0{0}, line_x1{0}, line_y1{0};
+    unsigned int line_thickness{1};
+    bool line_use_default_color{true};
+    float line_color[4]{1.f, 1.f, 1.f, 1.f};
+    int line_type_idx{0};
+
+    // Cell editor
+    int cell_side_idx{0};
+    float cell_fill_color[4]{1.f, 1.f, 1.f, 1.f};
+    unsigned int cell_outline_thickness{1};
+    bool cell_use_default_outline_color{true};
+    float cell_outline_color[4]{1.f, 1.f, 1.f, 1.f};
+    int cell_outline_type_idx{0};
+    std::array<char, 256> cell_texture_path{};
+};
+
 ///////////////////////////////////////////////////////////////////
 /// @brief Memory attributes for any widget
 ///
@@ -385,6 +405,7 @@ struct CachedAttributes
     ShaderCache clip_shader_cache;
     ShaderCache color_shader_cache;
     ToolTipCache tooltip;
+    CanvasCache canvas;
     int theme_idx{-1};                                      //!< -1 == None
     sf::Vector2f grab_offset{0.f, 0.f};
     std::string label;
@@ -1022,22 +1043,6 @@ struct AccessorsLink<Canvas>
         set_lookup(vec, "cell max count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getMaxCellsCount();}, EnumSection::State);
 
         /* Setters */
-        set_lookup(vec, "draw line" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<RectRange<unsigned int>>(&v))
-                return invoke_setter([&]{return static_cast<Canvas*>(w)->drawLine(*s);});
-            return false;
-        }, EnumSection::Any);
-        set_lookup(vec, "remove line" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<RectRange<unsigned int>>(&v))
-                return invoke_setter([&]{return static_cast<Canvas*>(w)->removeLine(*s);});
-            return false;
-        }, EnumSection::Any);
-        set_lookup(vec, "clear lines" ,+[](void* w) -> bool
-        {
-            return invoke_setter([&]{static_cast<Canvas*>(w)->clearCanvas();});
-        }, EnumSection::Any);
         set_lookup(vec, "dead zone" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))

@@ -176,13 +176,6 @@ void InfoWrapper::trySetFromText(const std::string& key, const std::string& text
             if(try_set_from_val(Accessed_t(sf::Vector2f(fx, fy)))) return;
     }
 
-    // RectRange
-    {
-        sf::Vector2u start, end;
-        if(std::sscanf(text.c_str(), "%u , %u , %u , %u", &start.x, &start.y, &end.x, &end.y) == 4 ||
-           std::sscanf(text.c_str(), "%u %u %u %u", &start.x, &start.y, &end.x, &end.y) == 4)
-            if(try_set_from_val(Accessed_t(RectRange<unsigned int>{start.x, start.y, end.x, end.y}))) return;
-    }
     // unsigned int types
     if(!text.empty())
     {
@@ -293,7 +286,7 @@ void InfoWrapper::renderWidgets()
     renderFlagsSection();
     renderAccessorSections();
     renderShadersSection();
-    renderToolTipSection();   // NEW
+    renderToolTipSection();
     ImGui::PopID();
 }
 
@@ -557,10 +550,35 @@ void InfoWrapper::renderAccessorSections()
     float max_bottom_y = curr_y;
     unsigned int section_count = 0;
 
+    auto append_section = [&](const char* section_label, auto&& render_section)
+    {
+        if(section_count % 2 == 1)
+        {
+            ImGui::SetCursorPos(ImVec2(RIGHT_COL_START_X, curr_y));
+        }
+        else
+        {
+            ImGui::SetCursorPosY(max_bottom_y);
+            curr_y = ImGui::GetCursorPosY();
+        }
+
+        ImGui::BeginGroup();
+        ImGui::Separator();
+        ImGui::PushStyleColor(ImGuiCol_Text, SECTION_LABEL_COLOR);
+        ImGui::TextUnformatted(section_label);
+        ImGui::PopStyleColor();
+        render_section();
+        ImGui::EndGroup();
+
+        float section_final_y = ImGui::GetCursorPosY() + 6.f;
+        if(section_count % 2 == 0) max_bottom_y = section_final_y;
+        else max_bottom_y = std::max(max_bottom_y, section_final_y);
+
+        ++section_count;
+    };
+
     for(const auto& section_literal : enum_literals::ENUM_SECTION_LITERAL)
     {
-        // check if any keys are initialized with current section
-        // avoids leaving a dangling section
         bool has_keys = std::any_of(m_rows->begin(), m_rows->end(),
             [&](const Accessor_ptr& row)
             {
@@ -569,43 +587,28 @@ void InfoWrapper::renderAccessorSections()
 
         if(!has_keys) continue;
 
-        if(section_count % 2 == 1)
+        append_section(section_literal.get<0>(), [&]()
         {
-            ImGui::SetCursorPos(ImVec2(RIGHT_COL_START_X, curr_y));
-        }
-        else
+            for(Accessor_ptr& row : *m_rows)
+            {
+                if(row.attrib.section != section_literal.get<1>()) continue;
+                ImGui::PushID(row.key.c_str());
+                ImGui::TextUnformatted(row.key.c_str());
+                renderRow(row);
+                ImGui::PopID();
+            }
+        });
+    }
+
+    if(Canvas* canvas = dynamic_cast<Canvas*>(m_selected.widget_ptr))
+    {
+        auto it = m_cache.find(m_selected.widget_ptr);
+        if(it != m_cache.end())
         {
-            // new y
-            ImGui::SetCursorPosY(max_bottom_y);
-            curr_y = ImGui::GetCursorPosY();
+            CanvasCache& cache = it->second.canvas;
+            append_section("Canvas (Lines)", [&](){_renderCanvasLineSection(canvas, cache);});
+            append_section("Canvas (Cell)",[&](){_renderCanvasCellSection(canvas, cache);});
         }
-
-        float initial_y = ImGui::GetCursorPosY();
-
-        ImGui::BeginGroup();
-        ImGui::Separator();
-        ImGui::PushStyleColor(ImGuiCol_Text, SECTION_LABEL_COLOR);
-        ImGui::TextUnformatted(section_literal.get<0>());
-        ImGui::PopStyleColor();
-
-        for(Accessor_ptr& row : *m_rows)
-        {
-            if(row.attrib.section != section_literal.get<1>()) continue;
-            ImGui::PushID(row.key.c_str());
-            ImGui::TextUnformatted(row.key.c_str());
-            renderRow(row);
-            ImGui::PopID();
-        }
-
-        ImGui::EndGroup();
-
-        float section_final_y = ImGui::GetCursorPosY() + 6.f;
-
-        // start new row from largest y
-        if(section_count % 2 == 0) max_bottom_y = section_final_y;
-        else max_bottom_y = std::max(max_bottom_y, section_final_y);
-
-        ++section_count;
     }
 
     ImGui::SetCursorPosY(max_bottom_y);
@@ -1498,12 +1501,8 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
         },
         [&](Canvas::cell_ptr p)
         {
-            if(p) ImGui::Text("Cell ID: %lu", p->getID());
+            if(p) ImGui::Text("Cell ID: %zu", p->getID());
             else ImGui::TextUnformatted("None");
-        },
-        [&](RectRange<unsigned int>& v)
-        {
-            ImGui::Text("start(%u, %u) end(%u, %u)", v.x0, v.y0, v.x1, v.y1);
         },
         [&](const sf::RenderWindow* p)
         {
@@ -1573,6 +1572,195 @@ const char* InfoWrapper::getRootLabel(Widget* w) const
     auto it = m_cache.find(static_cast<const Widget*>(root));
     if(it == m_cache.end()) return NULL_TEXT;
     return it->second.label.c_str();
+}
+
+void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
+{
+    bool draw_button_clicked{false}, remove_button_clicked{false}, thickness_button_clicked{false},
+         color_button_clicked{false}, type_button_clicked{false};
+
+    ImGui::TextUnformatted("Unit Range {x0, y0, x1, y1}");
+    int range[4]{static_cast<int>(cache.line_x0), static_cast<int>(cache.line_y0),
+                 static_cast<int>(cache.line_x1), static_cast<int>(cache.line_y1)};
+    ImGui::SetNextItemWidth(UNKNOWN_INPUT_WIDTH);
+    if(ImGui::InputInt4("##canvas_line_range", range))
+    {
+        cache.line_x0 = static_cast<unsigned int>(std::max(0, range[0]));
+        cache.line_y0 = static_cast<unsigned int>(std::max(0, range[1]));
+        cache.line_x1 = static_cast<unsigned int>(std::max(0, range[2]));
+        cache.line_y1 = static_cast<unsigned int>(std::max(0, range[3]));
+    }
+    if(ImGui::Button("Draw Line")) draw_button_clicked = true;
+    ImGui::SameLine();
+    if(ImGui::Button("Remove Line")) remove_button_clicked = true;
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Line Thickness");
+    int thickness = static_cast<int>(cache.line_thickness);
+    ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+    if(ImGui::SliderInt("##canvas_line_thickness", &thickness, 0, 7))
+    {
+        cache.line_thickness = static_cast<unsigned int>(thickness);
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Set Thickness")) thickness_button_clicked = true;
+    ImGui::Spacing();
+
+    ImGui::Checkbox("Use Canvas Outline Color##canvas_line_defcolor", &cache.line_use_default_color);
+    ImGui::BeginDisabled(cache.line_use_default_color);
+    ImGui::ColorEdit4("Color##canvas_line_color", cache.line_color, ImGuiColorEditFlags_NoInputs);
+    ImGui::SameLine();
+    if(ImGui::Button("Set Color")) color_button_clicked = true;
+    ImGui::EndDisabled();
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Line Type");
+    ImGui::SetNextItemWidth(ENUM_INPUT_WIDTH);
+    if(ImGui::BeginCombo("##canvas_line_type", enum_literals::LINE_TYPE_LITERAL[static_cast<std::size_t>(cache.line_type_idx)].get<0>()))
+    {
+        for(std::size_t i = 0; i < enum_literals::LINE_TYPE_LITERAL.size(); ++i)
+        {
+            bool is_selected = (cache.line_type_idx == static_cast<int>(i));
+            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.line_type_idx = static_cast<int>(i);
+            if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Set Type")) type_button_clicked = true;
+    ImGui::Spacing();
+
+    RectRange<unsigned int> range_val{cache.line_x0, cache.line_y0, cache.line_x1, cache.line_y1};
+    sf::Color color = cache.line_use_default_color ? DEFAULT_COLOR : toSfColor(cache.line_color);
+    LineType type = static_cast<LineType>(cache.line_type_idx);
+    if(draw_button_clicked) canvas->drawLine(range_val, static_cast<LineState>(cache.line_thickness), color, type);
+    if(remove_button_clicked) canvas->removeLine(range_val);
+    if(thickness_button_clicked) canvas->setLineThickness(range_val, static_cast<LineState>(cache.line_thickness));
+    if(color_button_clicked) canvas->setLineColor(range_val, color);
+    if(type_button_clicked) canvas->setLineType(range_val, type);
+
+    ImGui::PushStyleColor(ImGuiCol_Button, RED);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DARK_RED);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DARKER_RED);
+    if(ImGui::Button("Clear Canvas")) canvas->clearCanvas();
+    ImGui::PopStyleColor(3);
+}
+
+void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
+{
+    Canvas::cell_ptr selected = canvas->getSelectedCell();
+    if(!selected)
+    {
+        ImGui::TextDisabled("No cell currently selected.");
+        return;
+    }
+
+    constexpr std::size_t DIRECTIONS_COUNT = enum_literals::DIRECTION_LITERAL.size();
+
+    ImGui::Text("Cell ID: %zu", selected->getID());
+
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Selected Line Side");
+    ImGui::SetNextItemWidth(ENUM_INPUT_WIDTH);
+    if(ImGui::BeginCombo("##canvas_cell_side", enum_literals::DIRECTION_LITERAL[static_cast<std::size_t>(cache.cell_side_idx)].get<0>()))
+    {
+        for(std::size_t i = 0; i < DIRECTIONS_COUNT; ++i)
+        {
+            bool is_selected = (cache.cell_side_idx == static_cast<int>(i));
+            if(ImGui::Selectable(enum_literals::DIRECTION_LITERAL[i].get<0>(), is_selected)) cache.cell_side_idx = static_cast<int>(i);
+            if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    DIRECTION side = static_cast<DIRECTION>(cache.cell_side_idx);
+
+    ImGui::Spacing();
+
+    int outline_thickness = static_cast<int>(cache.cell_outline_thickness);
+    ImGui::TextUnformatted("Outline Thickness");
+    ImGui::SetNextItemWidth(NUMERIC_INPUT_WIDTH);
+    if(ImGui::SliderInt("##canvas_cell_outlinethick", &outline_thickness, 0, 7))
+    {
+        cache.cell_outline_thickness = static_cast<unsigned int>(outline_thickness);
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Set Line Thickness##canvas_cell_setthickness"))
+    {
+        selected->setOutlineThickness(side, static_cast<LineState>(cache.cell_outline_thickness));
+    }
+
+    ImGui::Spacing();
+
+    ImGui::Checkbox("Use Canvas Outline Color##canvas_cell_defoutline", &cache.cell_use_default_outline_color);
+    ImGui::BeginDisabled(cache.cell_use_default_outline_color);
+    ImGui::ColorEdit4("Outline Color##canvas_cell_outlinecolor", cache.cell_outline_color, ImGuiColorEditFlags_NoInputs);
+    ImGui::SameLine();
+    if(ImGui::Button("Set Outline COlor##canvas_cell_setoutlinecolor"))
+    {
+        sf::Color c = cache.cell_use_default_outline_color ? DEFAULT_COLOR : toSfColor(cache.cell_outline_color);
+        selected->setOutlineColor(side, c);
+    }
+    ImGui::EndDisabled();
+
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Outline Type");
+    ImGui::SetNextItemWidth(ENUM_INPUT_WIDTH);
+    if(ImGui::BeginCombo("##canvas_cell_outlinetype", enum_literals::LINE_TYPE_LITERAL[static_cast<std::size_t>(cache.cell_outline_type_idx)].get<0>()))
+    {
+        for(std::size_t i = 0; i < enum_literals::LINE_TYPE_LITERAL.size(); ++i)
+        {
+            bool is_selected = (cache.cell_outline_type_idx == static_cast<int>(i));
+            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.cell_outline_type_idx = static_cast<int>(i);
+            if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Set Outline Type##canvas_cell_setoutlinetype"))
+    {
+        selected->setOutlineType(side, static_cast<LineType>(cache.cell_outline_type_idx));
+    }
+
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Cell Fill Color");
+    ImGui::ColorEdit4("Color##canvas_cell_fill", cache.cell_fill_color, ImGuiColorEditFlags_NoInputs);
+    ImGui::SameLine();
+    if(ImGui::Button("Set Color##canvas_cell_setfill"))
+    {
+        selected->setCellColor(toSfColor(cache.cell_fill_color));
+    }
+
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("Cell Texture");
+    ImGui::SetNextItemWidth(PATH_INPUT_WIDTH);
+    ImGui::InputTextWithHint("##canvas_cell_texpath", "image path", cache.cell_texture_path.data(), cache.cell_texture_path.size());
+    ImGui::SameLine();
+    ImGui::BeginDisabled(m_dialog.is_open.load());
+    if(ImGui::Button("Browse##canvas_cell_texbrowse"))
+    {
+        openFileDialog("canvas_cell_texture", "Open Image", IMG_EXTENSIONS, N_IMG_EXTENSIONS, "Image files");
+    }
+    ImGui::EndDisabled();
+
+    if(m_dialog.safe_path && m_dialog.req_key == "canvas_cell_texture" && m_selectToken == m_dialog.req_token)
+    {
+        std::snprintf(cache.cell_texture_path.data(), cache.cell_texture_path.size(), "%s", m_dialog.safe_path->c_str());
+        m_dialog.safe_path.reset();
+    }
+
+    if(ImGui::Button("Load##canvas_cell_texload"))
+    {
+        selected->setCellTexture(cache.cell_texture_path.data());
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Clear##canvas_cell_texclear"))
+    {
+        selected->clearCellTexture();
+    }
 }
 }
 

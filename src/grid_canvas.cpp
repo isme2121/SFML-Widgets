@@ -295,11 +295,6 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
-Canvas::~Canvas()
-{
-
-}
-
 bool Canvas::drawLine(RectRange<unsigned int> line_range, LineState thickness, sf::Color color, LineType state)
 {
     LineState val{LINE_SET};
@@ -495,7 +490,7 @@ void Canvas::setTheme(CanvasStyle s_canvas)
 
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
-    _refreshGridColor();
+    m_updateGridLines = true;
     m_updateLines = true;
 }
 
@@ -515,7 +510,7 @@ void Canvas::poke()
 
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
-    _refreshGridColor();
+    m_updateGridLines = true;
     m_updateLines = true;
 }
 
@@ -992,15 +987,6 @@ void Canvas::_onCellSelect(std::size_t selected_cell_id)
     m_selectedCellID = selected_cell_id;
     _refreshCellColor(previous);
     _refreshCellColor(selected_cell_id);
-}
-
-void Canvas::_refreshGridColor()
-{
-    if(!checkFlag(m_flags, FLAGS::GRID)) return;
-
-    const std::size_t VERTEX_COUNT = m_renderedGridLines.getVertexCount();
-    for(std::size_t i{0}; i < VERTEX_COUNT; ++i)
-        m_renderedGridLines[i].color = m_style.fill_color;
 }
 
 void Canvas::_updateLines()
