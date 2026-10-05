@@ -1,6 +1,6 @@
 #include "frame.hpp"
 #include "grid_canvas.hpp"
-#include <iostream>
+#include <cmath>
 
 namespace
 {
@@ -276,6 +276,22 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
+    m_openLineShaderPtr = std::make_unique<sf::Shader>();
+    if(m_openLineShaderPtr->loadFromMemory(OPEN_LINE_SHADER_FRAG, sf::Shader::Type::Fragment))
+    {
+        m_openLineShaderPtr->setUniform("join_lines", m_openJoinMode ? 1 : 0);
+        m_openLineShaderPtr->setUniform("zero_space_width", m_openDoorWidth);
+        m_openLineShaderPtr->setUniform("one_space_width", m_openStubRatio);
+    }
+    else m_openLineShaderPtr.reset();
+
+    m_dottedLineShaderPtr = std::make_unique<sf::Shader>();
+    if(m_dottedLineShaderPtr->loadFromMemory(DOTTED_LINE_SHADER_FRAG, sf::Shader::Type::Fragment))
+    {
+        m_dottedLineShaderPtr->setUniform("u_dotSpacing", m_dotSpacing);
+        m_dottedLineShaderPtr->setUniform("u_dotRadius", m_dotRadius);
+    }
+    else m_dottedLineShaderPtr.reset();
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
@@ -292,6 +308,21 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
     loadClipShader(SPRITE_SHADER_FRAG, W_LoadType::Memory);
+    m_openLineShaderPtr = std::make_unique<sf::Shader>();
+    if(m_openLineShaderPtr->loadFromMemory(OPEN_LINE_SHADER_FRAG, sf::Shader::Type::Fragment))
+    {
+        m_openLineShaderPtr->setUniform("join_lines", m_openJoinMode ? 1 : 0);
+        m_openLineShaderPtr->setUniform("zero_space_width", m_openDoorWidth);
+        m_openLineShaderPtr->setUniform("one_space_width", m_openStubRatio);
+    }
+    else m_openLineShaderPtr.reset();
+
+    m_dottedLineShaderPtr = std::make_unique<sf::Shader>();
+    if(m_dottedLineShaderPtr->loadFromMemory(DOTTED_LINE_SHADER_FRAG, sf::Shader::Type::Fragment))
+    {
+        m_dottedLineShaderPtr->setUniform("dot_radius", m_dotRadius);
+    }
+    else m_dottedLineShaderPtr.reset();
     toggle(m_flags, FLAGS::ZOOM | FLAGS::PAN);
 }
 
@@ -514,6 +545,42 @@ void Canvas::poke()
     m_updateLines = true;
 }
 
+void Canvas::setOpenLineJoinMode(bool merged)
+{
+    m_openJoinMode = merged;
+    if(m_openLineShaderPtr) m_openLineShaderPtr->setUniform("join_lines", merged ? 1 : 0);
+}
+
+void Canvas::setOpenLineDoorWidth(float units)
+{
+    m_openDoorWidth = std::max(units, 0.f);
+    if(m_openLineShaderPtr) m_openLineShaderPtr->setUniform("zero_space_width", units);
+}
+
+void Canvas::setOpenLineStubRatio(float ratio)
+{
+    m_openStubRatio = std::clamp(ratio, 0.01f, 0.49f);
+    if(m_openLineShaderPtr) m_openLineShaderPtr->setUniform("one_space_width", ratio);
+}
+
+void Canvas::setDottedLineSpacing(float dotsPerUnit)
+{
+    m_dotSpacing = std::max(dotsPerUnit, 0.1f);
+    m_updateLines = true;
+}
+
+void Canvas::setDottedLineRadius(float pixels)
+{
+    m_dotRadius = std::max(pixels, 0.1f);
+    if(m_dottedLineShaderPtr) m_dottedLineShaderPtr->setUniform("dot_radius", m_dotRadius);
+}
+
+void Canvas::setDottedLineRowHeight(float pixelsPerRow)
+{
+    m_dotRowPixelHeight = std::max(pixelsPerRow, 0.1f);
+    m_updateLines = true;
+}
+
 bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
 {
     sf::Vector2f local_view_pixel = mapLocalToView(getLocalPixel(mouse_position));
@@ -609,6 +676,11 @@ void Canvas::drawWidget()
     }
 
     if(m_renderedlines.getVertexCount()) m_texture.draw(m_renderedlines);
+    if(m_renderedOpenLines.getVertexCount() && m_openLineShaderPtr)
+        m_texture.draw(m_renderedOpenLines, m_openLineShaderPtr.get());
+
+    if(m_renderedDottedLines.getVertexCount() && m_dottedLineShaderPtr)
+        m_texture.draw(m_renderedDottedLines, m_dottedLineShaderPtr.get());
 
     m_texture.display();
     m_sprite.setTexture(m_texture.getTexture());
@@ -995,6 +1067,8 @@ void Canvas::_updateLines()
     m_updateLines = false;
 
     m_renderedlines.clear();
+    m_renderedOpenLines.clear();
+    m_renderedDottedLines.clear();
 
     for(std::size_t row{0}; row <= m_grid.x; ++row)
     {
@@ -1006,21 +1080,30 @@ void Canvas::_updateLines()
                 const std::size_t line_start{col};
                 while(col < m_grid.y && getLine(row, col, 0) == line_flags) ++col;
 
-                float thickness = LineExtractThickness(line_flags);
-                sf::Color color = LineExtractColor(line_flags);
-                LineType state = LineExtractType(line_flags);
+                const float thickness = LineExtractThickness(line_flags);
+                const sf::Color color = LineExtractColor(line_flags);
+                const LineType type = LineExtractType(line_flags);
+                const float run_length = static_cast<float>(col - line_start);
 
-                const float half = thickness / 2.f;
                 const float x0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.x;
                 const float x1 = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
                 const float y = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
 
-                RectRange<float> rect;
-                rect.x0 = x0 - half;
-                rect.y0 = y - half;
-                rect.x1 = x1 + half;
-                rect.y1 = y + half;
-                append_rectangle(m_renderedlines, rect, color);
+                if(type == LineType::Dotted)
+                {
+                    const float half = (thickness * m_dotRowPixelHeight) / 2.f;
+                    RectRange<float> rect{x0, y - half, x1, y + half};
+                    const float dot_cycles = std::max(std::round(run_length * m_dotSpacing), 1.f);
+                    _appendDottedLineQuad(m_renderedDottedLines, rect, color, dot_cycles, thickness, false);
+                }
+                else
+                {
+                    const float half = thickness / 2.f;
+                    RectRange<float> rect{x0 - half, y - half, x1 + half, y + half};
+
+                    if(type == LineType::Open) _appendOpenLineQuad(m_renderedOpenLines, rect, color, run_length, false);
+                    else append_rectangle(m_renderedlines, rect, color);
+                }
             }
             else ++col;
         }
@@ -1036,21 +1119,30 @@ void Canvas::_updateLines()
                 const std::size_t line_start{row};
                 while(row < m_grid.x && getLine(row, col, 1) == line_flags) ++row;
 
-                float thickness = LineExtractThickness(line_flags);
-                sf::Color color = LineExtractColor(line_flags);
-                LineType state = LineExtractType(line_flags);
+                const float thickness = LineExtractThickness(line_flags);
+                const sf::Color color = LineExtractColor(line_flags);
+                const LineType type = LineExtractType(line_flags);
+                const float run_length = static_cast<float>(row - line_start);
 
-                const float half = thickness / 2.f;
                 const float y0 = m_deadZone + static_cast<float>(line_start) * m_cellMinSize.y;
                 const float y1 = m_deadZone + static_cast<float>(row) * m_cellMinSize.y;
                 const float x = m_deadZone + static_cast<float>(col) * m_cellMinSize.x;
 
-                RectRange<float> rect;
-                rect.x0 = x - half;
-                rect.y0 = y0 - half;
-                rect.x1 = x + half;
-                rect.y1 = y1 + half;
-                append_rectangle(m_renderedlines, rect, color);
+                if(type == LineType::Dotted)
+                {
+                    const float half = (thickness * m_dotRowPixelHeight) / 2.f;
+                    RectRange<float> rect{x - half, y0, x + half, y1};
+                    const float dot_cycles = std::max(std::round(run_length * m_dotSpacing), 1.f);
+                    _appendDottedLineQuad(m_renderedDottedLines, rect, color, dot_cycles, thickness, true);
+                }
+                else
+                {
+                    const float half = thickness / 2.f;
+                    RectRange<float> rect{x - half, y0 - half, x + half, y1 + half};
+
+                    if(type == LineType::Open) _appendOpenLineQuad(m_renderedOpenLines, rect, color, run_length, true);
+                    else append_rectangle(m_renderedlines, rect, color);
+                }
             }
             else ++row;
         }
@@ -1294,6 +1386,56 @@ void Canvas::_releaseTexture(GridCell& cell)
     cell.texture = nullptr;
     cell.texture_key.clear();
     _refreshCellColor(cell.id);
+}
+
+void Canvas::_appendOpenLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, bool vertical)
+{
+    const std::size_t offset = target.getVertexCount();
+    target.resize(offset + 6);
+
+    if(!vertical)
+    {
+        target[offset + 0] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,         run_length}};
+        target[offset + 1] = sf::Vertex{{rect.x1, rect.y0}, color, {run_length,  run_length}};
+        target[offset + 2] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length,  run_length}};
+        target[offset + 3] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length,  run_length}};
+        target[offset + 4] = sf::Vertex{{rect.x0, rect.y1}, color, {0.f,         run_length}};
+        target[offset + 5] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,         run_length}};
+    }
+    else
+    {
+        target[offset + 0] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,         run_length}};
+        target[offset + 1] = sf::Vertex{{rect.x1, rect.y0}, color, {0.f,         run_length}};
+        target[offset + 2] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length,  run_length}};
+        target[offset + 3] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length,  run_length}};
+        target[offset + 4] = sf::Vertex{{rect.x0, rect.y1}, color, {run_length,  run_length}};
+        target[offset + 5] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,         run_length}};
+    }
+}
+
+void Canvas::_appendDottedLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, float row_count, bool vertical)
+{
+    const std::size_t offset = target.getVertexCount();
+    target.resize(offset + 6);
+
+    if(!vertical)
+    {
+        target[offset + 0] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,        0.f}};
+        target[offset + 1] = sf::Vertex{{rect.x1, rect.y0}, color, {run_length, 0.f}};
+        target[offset + 2] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length, row_count}};
+        target[offset + 3] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length, row_count}};
+        target[offset + 4] = sf::Vertex{{rect.x0, rect.y1}, color, {0.f,        row_count}};
+        target[offset + 5] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,        0.f}};
+    }
+    else
+    {
+        target[offset + 0] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,        0.f}};
+        target[offset + 1] = sf::Vertex{{rect.x1, rect.y0}, color, {0.f,        row_count}};
+        target[offset + 2] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length, row_count}};
+        target[offset + 3] = sf::Vertex{{rect.x1, rect.y1}, color, {run_length, row_count}};
+        target[offset + 4] = sf::Vertex{{rect.x0, rect.y1}, color, {run_length, 0.f}};
+        target[offset + 5] = sf::Vertex{{rect.x0, rect.y0}, color, {0.f,        0.f}};
+    }
 }
 }
 

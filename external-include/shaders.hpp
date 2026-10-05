@@ -129,3 +129,47 @@ void main()
     gl_FragColor = result;
 }
 )";
+
+constexpr std::string_view OPEN_LINE_SHADER_FRAG = R"(
+/*
+* Default shader for open line type in canvas
+*/
+uniform int join_lines;      // 0, 1
+uniform float zero_space_width;  // UNIT LENGTH, NOT RATIO
+uniform float one_space_width;   // UNIT LENGTH, NOT RATIO (this overrides)
+
+void main()
+{
+    float pos = gl_TexCoord[0].x;
+    float line_length = gl_TexCoord[0].y;
+
+    float center, width;
+    if(join_lines == 0) // each unit has an opening
+    {
+        center = floor(pos) + 0.5;
+        width = min(zero_space_width, 1.0 - 2.0 * one_space_width);
+    }
+    else // HUGE
+    {
+        center = line_length * 0.5;
+        width = min(zero_space_width, max(line_length - 2.0 * one_space_width, 0.0));
+    }
+
+    if(abs(pos - center) < width * 0.5) discard;
+    gl_FragColor = gl_Color;
+}
+)";
+
+constexpr std::string_view DOTTED_LINE_SHADER_FRAG = R"(
+uniform float dot_radius; // dot size
+
+void main()
+{
+    vec2 cell_pos = vec2(fract(gl_TexCoord[0].x) - 0.5, fract(gl_TexCoord[0].y) - 0.5);
+    vec2 pixels_per_unit = 1.0 / max(fwidth(gl_TexCoord[0].xy), vec2(1e-5));
+    vec2 dist_pixels = cell_pos * pixels_per_unit;
+
+    if(length(dist_pixels) > dot_radius) discard;
+    gl_FragColor = gl_Color;
+}
+)";

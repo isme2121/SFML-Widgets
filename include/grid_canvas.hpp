@@ -536,6 +536,13 @@ public:
     ///////////////////////////////////////////////////////////////////
     void poke() override;
 
+    void setOpenLineJoinMode(bool merged);
+    void setOpenLineDoorWidth(float units);
+    void setOpenLineStubRatio(float ratio);
+    void setDottedLineSpacing(float dotsPerUnit);
+    void setDottedLineRadius(float radiusFraction);
+    void setDottedLineRowHeight(float pixelsPerRow);
+
 private:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates hovered cell
@@ -846,6 +853,10 @@ private:
     ///////////////////////////////////////////////////////////////////
     void _releaseTexture(GridCell& cell);
 
+    void _appendOpenLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, bool vertical);
+    void _appendDottedLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, float row_count, bool vertical);
+
+
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
@@ -899,6 +910,18 @@ private:
     bool m_updateLines{false};
     bool m_updateCells{false};
     bool m_updateGridLines{false};
+
+    std::unique_ptr<sf::Shader> m_openLineShaderPtr;
+    std::unique_ptr<sf::Shader> m_dottedLineShaderPtr;
+    sf::VertexArray m_renderedOpenLines{sf::PrimitiveType::Triangles};
+    sf::VertexArray m_renderedDottedLines{sf::PrimitiveType::Triangles};
+
+    bool m_openJoinMode{false};
+    float m_openDoorWidth{0.4f};
+    float m_openStubRatio{0.3f};
+    float m_dotSpacing{4.f};
+    float m_dotRadius{1.5f};
+    float m_dotRowPixelHeight{2.5f};
 };
 
 template <>
