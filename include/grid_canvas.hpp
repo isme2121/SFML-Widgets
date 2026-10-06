@@ -13,6 +13,17 @@ constexpr std::uint16_t GENERATE_MASK_U16(unsigned int first, unsigned int last)
 {
     return static_cast<sfml_widgets::LineState>(((UINT16_MAX >> (15 - last)) & (UINT16_MAX << first)));
 }
+
+constexpr unsigned int GET_FLAGS_COUNT(unsigned int low_bit, unsigned int high_bit)
+{
+    if(low_bit > high_bit)
+    {
+        unsigned int tmp = high_bit;
+        high_bit = low_bit;
+        low_bit = tmp;
+    }
+    return 1 << (1 + high_bit - low_bit);
+}
 }
 
 // reserved color for line to inherit canvas outline
@@ -32,18 +43,21 @@ inline constexpr sfml_widgets::LineState LINE_SET = 1u;
 // 0 to 7 range for pixel thickness value
 inline constexpr unsigned int THICKNESS_OFFSET = 1u;
 inline constexpr unsigned int THICKNESS_LAST_BIT = 3u;
+inline constexpr unsigned int THICKNESS_FLAGS_COUNT = GET_FLAGS_COUNT(THICKNESS_OFFSET, THICKNESS_LAST_BIT);
 inline constexpr sfml_widgets::LineState THICKNESS_MASK = GENERATE_MASK_U16(THICKNESS_OFFSET, THICKNESS_LAST_BIT);
 inline constexpr unsigned int THICKNESS_OFF = UINT16_MAX ^ THICKNESS_MASK;
 
-// 0 to 15 (actually 0 to MAX_COLOR_STORAGE)
+// 0 to 15 (actually 0 to MAX_COLOR_STORAGE-1)
 inline constexpr unsigned int COLORS_OFFSET = 4u;
 inline constexpr unsigned int COLORS_LAST_BIT = 7u;
+inline constexpr unsigned int COLORS_FLAGS_COUNT = GET_FLAGS_COUNT(COLORS_OFFSET, COLORS_LAST_BIT);
 inline constexpr sfml_widgets::LineState COLORS_MASK = GENERATE_MASK_U16(COLORS_OFFSET, COLORS_LAST_BIT);
 inline constexpr unsigned int COLORS_OFF = UINT16_MAX ^ COLORS_MASK;
 
 // 0 to 3, available line types in `LineType` class
 inline constexpr unsigned int TYPE_OFFSET = 8u;
 inline constexpr unsigned int TYPE_LAST_BIT = 9u;
+inline constexpr unsigned int TYPE_FLAGS_COUNT = GET_FLAGS_COUNT(TYPE_OFFSET, TYPE_LAST_BIT);
 inline constexpr sfml_widgets::LineState TYPE_MASK = GENERATE_MASK_U16(TYPE_OFFSET, TYPE_LAST_BIT);
 inline constexpr unsigned int TYPE_OFF = UINT16_MAX ^ TYPE_MASK;
 
@@ -109,6 +123,226 @@ struct RectRange
     {
         return !(*this == other);
     }
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Base line renderer class, renders regular lines by default
+/// in `Canvas` class
+///
+/// Derived renderer class can represent a different line type which
+/// is explicitly added to a `Canvas` instance.
+///
+/// @see `OpenLineRenderer`, `DottedLineRenderer` 
+///
+///////////////////////////////////////////////////////////////////
+class LineRenderer
+{
+    friend class Canvas;
+
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs line renderer
+    /// 
+    /// @param line_type line type 
+    /// @param shader shader string or path, relative to `loading_type`
+    /// @param loading_type choose to load shader from memory or a file
+    ///
+    /// @note if the shader fails to load, the program will still run, but
+    /// the created instance cannot assign a shader again, use `hasShader` method
+    /// to check if the shader loaded successfully
+    ///
+    ///////////////////////////////////////////////////////////////////
+    explicit LineRenderer(LineType line_type = LineType::None, std::string_view shader = "", Widget::W_LoadType loading_type = Widget::W_LoadType::Memory);
+
+    virtual ~LineRenderer();
+
+    LineRenderer(LineRenderer&&) = delete;
+    LineRenderer& operator=(LineRenderer&&) = delete;
+    LineRenderer(const LineRenderer&) = delete;
+    LineRenderer& operator=(const LineRenderer&) = delete;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates a uniform value in assigned shader
+    /// 
+    /// @tparam UniformT value type 
+    /// @param uniform_label uniform name in shader
+    /// @param val value
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    template<typename UniformT>
+    void setUniform(const std::string& uniform_label, UniformT val)
+    {
+        if(m_shader) m_shader->setUniform(uniform_label, val);
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the current vertex count
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::size_t getVertexCount() const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns assigned line type 
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    LineType getType() const;
+
+protected:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief interprets how a line is drawn on the CPU side, a derived
+    /// class can override this function for a different line management process,
+    /// or leave it as it is for a default line generation on CPU. Managed by `Canvas`
+    /// instance. 
+    ///
+    /// @param line_start_px starting pixel coord
+    /// @param line_end_px ending pixel coord
+    /// @param fixed_px fixed pixel, on either x or y axis
+    /// @param line_thickness line thickness
+    /// @param run_length_units line length in units
+    /// @param line_color line color
+    /// @param is_vertical is this line vertical?
+    ///
+    ///////////////////////////////////////////////////////////////////
+    virtual void appendLine(float line_begin_px, float line_end_px, float fixed_px, float line_thickness, float run_length_units, sf::Color line_color, bool is_vertical);
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Draws vertex array against target
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void draw(sf::RenderTarget& target) const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Resets rendered vertex content
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void clear();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Flags `Canvas` instance to update line data, this is used
+    /// when a derived class attribute (which is used to influence vertex data
+    /// in overriden `appendLine` method) has it's value updated. 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setLineUpdate();
+
+    sf::VertexArray m_vertices{sf::PrimitiveType::Triangles}; //!< line data
+
+private:
+    sf::RenderStates m_states;
+    std::unique_ptr<sf::Shader> m_shader;
+    const LineType m_type;
+    bool m_requireLineUpdate{false};
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Renders open line type, added to every `Canvas` instance
+/// by default (for now)
+///
+///////////////////////////////////////////////////////////////////
+class OpenLineRenderer : public LineRenderer
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs with built-in shader 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    explicit OpenLineRenderer();
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief When join is set, multiple open type lines that are joined
+    /// would have a single large open space, rather than an open space per
+    /// unit in `Canvas`, default is `false`.
+    /// 
+    /// @param merged new mode
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setJoinMode(bool merged);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief The width of the open space in ratio of the line's total length
+    ///
+    /// This value is limited by the stub ratio current value, which logically
+    /// adds up to: `1.f = open_ratio + stub_ratio * 2.f;`.
+    /// 
+    /// Default is `0.4f`.
+    ///
+    /// @param ratio ratio from `0.f` to `1.f`
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setDoorWidthRatio(float ratio);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief the width of each side's stub in ratio of the line's total length
+    ///
+    /// Total stub width is line length * 2 and it occupies the line's start
+    /// and end sides to form an open door line.
+    ///
+    /// Default is `0.3f`.
+    ///
+    /// @param ratio ratio from `0.01f` to `0.49f`
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setStubRatio(float ratio);
+    
+private:
+    void appendLine(float line_begin_px, float line_end_px, float fixed_px, float line_thickness,
+                            float run_length_units, sf::Color line_color, bool is_vertical) override;
+
+    float m_doorWidthRatio{0.4f};
+    float m_stubRatio{0.3f};
+    bool m_joinMode{false};
+};
+
+///////////////////////////////////////////////////////////////////
+/// @brief Renderers dotted lines, added to every `Canvas` instance
+/// by default (for now)
+///
+///////////////////////////////////////////////////////////////////
+class DottedLineRenderer : public LineRenderer
+{
+public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Constructs with built-in shader
+    ///
+    ///////////////////////////////////////////////////////////////////
+    explicit DottedLineRenderer();
+    
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the number of dots in each unit in `Canvas`, default
+    /// is `4u`
+    ///
+    /// @param dots_per_unit number of dots from `1u` to +inf
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setSpacing(unsigned int dots_per_unit);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the thickness scaling of dotted lines, default
+    /// is `2.5f`
+    ///
+    /// Example: pixel_height=`2.f` ==> thickness is twice as effective for
+    /// dotted line
+    ///
+    /// @param scale from `0.1f` to +inf
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setRowPixelHeight(float scale);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates the total radius of each dot, default is `1.5f`
+    /// 
+    /// @param radius new radius, from `0.1f` to +inf
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void setPixelRadius(float radius);
+
+private:
+    void appendLine(float line_begin_px, float line_end_px, float fixed_px, float line_thickness,
+                            float run_length_units, sf::Color line_color, bool is_vertical) override;
+
+    unsigned int m_dotSpacing{4u};
+    float m_rowPixelHeight{2.5f};
+    float m_pixelRadius{1.5f};
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -300,9 +534,10 @@ public:
 
     Canvas(Canvas&& other) = delete;
     Canvas& operator=(Canvas&& other) = delete;
-
     Canvas(const Canvas& other) = delete;
     Canvas& operator=(const Canvas& other) = delete;
+
+    ~Canvas() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Draws a hortizontal/vertical line
@@ -366,6 +601,29 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     bool setLineType(RectRange<unsigned int> line_range, LineType Line_type = LineType::None);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the assigned line renderer for corresponding type
+    ///
+    /// @param type renderer type 
+    /// @return pointer to renderer type, nullptr if type is not assigned to
+    /// canvas
+    ///
+    ///////////////////////////////////////////////////////////////////
+    LineRenderer* getLineRenderer(LineType type);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns a new line type to this canvas instance
+    ///
+    /// If successfully added, line type can be referenced in `drawLine`, `setLineType`,
+    /// and `getLineRenderer`.
+    ///
+    /// @param new_line_type pointer to a `LineRenderer` derived class instance
+    /// @return true if type is added, or false if: max number of types is already
+    /// reached (@see `TYPE_FLAGS_COUNT`); type was already assigned.
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a reference to the cell in parameter unit coords
@@ -535,13 +793,6 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     void poke() override;
-
-    void setOpenLineJoinMode(bool merged);
-    void setOpenLineDoorWidth(float units);
-    void setOpenLineStubRatio(float ratio);
-    void setDottedLineSpacing(float dotsPerUnit);
-    void setDottedLineRadius(float radiusFraction);
-    void setDottedLineRowHeight(float pixelsPerRow);
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -853,9 +1104,21 @@ private:
     ///////////////////////////////////////////////////////////////////
     void _releaseTexture(GridCell& cell);
 
-    void _appendOpenLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, bool vertical);
-    void _appendDottedLineQuad(sf::VertexArray& target, RectRange<float> rect, sf::Color color, float run_length, float row_count, bool vertical);
-
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Adds a vertex quad to rendered memory
+    ///
+    /// @param type line type 
+    /// @param span_start_px starting pixel coord
+    /// @param span_end_px ending pixel coord
+    /// @param fixed_px fixed pixel, on either x or y axis
+    /// @param thickness line thickness
+    /// @param run_length_units line length in units
+    /// @param color line color
+    /// @param is_vertical is this line vertical?
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void _appendLine(LineType type, float span_start_px, float span_end_px, float fixed_px,
+                     float thickness, float run_length_units, sf::Color color, bool is_vertical);
 
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
@@ -882,7 +1145,7 @@ private:
     std::shared_ptr<Access> m_access;
 
     // rendered data
-    sf::VertexArray m_renderedlines{sf::PrimitiveType::Triangles};
+    std::unordered_map<LineType, std::unique_ptr<LineRenderer>> m_lineRenderers;
     sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};
     sf::VertexArray m_renderedCellTextures{sf::PrimitiveType::Triangles};
     sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};
@@ -910,18 +1173,6 @@ private:
     bool m_updateLines{false};
     bool m_updateCells{false};
     bool m_updateGridLines{false};
-
-    std::unique_ptr<sf::Shader> m_openLineShaderPtr;
-    std::unique_ptr<sf::Shader> m_dottedLineShaderPtr;
-    sf::VertexArray m_renderedOpenLines{sf::PrimitiveType::Triangles};
-    sf::VertexArray m_renderedDottedLines{sf::PrimitiveType::Triangles};
-
-    bool m_openJoinMode{false};
-    float m_openDoorWidth{0.4f};
-    float m_openStubRatio{0.3f};
-    float m_dotSpacing{4.f};
-    float m_dotRadius{1.5f};
-    float m_dotRowPixelHeight{2.5f};
 };
 
 template <>

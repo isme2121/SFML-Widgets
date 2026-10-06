@@ -134,26 +134,18 @@ constexpr std::string_view OPEN_LINE_SHADER_FRAG = R"(
 /*
 * Default shader for open line type in canvas
 */
-uniform int join_lines;      // 0, 1
-uniform float zero_space_width;  // UNIT LENGTH, NOT RATIO
-uniform float one_space_width;   // UNIT LENGTH, NOT RATIO (this overrides)
+uniform int join_lines;             // 0->opening for each unit; 1->single opening
+uniform float zero_space_width_ratio;
+uniform float one_space_width_ratio; 
 
 void main()
 {
     float pos = gl_TexCoord[0].x;
     float line_length = gl_TexCoord[0].y;
 
-    float center, width;
-    if(join_lines == 0) // each unit has an opening
-    {
-        center = floor(pos) + 0.5;
-        width = min(zero_space_width, 1.0 - 2.0 * one_space_width);
-    }
-    else // HUGE
-    {
-        center = line_length * 0.5;
-        width = min(zero_space_width, max(line_length - 2.0 * one_space_width, 0.0));
-    }
+    float length_in_units = (join_lines == 0) ? 1.0 : line_length;
+    float center = (join_lines == 0) ? (floor(pos) + 0.5) : (line_length * 0.5);
+    float width = min(zero_space_width_ratio, 1.0 - 2.0 * one_space_width_ratio) * length_in_units;
 
     if(abs(pos - center) < width * 0.5) discard;
     gl_FragColor = gl_Color;
