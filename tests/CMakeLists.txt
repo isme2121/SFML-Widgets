@@ -29,7 +29,7 @@ endif()
 FetchContent_Declare(
     tinyfiledialogs
     GIT_REPOSITORY https://github.com/native-toolkit/libtinyfiledialogs.git
-    GIT_TAG        master
+    GIT_TAG        cc6b593c029110af8045826ce691f540c85e850c
 )
 FetchContent_MakeAvailable(tinyfiledialogs)
 

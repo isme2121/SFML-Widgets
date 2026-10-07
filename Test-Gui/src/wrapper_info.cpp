@@ -1576,6 +1576,8 @@ const char* InfoWrapper::getRootLabel(Widget* w) const
 
 void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
 {
+    constexpr std::size_t TYPES_COUNT = enum_literals::LINE_TYPE_LITERAL.size();
+
     bool draw_button_clicked{false}, remove_button_clicked{false}, thickness_button_clicked{false},
          color_button_clicked{false}, type_button_clicked{false};
 
@@ -1616,12 +1618,12 @@ void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
 
     ImGui::TextUnformatted("Line Type");
     ImGui::SetNextItemWidth(ENUM_INPUT_WIDTH);
-    if(ImGui::BeginCombo("##canvas_line_type", enum_literals::LINE_TYPE_LITERAL[static_cast<std::size_t>(cache.line_type_idx)].get<0>()))
+    if(ImGui::BeginCombo("##canvas_line_type", enum_literals::LINE_TYPE_LITERAL[cache.line_type_idx].get<0>()))
     {
-        for(std::size_t i = 0; i < enum_literals::LINE_TYPE_LITERAL.size(); ++i)
+        for(int i{0}; i < TYPES_COUNT; ++i)
         {
-            bool is_selected = (cache.line_type_idx == static_cast<int>(i));
-            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.line_type_idx = static_cast<int>(i);
+            bool is_selected = (cache.line_type_idx == i);
+            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.line_type_idx = i;
             if(is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
@@ -1632,12 +1634,12 @@ void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
 
     RectRange<unsigned int> range_val{cache.line_x0, cache.line_y0, cache.line_x1, cache.line_y1};
     sf::Color color = cache.line_use_default_color ? DEFAULT_COLOR : toSfColor(cache.line_color);
-    LineType type = static_cast<LineType>(cache.line_type_idx);
-    if(draw_button_clicked) canvas->drawLine(range_val, static_cast<LineState>(cache.line_thickness), color, type);
+    const char* line_type = enum_literals::LINE_TYPE_LITERAL[cache.line_type_idx].get<0>();
+    if(draw_button_clicked) canvas->drawLine(range_val, static_cast<LineState>(cache.line_thickness), color, line_type);
     if(remove_button_clicked) canvas->removeLine(range_val);
     if(thickness_button_clicked) canvas->setLineThickness(range_val, static_cast<LineState>(cache.line_thickness));
     if(color_button_clicked) canvas->setLineColor(range_val, color);
-    if(type_button_clicked) canvas->setLineType(range_val, type);
+    if(type_button_clicked) canvas->setLineType(range_val, line_type);
 
     ImGui::PushStyleColor(ImGuiCol_Button, RED);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DARK_RED);
@@ -1656,6 +1658,7 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
     }
 
     constexpr std::size_t DIRECTIONS_COUNT = enum_literals::DIRECTION_LITERAL.size();
+    constexpr std::size_t TYPES_COUNT = enum_literals::LINE_TYPE_LITERAL.size();
 
     ImGui::Text("Cell ID: %zu", selected->getID());
 
@@ -1709,10 +1712,10 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
     ImGui::SetNextItemWidth(ENUM_INPUT_WIDTH);
     if(ImGui::BeginCombo("##canvas_cell_outlinetype", enum_literals::LINE_TYPE_LITERAL[static_cast<std::size_t>(cache.cell_outline_type_idx)].get<0>()))
     {
-        for(std::size_t i = 0; i < enum_literals::LINE_TYPE_LITERAL.size(); ++i)
+        for(int i{0}; i < TYPES_COUNT; ++i)
         {
-            bool is_selected = (cache.cell_outline_type_idx == static_cast<int>(i));
-            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.cell_outline_type_idx = static_cast<int>(i);
+            bool is_selected = (cache.cell_outline_type_idx == i);
+            if(ImGui::Selectable(enum_literals::LINE_TYPE_LITERAL[i].get<0>(), is_selected)) cache.cell_outline_type_idx = i;
             if(is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
@@ -1720,7 +1723,7 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
     ImGui::SameLine();
     if(ImGui::Button("Set Outline Type##canvas_cell_setoutlinetype"))
     {
-        selected->setOutlineType(side, static_cast<LineType>(cache.cell_outline_type_idx));
+        selected->setOutlineType(side, enum_literals::LINE_TYPE_LITERAL[cache.cell_outline_type_idx].get<0>());
     }
 
     ImGui::Spacing();

@@ -218,7 +218,7 @@ constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::strin
      {"Texture Shader", TEXTURE_SHADER_FRAG}}
 };
 
-constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 3>{"None", "Open", "Dotted"};
+constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 3>{NORMAL_LINE_LABEL, OPEN_LINE_LABEL, DOTS_LINE_LABEL};
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -1053,44 +1053,44 @@ struct AccessorsLink<Canvas>
         set_lookup(vec, "join mode" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<bool>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Open))->setJoinMode(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setJoinMode(*s);});
             return false;
         }, EnumSection::State, "true/false");
 
         set_lookup(vec, "door width" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Open))->setDoorWidthRatio(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setDoorWidthRatio(*s);});
             return false;
         }, EnumSection::State, "Float (default=0.4)");
 
         set_lookup(vec, "stub ratio" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Open))->setStubRatio(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setStubRatio(*s);});
             return false;
         }, EnumSection::State, "Float (default=0.3)");
 
         set_lookup(vec, "dotted line spacing" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Dotted))->setSpacing(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setSpacing(*s);});
             return false;
         }, EnumSection::State, "Float (default=4)");
 
         set_lookup(vec, "dotted line radius" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Dotted))->setPixelRadius(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setPixelRadius(*s);});
             return false;
-        }, EnumSection::State, "Float (default=2.5)");
+        }, EnumSection::State, "Float (default=1.5)");
 
         set_lookup(vec, "dotted line row height" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(LineType::Dotted))->setRowPixelHeight(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setRowPixelHeight(*s);});
             return false;
-        }, EnumSection::State, "Float (default=1.5f)");
+        }, EnumSection::State, "Float (default=1.5)");
     }
 };
 }

@@ -29,7 +29,7 @@ constexpr unsigned int GET_FLAGS_COUNT(unsigned int low_bit, unsigned int high_b
 // reserved color for line to inherit canvas outline
 inline constexpr sf::Color DEFAULT_COLOR{1, 1, 1, 1};
 // max number of different line colors stored in canvas
-inline constexpr std::size_t MAX_COLOR_STORAGE = 14;
+inline constexpr std::size_t MAX_COLOR_STORAGE = 15;
 
 inline constexpr std::size_t NULL_CELL = constants::KSTALE;
 
@@ -61,13 +61,9 @@ inline constexpr unsigned int TYPE_FLAGS_COUNT = GET_FLAGS_COUNT(TYPE_OFFSET, TY
 inline constexpr sfml_widgets::LineState TYPE_MASK = GENERATE_MASK_U16(TYPE_OFFSET, TYPE_LAST_BIT);
 inline constexpr unsigned int TYPE_OFF = UINT16_MAX ^ TYPE_MASK;
 
-// Different types of lines managed by `Canvas`
-enum class LineType : LineState
-{
-    None = 0u,
-    Open = 1u,
-    Dotted = 2u
-};
+inline constexpr const char* NORMAL_LINE_LABEL = "normal";
+inline constexpr const char* OPEN_LINE_LABEL = "open";
+inline constexpr const char* DOTS_LINE_LABEL = "dots";
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Rectangle bounds
@@ -152,7 +148,7 @@ public:
     /// to check if the shader loaded successfully
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit LineRenderer(LineType line_type = LineType::None, std::string_view shader = "", Widget::W_LoadType loading_type = Widget::W_LoadType::Memory);
+    explicit LineRenderer(const std::string& line_type = NORMAL_LINE_LABEL, std::string_view shader = "", Widget::W_LoadType loading_type = Widget::W_LoadType::Memory);
 
     virtual ~LineRenderer();
 
@@ -185,7 +181,7 @@ public:
     /// @brief Returns assigned line type 
     /// 
     ///////////////////////////////////////////////////////////////////
-    LineType getType() const;
+    const std::string& getType() const;
 
 protected:
     ///////////////////////////////////////////////////////////////////
@@ -230,7 +226,7 @@ protected:
 private:
     sf::RenderStates m_states;
     std::unique_ptr<sf::Shader> m_shader;
-    const LineType m_type;
+    const std::string m_type;
     bool m_requireLineUpdate{false};
 };
 
@@ -407,7 +403,7 @@ public:
     /// @return true if process was successful
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setOutlineType(DIRECTION _s, LineType line_type = LineType::None);
+    bool setOutlineType(DIRECTION _s, const std::string& line_type = NORMAL_LINE_LABEL);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks if unit point collides with cell rect
@@ -434,6 +430,7 @@ public:
     std::size_t getID() const;
 
     bool operator==(const GridCell& other) const;
+
     bool operator==(std::size_t id) const;
 
     ///////////////////////////////////////////////////////////////////
@@ -481,7 +478,7 @@ private:
     RectRange<unsigned int> grid{};     //!< boundaries included in range
     sf::Color fill_color{sf::Color::Transparent};
     const sf::Texture* texture{nullptr};
-    std::string texture_key;
+    std::string texture_path;
 };
 
 class Canvas : public Widget
@@ -540,30 +537,36 @@ public:
     ~Canvas() override;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Draws a hortizontal/vertical line
+    /// @brief Draws a horizontal/vertical line
     ///
     /// @param line_range start and end point for the line in units 
-    /// @param thickness line initial thickness, from 0 to 7
+    /// @param thickness line initial thickness, range `[0, THICKNESS_FLAGS_COUNT[`
     /// @param color line color, default is canvas outline color
     /// @param Line_type line type
     /// @return true if canvas successfully draws the line, otherwise false
     ///
+    /// @see `removeLine`, `clearCanvas`, `setLineThickness`, `setLineColor`, `setLineType`
+    ///
     ///////////////////////////////////////////////////////////////////
-    bool drawLine(RectRange<unsigned int> line_range, LineState thickness = 1u, sf::Color color = DEFAULT_COLOR, LineType Line_type = LineType::None);
+    bool drawLine(RectRange<unsigned int> line_range, LineState thickness = 1u, sf::Color color = DEFAULT_COLOR, const std::string& Line_type = NORMAL_LINE_LABEL);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes a line range from canvas, range must be a horizontal/vertical
     /// line
     ///
     /// @param line_range start and end points in units 
-    /// @return true if the line is successfully removed, otherwise false,
-    /// returns true even if there is no line in that range.
+    /// @return true if at least one segment in range changed, otherwise false -
+    /// including when the range had no line to begin with
+    ///
+    /// @see `drawLine`, `clearCanvas`, `setLineThickness`, `setLineColor`, `setLineType`
     ///
     ///////////////////////////////////////////////////////////////////
     bool removeLine(RectRange<unsigned int> line_range);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Clears canvas from all of it's contents
+    ///
+    /// @see `drawLine`, `removeLine`, `setLineThickness`, `setLineColor`, `setLineType`
     ///
     ///////////////////////////////////////////////////////////////////
     void clearCanvas();
@@ -575,6 +578,8 @@ public:
     /// @param line_range start and end points in units 
     /// @param thickness value from 0 to 7
     /// @return true if line is updated, otherwise false
+    ///
+    /// @see `setLineColor`, `setLineType`
     ///
     ///////////////////////////////////////////////////////////////////
     bool setLineThickness(RectRange<unsigned int> line_range, LineState thickness = 1u);
@@ -589,18 +594,26 @@ public:
     /// @param color new color value
     /// @return true if line is updated, otherwise false
     ///
+    /// @see `setLineThickness`, `setLineType`
+    ///
     ///////////////////////////////////////////////////////////////////
     bool setLineColor(RectRange<unsigned int> line_range, sf::Color color = DEFAULT_COLOR);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the line's type, creates the line if it doesn't exist
     ///
+    /// An unrecognized type name leaves the line's type unchanged (falls
+    /// back to whatever was already set, `"normal"` for a new line) rather
+    /// than failing the call.
+    ///
     /// @param line_range start and end points in units 
-    /// @param Line_type enum type
+    /// @param Line_type registered line type name
     /// @return true if line is updated, otherwise false
     ///
+    /// @see `setLineThickness`, `setLineColor`
+    ///
     ///////////////////////////////////////////////////////////////////
-    bool setLineType(RectRange<unsigned int> line_range, LineType Line_type = LineType::None);
+    bool setLineType(RectRange<unsigned int> line_range, const std::string& Line_type = NORMAL_LINE_LABEL);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the assigned line renderer for corresponding type
@@ -609,8 +622,13 @@ public:
     /// @return pointer to renderer type, nullptr if type is not assigned to
     /// canvas
     ///
+    /// @note use `static_cast` or `dynamic_cast` to access the expected derived
+    /// type.
+    ///
+    /// @see `LineRenderer`, `addLineType`
+    ///
     ///////////////////////////////////////////////////////////////////
-    LineRenderer* getLineRenderer(LineType type);
+    LineRenderer* getLineRenderer(const std::string& type);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a new line type to this canvas instance
@@ -619,9 +637,12 @@ public:
     /// and `getLineRenderer`.
     ///
     /// @param new_line_type pointer to a `LineRenderer` derived class instance
-    /// @return true if type is added, or false if: max number of types is already
-    /// reached (@see `TYPE_FLAGS_COUNT`); type was already assigned.
-    /// 
+    /// @return true if type is added, false if the max number of types is
+    /// already reached (@see `TYPE_FLAGS_COUNT`), or if that type name is
+    /// already assigned
+    ///
+    /// @see `getLineRenderer`
+    ///
     ///////////////////////////////////////////////////////////////////
     bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
 
@@ -631,6 +652,8 @@ public:
     /// @param grid_coords coords in units 
     /// @return valid `cell_ptr` if cell is found, otherwise a null `cell_ptr`
     ///
+    /// @see `getHoveredCell`, `getSelectedCell`
+    ///
     ///////////////////////////////////////////////////////////////////
     cell_ptr at(sf::Vector2u grid_coords) const;
 
@@ -638,8 +661,10 @@ public:
     /// @brief Returns a reference to the cell in parameter pixel coords
     /// relative to canvas
     ///
-    /// @param pixel_coords coords in units 
+    /// @param pixel_coords coords in pixels
     /// @return valid `cell_ptr` if cell is found, otherwise a null `cell_ptr`
+    ///
+    /// @see `getHoveredCell`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
     cell_ptr at(sf::Vector2f pixel_coords) const;
@@ -652,6 +677,8 @@ public:
     /// @note IDs start from 0 and increment for each new cell going from
     /// left/top unit to bottom/right
     ///
+    /// @see `getHoveredCell`, `getSelectedCell`
+    ///
     ///////////////////////////////////////////////////////////////////
     cell_ptr at(std::size_t cell_id) const;
 
@@ -659,6 +686,8 @@ public:
     /// @brief Returns the current hovered cell
     ///
     /// @return valid `cell_ptr` if cell is found, otherwise a null `cell_ptr`
+    ///
+    /// @see `at`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
     cell_ptr getHoveredCell() const;
@@ -668,17 +697,23 @@ public:
     /// 
     /// @return valid `cell_ptr` if cell is found, otherwise a null `cell_ptr`
     ///
+    /// @see `at`, `getHoveredCell`
+    ///
     ///////////////////////////////////////////////////////////////////
     cell_ptr getSelectedCell() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current cells count
     ///
+    /// @see `getMaxCellsCount`
+    ///
     ///////////////////////////////////////////////////////////////////
     std::size_t getCellsCount() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the max number of cells possible (units.x * units.y)
+    ///
+    /// @see `getCellsCount`
     ///
     ///////////////////////////////////////////////////////////////////
     std::size_t getMaxCellsCount() const;
@@ -689,6 +724,8 @@ public:
     ///
     /// @param mouse_position root window provided mouse coordinates  
     ///
+    /// @see `getViewPixel`, `mapLocalToView`
+    ///
     ///////////////////////////////////////////////////////////////////
     sf::Vector2i getLocalPixel(sf::Vector2i mouse_position) const;
 
@@ -698,6 +735,8 @@ public:
     ///
     /// @param mouse_position root window provided mouse coordinates
     ///
+    /// @see `getLocalPixel`, `mapLocalToView`
+    ///
     ///////////////////////////////////////////////////////////////////
     sf::Vector2f getViewPixel(sf::Vector2i mouse_position) const;
 
@@ -706,6 +745,8 @@ public:
     /// accurate for zoomed/panned canvas
     ///
     /// @param local_position coordinates provided from `getLocalPixel`
+    ///
+    /// @see `getLocalPixel`, `getViewPixel`
     ///
     ///////////////////////////////////////////////////////////////////
     sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
@@ -717,37 +758,50 @@ public:
     /// @return nullopt if input coords are out of canvas bounds, otherwise
     /// unit coordinates
     ///
+    /// @see `mapGridToCoords`, `mapGridRectToCoords`, `mapCoordsRectToGrid`
+    ///
     ///////////////////////////////////////////////////////////////////
     std::optional<sf::Vector2u> mapCoordsToGrid(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates relative to parameter unit coordinates
     ///
-    /// @param grid_coordinates coordintates in units 
+    /// @param grid_coordinates coordinates in units 
     /// @return nullopt if input coords are out of canvas bounds, otherwise
     /// pixel coordinates
+    ///
+    /// @see `mapCoordsToGrid`, `mapGridRectToCoords`, `mapCoordsRectToGrid`
     ///
     ///////////////////////////////////////////////////////////////////
     std::optional<sf::Vector2f> mapGridToCoords(sf::Vector2u grid_coordinates) const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns pixel coordinates relative to parameter unit coordinates
+    /// @brief Returns pixel coordinates relative to parameter unit rect
+    ///
+    /// Unlike `mapGridToCoords`, this does not validate the input against
+    /// canvas bounds, out-of-range input produces an out-of-range result
+    /// rather than failing.
     ///
     /// @param grid_rect rect range of unit coordinates
-    /// @return nullopt if input coords are out of canvas bounds, otherwise
-    /// pixel coordinates
+    /// @return pixel coordinates rect
+    ///
+    /// @see `mapCoordsRectToGrid`, `mapGridToCoords`, `mapCoordsToGrid`
     ///
     ///////////////////////////////////////////////////////////////////
     RectRange<float> mapGridRectToCoords(RectRange<unsigned int> grid_rect) const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Returns unit coordinates relative to parameter pixel coordinates
+    /// @brief Returns unit coordinates relative to parameter pixel rect
     ///
     /// Returns range includes any unit that sits inside the provided input.
+    /// Unlike `mapCoordsToGrid`, this does not validate the input against
+    /// canvas bounds, out-of-range input produces an out-of-range result
+    /// rather than failing.
     ///
     /// @param coords_rect rect range of pixel coordinates
-    /// @return nullopt if input coords are out of canvas bounds, otherwise
-    /// unit coordinates
+    /// @return unit coordinates rect
+    ///
+    /// @see `mapGridRectToCoords`, `mapCoordsToGrid`, `mapGridToCoords`
     ///
     ///////////////////////////////////////////////////////////////////
     RectRange<unsigned int> mapCoordsRectToGrid(RectRange<float> coords_rect) const;
@@ -768,12 +822,16 @@ public:
     /// to a shared theme object, however, an update from the said object
     /// would also override parameter style in the future.
     ///
+    /// @see `linkTheme`, `fetchTheme`, `style`, `poke`
+    ///
     ///////////////////////////////////////////////////////////////////
     void setTheme(CanvasStyle s_canvas);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Pulls the widget's style from it's linked theme object
     /// 
+    /// @see `linkTheme`, `setTheme`, `style`, `poke`
+    ///
     ///////////////////////////////////////////////////////////////////
     void fetchTheme() override;
 
@@ -784,12 +842,16 @@ public:
     /// to the returned reference do not affect the theme's style and are overridden
     /// by the theme if any updates are pushed to the widget.
     ///
+    /// @see `linkTheme`, `setTheme`, `fetchTheme`, `poke`
+    ///
     ///////////////////////////////////////////////////////////////////
     CanvasStyle& style();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Forces an update to canvas visual style, it also updates
     /// grid lines if enabled
+    ///
+    /// @see `linkTheme`, `setTheme`, `fetchTheme`, `style`
     ///
     ///////////////////////////////////////////////////////////////////
     void poke() override;
@@ -973,7 +1035,7 @@ private:
     /// @brief Returns current line type from line state
     ///
     ///////////////////////////////////////////////////////////////////
-    LineType LineExtractType(LineState line_flags);
+    const std::string& LineExtractType(LineState line_flags);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks if rect surface in canvas has any lines insides,
@@ -1036,6 +1098,14 @@ private:
     int getColorIndex(sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the index of the specific line type
+    ///
+    /// @param line_type line type
+    /// @return index to renderer if found, otherwise defaults to 
+    ///////////////////////////////////////////////////////////////////
+    int getTypeIndex(const std::string& line_type) const;
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Updates cell color based on it's current state
     ///
     ///////////////////////////////////////////////////////////////////
@@ -1093,7 +1163,7 @@ private:
     /// @return 
     ///
     ///////////////////////////////////////////////////////////////////
-    std::pair<std::string, const sf::Texture*> _getTexture(const std::string& path, sf::Vector2u target_size);
+    std::pair<std::string, const sf::Texture*> _getTexture(const std::string& path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Decrements the texture's reference count, clears it from
@@ -1117,41 +1187,48 @@ private:
     /// @param is_vertical is this line vertical?
     /// 
     ///////////////////////////////////////////////////////////////////
-    void _appendLine(LineType type, float span_start_px, float span_end_px, float fixed_px,
+    void _appendLine(const std::string& type, float span_start_px, float span_end_px, float fixed_px,
                      float thickness, float run_length_units, sf::Color color, bool is_vertical);
 
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
 
+    // Responsible for invalidating external cell pointers after a new gen
     struct Access
     {
         Canvas* canvas{nullptr};
         std::uint32_t generation{0};
     };
 
+    // source texture for cells
     struct TexSource
     {
         sf::Texture texture;
         std::size_t ref_count{0};
     };
 
+    // board
     sf::RenderTexture m_texture;
     sf::Sprite m_sprite;
+
+    // data
     std::vector<LineState> m_lines;
     mutable std::deque<GridCell> m_cells;
 
-
-    std::shared_ptr<Access> m_access;
-
     // rendered data
-    std::unordered_map<LineType, std::unique_ptr<LineRenderer>> m_lineRenderers;
-    sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};
-    sf::VertexArray m_renderedCellTextures{sf::PrimitiveType::Triangles};
-    sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};
-    std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_sharedColors{};
-    std::unordered_map<std::string, TexSource> m_cache;
+    std::vector<std::unique_ptr<LineRenderer>> m_lineRenderers;             //!< stores and draws lines
+    sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};          //!< cell bodies
+    sf::VertexArray m_renderedCellTextures{sf::PrimitiveType::Triangles};   //!< cell texture bodies
+    sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};          //!< for grid
 
+    // references
+    std::shared_ptr<Access> m_access;
+    std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_reservedLineColors{};
+    std::unordered_map<std::string, TexSource> m_textureCache;
+    std::size_t m_hoveredCellID{NULL_CELL};
+    std::size_t m_clickedCellID{NULL_CELL};
+    std::size_t m_selectedCellID{NULL_CELL};
     
     // properties
     sf::Vector2f m_cellMinSize{0.f, 0.f};
@@ -1161,13 +1238,8 @@ private:
     float m_deadZone{0.f};
 
     // constants
-    const sf::Vector2u m_grid;
+    const sf::Vector2u m_GRID_MAP;
     const std::size_t m_MAX_CELL_COUNT;
-
-    // references
-    std::size_t m_hoveredCellID{NULL_CELL};
-    std::size_t m_clickedCellID{NULL_CELL};
-    std::size_t m_selectedCellID{NULL_CELL};
 
     // update
     bool m_updateLines{false};
