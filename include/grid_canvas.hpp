@@ -26,44 +26,44 @@ constexpr unsigned int GET_FLAGS_COUNT(unsigned int low_bit, unsigned int high_b
 }
 }
 
-// reserved color for line to inherit canvas outline
-inline constexpr sf::Color DEFAULT_COLOR{1, 1, 1, 1};
-// max number of different line colors stored in canvas
-inline constexpr std::size_t MAX_COLOR_STORAGE = 15;
-
-inline constexpr std::size_t NULL_CELL = constants::KSTALE;
-
 /*
 * flags for all available states for a line in `Canvas`
 * stored in uint16 value
 */
+inline constexpr std::size_t NULL_CELL = constants::KSTALE;
 // LINE IS DRAWN WITH DEFAULT FLAGS (ALL ZERO)
 inline constexpr sfml_widgets::LineState LINE_SET = 1u;
 
-// 0 to 7 range for pixel thickness value
+// 8 slots
 inline constexpr unsigned int THICKNESS_OFFSET = 1u;
 inline constexpr unsigned int THICKNESS_LAST_BIT = 3u;
 inline constexpr unsigned int THICKNESS_FLAGS_COUNT = GET_FLAGS_COUNT(THICKNESS_OFFSET, THICKNESS_LAST_BIT);
 inline constexpr sfml_widgets::LineState THICKNESS_MASK = GENERATE_MASK_U16(THICKNESS_OFFSET, THICKNESS_LAST_BIT);
 inline constexpr unsigned int THICKNESS_OFF = UINT16_MAX ^ THICKNESS_MASK;
 
-// 0 to 15 (actually 0 to MAX_COLOR_STORAGE-1)
+// 31 slots (index 0 reserved)
 inline constexpr unsigned int COLORS_OFFSET = 4u;
-inline constexpr unsigned int COLORS_LAST_BIT = 7u;
+inline constexpr unsigned int COLORS_LAST_BIT = 8u;
 inline constexpr unsigned int COLORS_FLAGS_COUNT = GET_FLAGS_COUNT(COLORS_OFFSET, COLORS_LAST_BIT);
 inline constexpr sfml_widgets::LineState COLORS_MASK = GENERATE_MASK_U16(COLORS_OFFSET, COLORS_LAST_BIT);
 inline constexpr unsigned int COLORS_OFF = UINT16_MAX ^ COLORS_MASK;
+// reserved color for line to inherit canvas outline
+inline constexpr sf::Color DEFAULT_COLOR{1, 1, 1, 1};
+// max number of different line colors stored in canvas
+inline constexpr std::size_t MAX_COLOR_STORAGE = COLORS_FLAGS_COUNT - 1;
 
-// 0 to 3, available line types in `LineType` class
+// 16 slots, available line types in `LineType` class
 inline constexpr unsigned int TYPE_OFFSET = 8u;
-inline constexpr unsigned int TYPE_LAST_BIT = 9u;
+inline constexpr unsigned int TYPE_LAST_BIT = 11u;
 inline constexpr unsigned int TYPE_FLAGS_COUNT = GET_FLAGS_COUNT(TYPE_OFFSET, TYPE_LAST_BIT);
 inline constexpr sfml_widgets::LineState TYPE_MASK = GENERATE_MASK_U16(TYPE_OFFSET, TYPE_LAST_BIT);
 inline constexpr unsigned int TYPE_OFF = UINT16_MAX ^ TYPE_MASK;
 
 inline constexpr const char* NORMAL_LINE_LABEL = "normal";
-inline constexpr const char* OPEN_LINE_LABEL = "open";
-inline constexpr const char* DOTS_LINE_LABEL = "dots";
+#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+    inline constexpr const char* OPEN_LINE_LABEL = "open";
+    inline constexpr const char* DOTS_LINE_LABEL = "dots";
+#endif
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Rectangle bounds
@@ -230,6 +230,7 @@ private:
     bool m_requireLineUpdate{false};
 };
 
+#ifdef SFML_WIDGETS_MORE_LINE_TYPES
 ///////////////////////////////////////////////////////////////////
 /// @brief Renders open line type, added to every `Canvas` instance
 /// by default (for now)
@@ -340,6 +341,7 @@ private:
     float m_rowPixelHeight{2.5f};
     float m_pixelRadius{1.5f};
 };
+#endif
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Cell attributes object from `Canvas`
@@ -481,9 +483,18 @@ private:
     std::string texture_path;
 };
 
+///////////////////////////////////////////////////////////////////
+/// @brief Grid Canvas widget for drawing lines and creating interractive
+/// objects
+///
+///////////////////////////////////////////////////////////////////
 class Canvas : public Widget
 {
     struct Access;
+    struct EditAnchor;
+    struct EditAction;
+    struct UnitEditDetails;
+
     friend class GridCell;
 
 public:
@@ -542,7 +553,7 @@ public:
     /// @param line_range start and end point for the line in units 
     /// @param thickness line initial thickness, range `[0, THICKNESS_FLAGS_COUNT[`
     /// @param color line color, default is canvas outline color
-    /// @param Line_type line type
+    /// @param Line_type line type, @see  `addLineType`, `removeLineType`, `listLineTypes`
     /// @return true if canvas successfully draws the line, otherwise false
     ///
     /// @see `removeLine`, `clearCanvas`, `setLineThickness`, `setLineColor`, `setLineType`
@@ -564,7 +575,7 @@ public:
     bool removeLine(RectRange<unsigned int> line_range);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Clears canvas from all of it's contents
+    /// @brief Clears canvas from all of it's contents (lines, cells, colors, textures)
     ///
     /// @see `drawLine`, `removeLine`, `setLineThickness`, `setLineColor`, `setLineType`
     ///
@@ -610,7 +621,7 @@ public:
     /// @param Line_type registered line type name
     /// @return true if line is updated, otherwise false
     ///
-    /// @see `setLineThickness`, `setLineColor`
+    /// @see `setLineThickness`, `setLineColor`, `addLineType`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
     bool setLineType(RectRange<unsigned int> line_range, const std::string& Line_type = NORMAL_LINE_LABEL);
@@ -625,7 +636,7 @@ public:
     /// @note use `static_cast` or `dynamic_cast` to access the expected derived
     /// type.
     ///
-    /// @see `LineRenderer`, `addLineType`
+    /// @see `LineRenderer`, `addLineType`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
     LineRenderer* getLineRenderer(const std::string& type);
@@ -641,10 +652,30 @@ public:
     /// already reached (@see `TYPE_FLAGS_COUNT`), or if that type name is
     /// already assigned
     ///
-    /// @see `getLineRenderer`
+    /// @see `getLineRenderer`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
     bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Removes an assigned line renderer for this instance
+    ///
+    /// @param line_type_label existing line tyoe 
+    /// @return true if successfully removed, otherwise false
+    /// if type is the default line type or not found
+    ///
+    /// @see  `addLineType`, `getLineRenderer`, `listLineTypes`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool removeLineType(const std::string& line_type_label);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns an array of available line types for this instance
+    ///
+    /// @see  `addLineType`, `removeLineType`, `getLineRenderer`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::vector<std::string> listLineTypes() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a reference to the cell in parameter unit coords
@@ -950,16 +981,6 @@ private:
     void limitView(sf::View& v);
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief Updates a line's value
-    ///
-    /// @param rect horizontal/vertical line start to end points 
-    /// @param val new line value
-    /// @return true if assignment is successful, otherwise false
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool setLine(RectRange<unsigned int> rect, LineState val);
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Creates a handle of a cell
     /// @param index cell's id
     ///
@@ -999,7 +1020,16 @@ private:
     /// @return cell's address if found, otherwise nullptr
     ///
     ///////////////////////////////////////////////////////////////////
-    GridCell* getCell(std::size_t index) const;
+    GridCell* getCell(std::size_t index);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns a read-only pointer to existing cell
+    ///
+    /// @param index cell's id 
+    /// @return cell's address if found, otherwise nullptr
+    ///
+    ///////////////////////////////////////////////////////////////////
+    const GridCell* getCell(std::size_t index) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns cell's id that occupies grid coords unit
@@ -1098,30 +1128,22 @@ private:
     int getColorIndex(sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Records a line edit in history for redo/undo actions
+    ///
+    /// @param action line edit
+    ///
+    /// @see `_undoLine`, `_redoLine`, `s_MAX_HISTORY`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void pushEditHistory(EditAction&& action);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns the index of the specific line type
     ///
     /// @param line_type line type
     /// @return index to renderer if found, otherwise defaults to 
     ///////////////////////////////////////////////////////////////////
     int getTypeIndex(const std::string& line_type) const;
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Updates cell color based on it's current state
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void _refreshCellColor(std::size_t cell_id);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Assigns cell as hovered cell
-    ///
-    ///////////////////////////////////////////////////////////////////
-    void _onCellHover(std::size_t hovered_cell_id);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Assigns cell as selected cell
-    /// 
-    ///////////////////////////////////////////////////////////////////
-    void _onCellSelect(std::size_t selected_cell_id);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates line values visually
@@ -1169,7 +1191,7 @@ private:
     /// @brief Decrements the texture's reference count, clears it from
     /// memory if it reaches 0
     ///
-    /// @param cell
+    /// @param cell desired cell
     /// 
     ///////////////////////////////////////////////////////////////////
     void _releaseTexture(GridCell& cell);
@@ -1190,9 +1212,55 @@ private:
     void _appendLine(const std::string& type, float span_start_px, float span_end_px, float fixed_px,
                      float thickness, float run_length_units, sf::Color color, bool is_vertical);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Updates cell color based on it's current state
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void _refreshCellColor(std::size_t cell_id);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns cell as hovered cell
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void _onCellHover(std::size_t hovered_cell_id);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Assigns cell as selected cell
+    /// 
+    ///////////////////////////////////////////////////////////////////
+    void _onCellSelect(std::size_t selected_cell_id);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief undo history edit with CTRL+Z
+    ///
+    /// @see `_redoLine`, `pushEditHistory`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool _undoLine();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief redo history edit with CTRL+Y
+    ///
+    /// @see `_undoLine`, `pushEditHistory`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool _redoLine();
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Applies a history edit action
+    ///
+    /// @param action edit to apply
+    /// @param undo desired action
+    ///
+    /// @see `_undoLine`, `_redoLine`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void __applyAction(const EditAction& action, bool undo);
+
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
+    static constexpr std::size_t s_MAX_HISTORY = 128;
 
     // Responsible for invalidating external cell pointers after a new gen
     struct Access
@@ -1208,27 +1276,53 @@ private:
         std::size_t ref_count{0};
     };
 
+    // single unit line edit information
+    struct UnitEditDetails
+    {
+        std::uint32_t line_index;
+        LineState prev_val;
+        LineState new_val;
+    };
+
+    // for SHIFT/CTRL+quick draw events, maintains attrib of the last drawn line
+    struct EditAnchor
+    {
+        RectRange<unsigned int> range;  //!< prev line's range (SHIFT)
+        LineState state;                //!< prev line's value (CTRL)
+    };
+
+    // single line edit action, this is what gets undone/redone
+    struct EditAction
+    {
+        std::optional<EditAnchor> pen;          //!< cached last added line's attributes
+        std::vector<UnitEditDetails> changes;   //!< every unit segment that changed from this action is stored here
+    };
+
+
     // board
     sf::RenderTexture m_texture;
     sf::Sprite m_sprite;
 
-    // data
-    std::vector<LineState> m_lines;
-    mutable std::deque<GridCell> m_cells;
-
     // rendered data
-    std::vector<std::unique_ptr<LineRenderer>> m_lineRenderers;             //!< stores and draws lines
     sf::VertexArray m_renderedCells{sf::PrimitiveType::Triangles};          //!< cell bodies
     sf::VertexArray m_renderedCellTextures{sf::PrimitiveType::Triangles};   //!< cell texture bodies
     sf::VertexArray m_renderedGridLines{sf::PrimitiveType::Lines};          //!< for grid
+    std::vector<std::unique_ptr<LineRenderer>> m_lineRenderers;             //!< stores and draws lines
+    std::unordered_map<std::string, TexSource> m_textureCache;
+
+    // data
+    std::vector<LineState> m_lines;     //!< all lines data
+    std::deque<GridCell> m_cells;       //!< cells data only
+    std::deque<EditAction> m_history;   //!< edit history
 
     // references
-    std::shared_ptr<Access> m_access;
+    std::shared_ptr<Access> m_access;   //!< every external cell_ptr counts on this
+    std::optional<EditAnchor> m_pen;    //!< cached last added line in history for quick edit
     std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_reservedLineColors{};
-    std::unordered_map<std::string, TexSource> m_textureCache;
     std::size_t m_hoveredCellID{NULL_CELL};
     std::size_t m_clickedCellID{NULL_CELL};
     std::size_t m_selectedCellID{NULL_CELL};
+    std::size_t m_historyCursor{0};     //!< points at edits
     
     // properties
     sf::Vector2f m_cellMinSize{0.f, 0.f};

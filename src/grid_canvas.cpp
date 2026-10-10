@@ -135,6 +135,7 @@ void LineRenderer::setLineUpdate()
     m_requireLineUpdate = true;
 }
 
+#ifdef SFML_WIDGETS_MORE_LINE_TYPES
 OpenLineRenderer::OpenLineRenderer() : LineRenderer(OPEN_LINE_LABEL, OPEN_LINE_SHADER_FRAG)
 {
     setUniform("join_lines", m_joinMode);
@@ -244,6 +245,7 @@ void DottedLineRenderer::setPixelRadius(float px)
     m_pixelRadius = std::max(px, 0.1f);
     setUniform("dot_radius", m_pixelRadius);
 }
+#endif
 }
 
 namespace sfml_widgets // GridCell
@@ -431,8 +433,11 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     m_lineRenderers.reserve(TYPE_FLAGS_COUNT);
 
     addLineType(std::make_unique<LineRenderer>());
+
+    #ifdef SFML_WIDGETS_MORE_LINE_TYPES
     addLineType(std::make_unique<OpenLineRenderer>());
     addLineType(std::make_unique<DottedLineRenderer>());
+    #endif
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
@@ -454,8 +459,11 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     m_lineRenderers.reserve(TYPE_FLAGS_COUNT);
 
     addLineType(std::make_unique<LineRenderer>());
+
+    #ifdef SFML_WIDGETS_MORE_LINE_TYPES
     addLineType(std::make_unique<OpenLineRenderer>());
     addLineType(std::make_unique<DottedLineRenderer>());
+    #endif
 
     setWidgetPosition(m_position);
     setWidgetSize(m_size);
@@ -478,7 +486,6 @@ bool Canvas::drawLine(RectRange<unsigned int> line_range, LineState thickness, s
     {
         int idx = getColorIndex(color);
         // -1 ==> take canvas outline color
-        // 0-13 ==> index for color
         if(idx != -1) val |= apply_mask(apply_shift(idx + 1, COLORS_OFFSET), COLORS_MASK);
     }
 
@@ -487,17 +494,23 @@ bool Canvas::drawLine(RectRange<unsigned int> line_range, LineState thickness, s
         val |= apply_mask(apply_shift(static_cast<LineState>(getTypeIndex(state)), TYPE_OFFSET), TYPE_MASK);
     }
 
-    return setLine(line_range, val);
+    return _setLineValue(line_range, val);
 }
 
 bool Canvas::removeLine(RectRange<unsigned int> line_range)
 {
-    return setLine(line_range, 0u);
+    return _setLineValue(line_range, 0u);
 }
 
 void Canvas::clearCanvas()
 {
     std::fill(m_lines.begin(), m_lines.end(), 0u);
+    std::fill(m_reservedLineColors.begin(), m_reservedLineColors.end(), std::nullopt);
+
+    m_history.clear();
+    m_pen.reset();
+    m_historyCursor = 0;
+
     m_updateLines = true;
     m_updateCells = true;
 }
@@ -529,6 +542,34 @@ bool Canvas::setLineType(RectRange<unsigned int> line_range, const std::string& 
 
     val |= apply_mask(apply_shift(static_cast<LineState>(getTypeIndex(Line_type)), TYPE_OFFSET), TYPE_MASK);
     return _setLineValue(line_range, val, TYPE_OFF, false);
+}
+
+LineRenderer* Canvas::getLineRenderer(const std::string& line_type)
+{
+    const auto it = std::find_if(m_lineRenderers.begin(), m_lineRenderers.end(),
+        [&line_type](const std::unique_ptr<LineRenderer>& element)
+        {
+            return element->getType() == line_type;
+        });
+
+    return it != m_lineRenderers.end() ? it->get() : nullptr;
+}
+
+bool Canvas::addLineType(std::unique_ptr<LineRenderer> new_line_type)
+{
+    if(!new_line_type) return false;
+    if(m_lineRenderers.size() >= TYPE_FLAGS_COUNT) return false;
+
+    const auto it = std::find_if(m_lineRenderers.begin(), m_lineRenderers.end(),
+        [&new_line_type](const std::unique_ptr<LineRenderer>& element)
+        {
+            return element->getType() == new_line_type->getType();
+        });
+
+    if(it != m_lineRenderers.end()) return false;
+
+    m_lineRenderers.emplace_back(std::move(new_line_type));
+    return true;
 }
 
 Canvas::cell_ptr Canvas::at(sf::Vector2u grid_coords) const
@@ -608,7 +649,7 @@ std::optional<sf::Vector2u> Canvas::mapCoordsToGrid(sf::Vector2i mouse_position)
         static_cast<unsigned int>(relative.x / m_cellMinSize.x)
     };
 
-    if(coordinates.x >= m_GRID_MAP.y || coordinates.y >= m_GRID_MAP.x)
+    if(coordinates.x >= m_GRID_MAP.x || coordinates.y >= m_GRID_MAP.y)
         return std::nullopt;
 
     return coordinates;
@@ -686,34 +727,6 @@ void Canvas::poke()
     _refreshCellColor(m_selectedCellID);
     m_updateGridLines = true;
     m_updateLines = true;
-}
-
-LineRenderer* Canvas::getLineRenderer(const std::string& line_type)
-{
-    const auto it = std::find_if(m_lineRenderers.begin(), m_lineRenderers.end(),
-        [&line_type](const std::unique_ptr<LineRenderer>& element)
-        {
-            return element->getType() == line_type;
-        });
-
-    return it != m_lineRenderers.end() ? it->get() : nullptr;
-}
-
-bool Canvas::addLineType(std::unique_ptr<LineRenderer> new_line_type)
-{
-    if(!new_line_type) return false;
-    if(m_lineRenderers.size() >= TYPE_FLAGS_COUNT) return false;
-
-    const auto it = std::find_if(m_lineRenderers.begin(), m_lineRenderers.end(),
-        [&new_line_type](const std::unique_ptr<LineRenderer>& element)
-        {
-            return element->getType() == new_line_type->getType();
-        });
-
-    if(it != m_lineRenderers.end()) return false;
-
-    m_lineRenderers.emplace_back(std::move(new_line_type));
-    return true;
 }
 
 bool Canvas::preProcessMouseEvents(const sf::Event& event, const sf::Vector2i& mouse_position)
@@ -794,51 +807,83 @@ bool Canvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf
 
 bool Canvas::postProcessKeyEvents(const sf::Event& event)
 {
-    if(!checkFlag(m_flags, FLAGS::HOVERED)) return false;
-    if(const sf::Event::KeyPressed* key_press = event.getIf<sf::Event::KeyPressed>())
+    const sf::Event::KeyPressed* key_press = event.getIf<sf::Event::KeyPressed>();
+    if(!key_press) return false;
+
+    // edit (CTRL)
+    if(key_press->control)
     {
-        std::optional<sf::Vector2u> grid_coords = mapCoordsToGrid(sf::Mouse::getPosition(*m_master.getRootWindowPtr()));
-        if(!grid_coords) return false;
-        
-        RectRange<unsigned int> rect;
-        switch (key_press->code)
-        {
+        if(key_press->code == sf::Keyboard::Key::Z) return _undoLine();
+        if(key_press->code == sf::Keyboard::Key::Y) return _redoLine();
+    }
+
+    // delta (ARROWS)
+    sf::Vector2i dir;
+    switch(key_press->code)
+    {
         case sf::Keyboard::Key::Up:
-            rect.x0 = grid_coords->x;
-            rect.x1 = grid_coords->x;
-            rect.y0 = grid_coords->y;
-            rect.y1 = grid_coords->y + 1;
+            dir = {-1, 0};
             break;
 
         case sf::Keyboard::Key::Down:
-            rect.x0 = grid_coords->x + 1;
-            rect.x1 = grid_coords->x + 1;
-            rect.y0 = grid_coords->y;
-            rect.y1 = grid_coords->y + 1;
+            dir = {1, 0};
             break;
 
         case sf::Keyboard::Key::Left:
-            rect.x0 = grid_coords->x;
-            rect.x1 = grid_coords->x + 1;
-            rect.y0 = grid_coords->y;
-            rect.y1 = grid_coords->y;
+            dir = {0, -1};
             break;
 
         case sf::Keyboard::Key::Right:
-            rect.x0 = grid_coords->x;
-            rect.x1 = grid_coords->x + 1;
-            rect.y0 = grid_coords->y + 1;
-            rect.y1 = grid_coords->y + 1;
+            dir = {0, 1};
             break;
-        
+
         default:
             return false;
-        }
-        drawLine(rect);
-        // TODO: shift for cached line, and maybe add undo idk
-        return true;
     }
-    return false;
+
+    // continue from last point (SHIFT)
+    RectRange<unsigned int> rect;
+    if(key_press->shift)
+    {
+        if(!m_pen) return false;
+
+        const int end_row = static_cast<int>(m_pen->range.x1) + dir.x;
+        const int end_col = static_cast<int>(m_pen->range.y1) + dir.y;
+        if(end_row < 0 || end_col < 0) return false;
+
+        rect = {m_pen->range.x1, m_pen->range.y1, static_cast<unsigned int>(end_row), static_cast<unsigned int>(end_col)};
+    }
+    // or draw relative to mouse position
+    else
+    {
+        if(!checkFlag(m_flags, FLAGS::HOVERED)) return false;
+        const std::optional<sf::Vector2u> unit = mapCoordsToGrid(sf::Mouse::getPosition(*m_master.getRootWindowPtr()));
+        if(!unit) return false;
+
+        if(dir.x)
+        {
+            const unsigned int edge = unit->x + (dir.x > 0 ? 1u : 0u);
+            rect = {edge, unit->y, edge, unit->y + 1u};
+        }
+        else
+        {
+            const unsigned int edge = unit->y + (dir.y > 0 ? 1u : 0u);
+            rect = {unit->x, edge, unit->x + 1u, edge};
+        }
+    }
+
+    // copy previous line value (CTRL)
+    if(key_press->control && m_pen)
+    {
+        _setLineValue(rect, m_pen->state);
+    }
+    // HERE IS THE DEFAULT FINALLY
+    else
+    {
+        drawLine(rect);
+    }
+
+    return true;
 }
 
 void Canvas::drawWidget()
@@ -1037,11 +1082,6 @@ void Canvas::limitView(sf::View& v)
     m_texture.setView(v);
 }
 
-bool Canvas::setLine(RectRange<unsigned int> rect, LineState val)
-{
-    return _setLineValue(rect, val);
-}
-
 Canvas::cell_ptr Canvas::makeHandle(std::size_t index) const
 {
     if(index == NULL_CELL) return cell_ptr{};
@@ -1060,7 +1100,12 @@ const LineState& Canvas::getLine(std::size_t row, std::size_t col, std::size_t a
            axis * ((m_GRID_MAP.x + 1) * m_GRID_MAP.y + row * (m_GRID_MAP.y + 1) + col)];
 }
 
-GridCell* Canvas::getCell(std::size_t index) const
+GridCell* Canvas::getCell(std::size_t index)
+{
+    return index < m_cells.size() ? &m_cells[index] : nullptr;
+}
+
+const GridCell* Canvas::getCell(std::size_t index) const
 {
     return index < m_cells.size() ? &m_cells[index] : nullptr;
 }
@@ -1142,7 +1187,7 @@ bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, s
     if(rect.x0 != rect.x1 && rect.y0 != rect.y1) return false;
     if(rect.distance().x == 0 && rect.distance().y == 0) return false;
 
-    bool board_updated{false};
+    EditAction action;
     const std::size_t AXIS = rect.x0 == rect.x1 ? 0u : 1u;
     const std::size_t FIXED_POINT = AXIS ? rect.y0 : rect.x0;
     const std::size_t START_POINT = AXIS ? rect.x0 : rect.y0;
@@ -1153,25 +1198,32 @@ bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, s
     for(std::size_t i{START_LINE}; i < END_LINE; ++i)
     {
         LineState& line = AXIS ? getLine(i, FIXED_POINT, AXIS) : getLine(FIXED_POINT, i, AXIS);
-        if(line != val)
+        const LineState PREV_VAL = line;
+
+        if(replace)
         {
-            if((line ^ val) & LINE_SET)
-                m_updateCells = true;
-
-            if(replace)
-                line = val;
-            else
-            {
-                line &= mask;
-                line |= val;
-            }
-
-            board_updated = true;
+            line = val;
         }
+        else
+        {
+            line &= mask;
+            line |= val;
+        }
+
+        if(line == PREV_VAL) continue;
+
+        if((line ^ PREV_VAL) & LINE_SET) m_updateCells = true;
+        action.changes.push_back({static_cast<std::uint32_t>(&line - m_lines.data()), PREV_VAL, line});
     }
 
-    if(board_updated) m_updateLines = true;
-    return board_updated;
+    if(replace && (val & LINE_SET)) m_pen = EditAnchor{rect, val};
+
+    if(action.changes.empty()) return false;
+
+    action.pen = m_pen;
+    m_updateLines = true;
+    pushEditHistory(std::move(action));
+    return true;
 }
 
 bool Canvas::setCellColor(std::size_t cell_id, sf::Color color)
@@ -1208,6 +1260,14 @@ int Canvas::getColorIndex(sf::Color color)
     return -1;
 }
 
+void Canvas::pushEditHistory(EditAction&& action)
+{
+    m_history.erase(m_history.begin() + static_cast<std::ptrdiff_t>(m_historyCursor), m_history.end());
+    m_history.push_back(std::move(action));
+    if(m_history.size() > s_MAX_HISTORY) m_history.pop_front();
+    m_historyCursor = m_history.size();
+}
+
 int Canvas::getTypeIndex(const std::string& line_type) const
 {
     const std::size_t current_size = m_lineRenderers.size();
@@ -1216,34 +1276,6 @@ int Canvas::getTypeIndex(const std::string& line_type) const
         if(m_lineRenderers[i]->getType() == line_type) return i;
     }
     return 0;
-}
-
-void Canvas::_refreshCellColor(std::size_t cell_id)
-{
-    const GridCell* cell = getCell(cell_id);
-    if(!cell) return;
-
-    sf::Color color = cell->fill_color;
-    if(cell_id == m_selectedCellID && checkFlag(m_flags, FLAGS::INDICATOR)) color = m_style.selected_cell_color;
-    else if(cell_id == m_hoveredCellID) color = m_style.hovered_cell_color;
-
-    setCellColor(cell_id, color);
-}
-
-void Canvas::_onCellHover(std::size_t hovered_cell_id)
-{
-    const std::size_t previous = m_hoveredCellID;
-    m_hoveredCellID = hovered_cell_id;
-    _refreshCellColor(previous);
-    _refreshCellColor(hovered_cell_id);
-}
-
-void Canvas::_onCellSelect(std::size_t selected_cell_id)
-{
-    const std::size_t previous = m_selectedCellID;
-    m_selectedCellID = selected_cell_id;
-    _refreshCellColor(previous);
-    _refreshCellColor(selected_cell_id);
 }
 
 void Canvas::_updateLines()
@@ -1547,7 +1579,6 @@ void Canvas::_releaseTexture(GridCell& cell)
     if(it != m_textureCache.end() && --it->second.ref_count == 0) m_textureCache.erase(it);
     cell.texture = nullptr;
     cell.texture_path.clear();
-    _refreshCellColor(cell.id);
 }
 
 void Canvas::_appendLine(const std::string& line_type, float span_start_px, float span_end_px, float fixed_px,
@@ -1563,6 +1594,65 @@ void Canvas::_appendLine(const std::string& line_type, float span_start_px, floa
     {
         (*it)->appendLine(span_start_px, span_end_px, fixed_px, thickness, run_length_units, color, is_vertical);
     }
+}
+
+void Canvas::_refreshCellColor(std::size_t cell_id)
+{
+    const GridCell* cell = getCell(cell_id);
+    if(!cell) return;
+
+    sf::Color color = cell->fill_color;
+    if(cell_id == m_selectedCellID && checkFlag(m_flags, FLAGS::INDICATOR)) color = m_style.selected_cell_color;
+    else if(cell_id == m_hoveredCellID) color = m_style.hovered_cell_color;
+
+    setCellColor(cell_id, color);
+}
+
+void Canvas::_onCellHover(std::size_t hovered_cell_id)
+{
+    const std::size_t previous = m_hoveredCellID;
+    m_hoveredCellID = hovered_cell_id;
+    _refreshCellColor(previous);
+    _refreshCellColor(hovered_cell_id);
+}
+
+void Canvas::_onCellSelect(std::size_t selected_cell_id)
+{
+    const std::size_t previous = m_selectedCellID;
+    m_selectedCellID = selected_cell_id;
+    _refreshCellColor(previous);
+    _refreshCellColor(selected_cell_id);
+}
+
+bool Canvas::_undoLine()
+{
+    if(m_historyCursor == 0) return false;
+
+    __applyAction(m_history[--m_historyCursor], true);
+    m_pen = m_historyCursor ? m_history[m_historyCursor - 1].pen : std::nullopt;
+    return true;
+}
+
+bool Canvas::_redoLine()
+{
+    if(m_historyCursor >= m_history.size()) return false;
+
+    __applyAction(m_history[m_historyCursor], false);
+    m_pen = m_history[m_historyCursor++].pen;
+    return true;
+}
+
+void Canvas::__applyAction(const EditAction& action, bool undo)
+{
+    for(const UnitEditDetails& change : action.changes)
+    {
+        const LineState TARGET = undo ? change.prev_val : change.new_val;
+        LineState& line = m_lines[change.line_index];
+
+        if((line ^ TARGET) & LINE_SET) m_updateCells = true;
+        line = TARGET;
+    }
+    m_updateLines = true;
 }
 }
 

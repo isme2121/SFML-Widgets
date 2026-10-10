@@ -8,6 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(FetchContent)
 
 option(SFML_WIDGETS_SHARED "Build SFML widgets as dynamic libraries" OFF)
+option(SFML_WIDGETS_MORE_LINE_TYPES "Defines more default lines for GridCanvas" ON)
+option(BUILD_DEBUG_GUI "Build debugging GUI" OFF)
 option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" OFF)
 option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" OFF)
 
@@ -24,7 +26,6 @@ if(NOT SFML_FOUND)
     )
     set(SFML_BUILD_AUDIO OFF)
     set(SFML_BUILD_NETWORK OFF)
-
     set(BUILD_SHARED_LIBS ON)
     FetchContent_MakeAvailable(SFML)
     unset(BUILD_SHARED_LIBS)
@@ -48,6 +49,7 @@ add_library(widgets
 target_compile_definitions(widgets PUBLIC 
     STB_IMAGE_RESIZE_IMPLEMENTATION
     BUILD_TESTS
+    SFML_WIDGETS_MORE_LINE_TYPES
 )
 target_include_directories(widgets PUBLIC 
     "${WIDGET_INCLUDE_DIR}"
