@@ -135,7 +135,7 @@ void LineRenderer::setLineUpdate()
     m_requireLineUpdate = true;
 }
 
-#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+#ifdef CANVAS_MORE_LINE_TYPES
 OpenLineRenderer::OpenLineRenderer() : LineRenderer(OPEN_LINE_LABEL, OPEN_LINE_SHADER_FRAG)
 {
     setUniform("join_lines", m_joinMode);
@@ -434,7 +434,7 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
 
     addLineType(std::make_unique<LineRenderer>());
 
-    #ifdef SFML_WIDGETS_MORE_LINE_TYPES
+    #ifdef CANVAS_MORE_LINE_TYPES
     addLineType(std::make_unique<OpenLineRenderer>());
     addLineType(std::make_unique<DottedLineRenderer>());
     #endif
@@ -460,7 +460,7 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
 
     addLineType(std::make_unique<LineRenderer>());
 
-    #ifdef SFML_WIDGETS_MORE_LINE_TYPES
+    #ifdef CANVAS_MORE_LINE_TYPES
     addLineType(std::make_unique<OpenLineRenderer>());
     addLineType(std::make_unique<DottedLineRenderer>());
     #endif
@@ -841,19 +841,47 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
             return false;
     }
 
+    const LineState new_state = (key_press->control && m_pen) ? m_pen->state :
+                                static_cast<LineState>(LINE_SET | apply_mask(apply_shift(1u, THICKNESS_OFFSET), THICKNESS_MASK));
+
     // continue from last point (SHIFT)
     RectRange<unsigned int> rect;
     if(key_press->shift)
     {
         if(!m_pen) return false;
 
-        const int end_row = static_cast<int>(m_pen->range.x1) + dir.x;
-        const int end_col = static_cast<int>(m_pen->range.y1) + dir.y;
-        if(end_row < 0 || end_col < 0) return false;
+        /*
+        * Problem here is that rect.p0 can be larger than rect.p1
+        * so we consider:
+        * - the direction we're shifting to
+        * - and from which side of the line to start from
+        * so we need to find p.start first
+        */
+        const RectRange<unsigned int>& prev = m_pen->range;
+        const unsigned int ROW_LOW = std::min(prev.x0, prev.x1);
+        const unsigned int ROW_HIGH = std::max(prev.x0, prev.x1);
+        const unsigned int COL_LOW = std::min(prev.y0, prev.y1);
+        const unsigned int COL_HIGH = std::max(prev.y0, prev.y1);
+        const bool IS_HORIZONTAL = prev.x0 == prev.x1;
 
-        rect = {m_pen->range.x1, m_pen->range.y1, static_cast<unsigned int>(end_row), static_cast<unsigned int>(end_col)};
+        sf::Vector2u start;
+        // horizontal move
+        if(IS_HORIZONTAL && dir.y != 0)
+            start = {prev.x0, dir.y > 0 ? COL_HIGH : COL_LOW};
+
+        // vertical move
+        else if(!IS_HORIZONTAL && dir.x != 0)
+            start = {dir.x > 0 ? ROW_HIGH : ROW_LOW, prev.y0};
+
+        // taking a turn, so anchor from the pen
+        else
+            start = {prev.x1, prev.y1};
+
+        // by default, this ignores identical lines
+        const std::optional<RectRange<unsigned int>> next = _findNextAnchorPoint(start, {prev.x1, prev.y1}, dir, new_state);
+        if(!next) return false;
+        rect = *next;
     }
-    // or draw relative to mouse position
     else
     {
         if(!checkFlag(m_flags, FLAGS::HOVERED)) return false;
@@ -872,20 +900,9 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
         }
     }
 
-    // copy previous line value (CTRL)
-    if(key_press->control && m_pen)
-    {
-        _setLineValue(rect, m_pen->state);
-    }
-    // HERE IS THE DEFAULT FINALLY
-    else
-    {
-        drawLine(rect);
-    }
-
+    _setLineValue(rect, new_state);
     return true;
 }
-
 void Canvas::drawWidget()
 {
     updateBoard();
@@ -902,6 +919,7 @@ void Canvas::drawWidget()
     for(const auto& line_renderer : m_lineRenderers)
         line_renderer->draw(m_texture);
 
+    _drawPenIndicator();
     m_texture.display();
     m_sprite.setTexture(m_texture.getTexture());
     if(m_clipShaderPtr) m_master.draw(m_sprite, m_clipShaderPtr.get());
@@ -1653,6 +1671,62 @@ void Canvas::__applyAction(const EditAction& action, bool undo)
         line = TARGET;
     }
     m_updateLines = true;
+}
+
+std::optional<RectRange<unsigned int>> Canvas::_findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const
+{
+    const std::size_t AXIS = delta.x != 0 ? 1u : 0u;    // 0u->horizontal; 1u->vertical
+
+    const auto out_of_board = [&](sf::Vector2u p) -> bool
+    {
+        return AXIS ? (delta.x > 0 ? p.x >= m_GRID_MAP.x : p.x == 0)
+                    : (delta.y > 0 ? p.y >= m_GRID_MAP.y : p.y == 0);
+    };
+
+    const auto step_range = [&](sf::Vector2u p) -> RectRange<unsigned int>
+    {
+        return RectRange<unsigned int>{
+            p.x, p.y,
+            static_cast<unsigned int>(static_cast<int>(p.x) + delta.x),
+            static_cast<unsigned int>(static_cast<int>(p.y) + delta.y)
+        };
+    };
+
+    std::optional<RectRange<unsigned int>> one_unit_step;
+    if(!out_of_board(pen_point)) one_unit_step = step_range(pen_point);
+
+    while(true)
+    {
+        if(out_of_board(point)) return one_unit_step;
+
+        const std::size_t ROW = AXIS ? (delta.x > 0 ? point.x : point.x - 1) : point.x;
+        const std::size_t COL = AXIS ? point.y : (delta.y > 0 ? point.y : point.y - 1);
+        const RectRange<unsigned int> step = step_range(point);
+
+        if(getLine(ROW, COL, AXIS) != line_value) return step;
+        point = {step.x1, step.y1};
+    }
+}
+
+void Canvas::_drawPenIndicator()
+{
+    if(!m_pen || !checkFlag(m_flags, FLAGS::INDICATOR)) return;
+
+    const float x = m_deadZone + static_cast<float>(m_pen->range.y1) * m_cellMinSize.x;
+    const float y = m_deadZone + static_cast<float>(m_pen->range.x1) * m_cellMinSize.y;
+    const float half = s_PEN_INDICATOR_SIZE / 2.f;
+    const sf::Color color = sf::Color::Red;
+
+    const sf::Vertex quad[6] =
+    {
+        sf::Vertex{{x - half, y - half}, color},
+        sf::Vertex{{x + half, y - half}, color},
+        sf::Vertex{{x + half, y + half}, color},
+        sf::Vertex{{x + half, y + half}, color},
+        sf::Vertex{{x - half, y + half}, color},
+        sf::Vertex{{x - half, y - half}, color}
+    };
+    m_texture.draw(quad, 6, sf::PrimitiveType::Triangles);
 }
 }
 

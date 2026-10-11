@@ -60,7 +60,7 @@ inline constexpr sfml_widgets::LineState TYPE_MASK = GENERATE_MASK_U16(TYPE_OFFS
 inline constexpr unsigned int TYPE_OFF = UINT16_MAX ^ TYPE_MASK;
 
 inline constexpr const char* NORMAL_LINE_LABEL = "normal";
-#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+#ifdef CANVAS_MORE_LINE_TYPES
     inline constexpr const char* OPEN_LINE_LABEL = "open";
     inline constexpr const char* DOTS_LINE_LABEL = "dots";
 #endif
@@ -230,7 +230,7 @@ private:
     bool m_requireLineUpdate{false};
 };
 
-#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+#ifdef CANVAS_MORE_LINE_TYPES
 ///////////////////////////////////////////////////////////////////
 /// @brief Renders open line type, added to every `Canvas` instance
 /// by default (for now)
@@ -1165,6 +1165,12 @@ private:
     void _updateGrid();
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Draws the anchor to canvas
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void _drawPenIndicator();
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Creates texture layer for cell, fails if cell has no texture,
     /// managed internally
     ///
@@ -1257,9 +1263,23 @@ private:
     ///////////////////////////////////////////////////////////////////
     void __applyAction(const EditAction& action, bool undo);
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the next anchor point relative to delta, managed
+    /// in `postProcessKeyEvents` overload
+    ///
+    /// @param point line starting point relative to delta
+    /// @param pen_point current anchor point
+    /// @param delta change in direction
+    /// @param line_value current line value
+    /// @return new line range
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::optional<RectRange<unsigned int>> _findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const;
+
     static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
     static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
     static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
+    static constexpr float s_PEN_INDICATOR_SIZE = 6.f;
     static constexpr std::size_t s_MAX_HISTORY = 128;
 
     // Responsible for invalidating external cell pointers after a new gen
@@ -1284,7 +1304,7 @@ private:
         LineState new_val;
     };
 
-    // for SHIFT/CTRL+quick draw events, maintains attrib of the last drawn line
+    // for SHIFT/CTRL+quick draw events
     struct EditAnchor
     {
         RectRange<unsigned int> range;  //!< prev line's range (SHIFT)
@@ -1294,8 +1314,8 @@ private:
     // single line edit action, this is what gets undone/redone
     struct EditAction
     {
-        std::optional<EditAnchor> pen;          //!< cached last added line's attributes
-        std::vector<UnitEditDetails> changes;   //!< every unit segment that changed from this action is stored here
+        std::optional<EditAnchor> pen;          //!< cache
+        std::vector<UnitEditDetails> changes;   //!< all unit changes from this edit
     };
 
 

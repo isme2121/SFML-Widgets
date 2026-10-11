@@ -130,7 +130,7 @@ void main()
 }
 )";
 
-#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+#ifdef CANVAS_MORE_LINE_TYPES
 constexpr std::string_view OPEN_LINE_SHADER_FRAG = R"(
 /*
 * Default shader for open line type in canvas

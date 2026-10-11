@@ -218,7 +218,7 @@ constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::strin
      {"Texture Shader", TEXTURE_SHADER_FRAG}}
 };
 
-#ifdef SFML_WIDGETS_MORE_LINE_TYPES
+#ifdef CANVAS_MORE_LINE_TYPES
 constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 3>{NORMAL_LINE_LABEL, OPEN_LINE_LABEL, DOTS_LINE_LABEL};
 #else
 constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 1>{NORMAL_LINE_LABEL};
@@ -1054,7 +1054,7 @@ struct AccessorsLink<Canvas>
             return false;
         }, EnumSection::State, "Float [0.f, 0.1f]");
 
-        #ifdef SFML_WIDGETS_MORE_LINE_TYPES
+        #ifdef CANVAS_MORE_LINE_TYPES
         set_lookup(vec, "join mode" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<bool>(&v))
