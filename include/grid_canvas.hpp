@@ -748,7 +748,39 @@ public:
     ///
     ///////////////////////////////////////////////////////////////////
     std::size_t getMaxCellsCount() const;
-    
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Enables or disables quick drawing, enabled by default
+    ///
+    /// When enabled, lines can be inserted after selecting+hovering on
+    /// the widget and pressing any `ARROW_KEY`, can also use `ARROW_KEY+CTRL`
+    /// to copy the previous line's value, or `ARROW_KEY+SHIFT` to continue
+    /// from last line, or both `ARROW_KEY+CTRL+SHIFT`. `CTRL+Z` & `CTRL+Y`
+    /// are also enabled. 
+    ///
+    /// @param enabled new state
+    /// @param shift_skip_identical_lines if set, `ARROW+SHIFT` leaps over lines
+    /// with equal value, false by default
+    ///
+    /// @see `showPen`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void setQuickDraw(bool enabled, bool shift_skip_identical_lines = false);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Toggles the pen, enabled by default
+    ///
+    /// A visual for displaying where the quick draw pen is currently
+    /// positioned, drawn on every quick draw event.
+    ///
+    /// @param show choose to draw the visual
+    /// @param color visual color, `DEFAULT_COLOR` inherits canvas outline color
+    ///
+    /// @see `setQuickDraw`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void showPen(bool show, sf::Color color = DEFAULT_COLOR);
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the equivalent pixel coordinates relative
     /// to canvas' board, accurate for local surface mapping
@@ -1087,18 +1119,6 @@ private:
     bool isRectSealed(const RectRange<unsigned int>& rect) const;
 
     ///////////////////////////////////////////////////////////////////
-    /// @brief The actual line value setter
-    ///
-    /// @param rect start to end unit points for line 
-    /// @param val assigned value
-    /// @param mask applied if replace is false, any bit=0 in mask resets line state bit counter part
-    /// @param replace param val replaces old val if true, otherwise is added to it after applying mask
-    /// @return true if line is updated, otherwise false upon fail
-    ///
-    ///////////////////////////////////////////////////////////////////
-    bool _setLineValue(const RectRange<unsigned int>& rect, LineState val, std::uint16_t mask = UINT16_MAX, bool replace = true);
-
-    ///////////////////////////////////////////////////////////////////
     /// @brief Updates a cell's visual fill color
     ///
     /// @param cell_id cell id 
@@ -1128,6 +1148,26 @@ private:
     int getColorIndex(sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Returns the index of the specific line type
+    ///
+    /// @param line_type line type
+    /// @return index to renderer if found, otherwise defaults to 
+    ///////////////////////////////////////////////////////////////////
+    int getTypeIndex(const std::string& line_type) const;
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief The actual line value setter
+    ///
+    /// @param rect start to end unit points for line 
+    /// @param val assigned value
+    /// @param mask applied if replace is false, any `0` bit in mask resets line state bit counter part
+    /// @param replace param val replaces old val if true, otherwise is added to it after applying mask
+    /// @return true if line is updated, otherwise false upon fail
+    ///
+    ///////////////////////////////////////////////////////////////////
+    bool _setLineValue(const RectRange<unsigned int>& rect, LineState val, std::uint16_t mask = UINT16_MAX, bool replace = true);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Records a line edit in history for redo/undo actions
     ///
     /// @param action line edit
@@ -1135,15 +1175,7 @@ private:
     /// @see `_undoLine`, `_redoLine`, `s_MAX_HISTORY`
     ///
     ///////////////////////////////////////////////////////////////////
-    void pushEditHistory(EditAction&& action);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Returns the index of the specific line type
-    ///
-    /// @param line_type line type
-    /// @return index to renderer if found, otherwise defaults to 
-    ///////////////////////////////////////////////////////////////////
-    int getTypeIndex(const std::string& line_type) const;
+    void _pushEditHistory(EditAction&& action);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates line values visually
@@ -1178,20 +1210,6 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void _emplaceCellTexture(std::size_t cell_id);
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Loads texture content from disk or from canvas cache if the
-    /// same image with the same size is actively used
-    ///
-    /// Loaded texture is placed in cache for cells to reference.
-    ///
-    /// @param key  
-    /// @param path 
-    /// @param target_size 
-    /// @return 
-    ///
-    ///////////////////////////////////////////////////////////////////
-    std::pair<std::string, const sf::Texture*> _getTexture(const std::string& path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Decrements the texture's reference count, clears it from
@@ -1264,6 +1282,20 @@ private:
     void __applyAction(const EditAction& action, bool undo);
 
     ///////////////////////////////////////////////////////////////////
+    /// @brief Loads texture content from disk or from canvas cache if the
+    /// same image with the same size is actively used
+    ///
+    /// Loaded texture is placed in cache for cells to reference.
+    ///
+    /// @param key  
+    /// @param path 
+    /// @param target_size 
+    /// @return 
+    ///
+    ///////////////////////////////////////////////////////////////////
+    std::pair<std::string, const sf::Texture*> __getTexture(const std::string& path);
+
+    ///////////////////////////////////////////////////////////////////
     /// @brief Returns the next anchor point relative to delta, managed
     /// in `postProcessKeyEvents` overload
     ///
@@ -1274,13 +1306,20 @@ private:
     /// @return new line range
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<RectRange<unsigned int>> _findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const;
+    std::optional<RectRange<unsigned int>> __findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const;
 
-    static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
-    static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
-    static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
-    static constexpr float s_PEN_INDICATOR_SIZE = 6.f;
-    static constexpr std::size_t s_MAX_HISTORY = 128;
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Safely clears the line type from every existing line
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void __clearType(int type_idx);
+
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Starts the pen's visible window, does nothing unless quick
+    /// draw and the pen are both enabled
+    ///
+    ///////////////////////////////////////////////////////////////////
+    void __drawPen();
 
     // Responsible for invalidating external cell pointers after a new gen
     struct Access
@@ -1318,6 +1357,21 @@ private:
         std::vector<UnitEditDetails> changes;   //!< all unit changes from this edit
     };
 
+    // the pen
+    struct Pen
+    {
+        std::optional<EditAnchor> anchor;
+        sf::Clock timer;
+        sf::Color color{sf::Color::Red};
+        bool show{true};
+    };
+    
+    static constexpr float s_MAX_ZOOM_LEVEL = 5.f;
+    static constexpr float s_MIN_ZOOM_LEVEL = 1.f;
+    static constexpr float s_MAX_DEADZONE_RATIO = 0.1f;
+    static constexpr float s_PEN_WIDTH = 6.f;
+    static constexpr std::size_t s_MAX_HISTORY = 128;
+    static constexpr sf::Time s_PEN_DURATION = sf::seconds(1.5f);
 
     // board
     sf::RenderTexture m_texture;
@@ -1336,8 +1390,8 @@ private:
     std::deque<EditAction> m_history;   //!< edit history
 
     // references
-    std::shared_ptr<Access> m_access;   //!< every external cell_ptr counts on this
-    std::optional<EditAnchor> m_pen;    //!< cached last added line in history for quick edit
+    Pen m_pen;                          //!< cached last added line in history for quick edit
+    std::shared_ptr<Access> m_access;   //!< every external `cell_ptr` counts on this
     std::array<std::optional<sf::Color>, MAX_COLOR_STORAGE> m_reservedLineColors{};
     std::size_t m_hoveredCellID{NULL_CELL};
     std::size_t m_clickedCellID{NULL_CELL};
@@ -1359,6 +1413,10 @@ private:
     bool m_updateLines{false};
     bool m_updateCells{false};
     bool m_updateGridLines{false};
+
+    // flags
+    bool m_quickDrawEnable{true};
+    bool m_quickDrawSkipIdentical{false};
 };
 
 template <>

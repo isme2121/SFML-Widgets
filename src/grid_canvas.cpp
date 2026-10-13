@@ -508,7 +508,7 @@ void Canvas::clearCanvas()
     std::fill(m_reservedLineColors.begin(), m_reservedLineColors.end(), std::nullopt);
 
     m_history.clear();
-    m_pen.reset();
+    m_pen.anchor.reset();
     m_historyCursor = 0;
 
     m_updateLines = true;
@@ -572,6 +572,26 @@ bool Canvas::addLineType(std::unique_ptr<LineRenderer> new_line_type)
     return true;
 }
 
+bool Canvas::removeLineType(const std::string& line_type_label)
+{
+    const int TYPE_IDX = getTypeIndex(line_type_label);
+    if(TYPE_IDX <= 0) return false;
+
+    __clearType(TYPE_IDX);
+
+    m_lineRenderers.erase(m_lineRenderers.begin() + TYPE_IDX);
+    m_updateLines = true;
+    return true;
+}
+
+std::vector<std::string> Canvas::listLineTypes() const
+{
+    std::vector<std::string> res;
+    res.reserve(m_lineRenderers.size());
+    for(const auto& element : m_lineRenderers) res.emplace_back(element->getType());
+    return res;
+}
+
 Canvas::cell_ptr Canvas::at(sf::Vector2u grid_coords) const
 {
     return makeHandle(getCellIndex(grid_coords));
@@ -605,6 +625,18 @@ std::size_t Canvas::getCellsCount() const
 std::size_t Canvas::getMaxCellsCount() const
 {
     return m_GRID_MAP.x * m_GRID_MAP.y;
+}
+
+void Canvas::setQuickDraw(bool enabled, bool shift_skip_identical_lines)
+{
+    m_quickDrawEnable = enabled;
+    m_quickDrawSkipIdentical = shift_skip_identical_lines;
+}
+
+void Canvas::showPen(bool show, sf::Color color)
+{
+    m_pen.show = show;
+    m_pen.color = color == DEFAULT_COLOR ? m_style.outline_color : color;
 }
 
 sf::Vector2i Canvas::getLocalPixel(sf::Vector2i mouse_position) const
@@ -705,6 +737,7 @@ void Canvas::setTheme(CanvasStyle s_canvas)
 
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
+    showPen(m_pen.show, m_pen.color);
     m_updateGridLines = true;
     m_updateLines = true;
 }
@@ -721,10 +754,11 @@ CanvasStyle& Canvas::style()
 
 void Canvas::poke()
 {
-    m_flags |= FLAGS::MODIFIED;
+    setFlag(m_flags, FLAGS::MODIFIED);
 
     _refreshCellColor(m_hoveredCellID);
     _refreshCellColor(m_selectedCellID);
+    showPen(m_pen.show, m_pen.color);
     m_updateGridLines = true;
     m_updateLines = true;
 }
@@ -807,8 +841,16 @@ bool Canvas::postProcessMouseEvents(const W_MouseEventDetails& details, const sf
 
 bool Canvas::postProcessKeyEvents(const sf::Event& event)
 {
+    if(!m_quickDrawEnable) return false;
+
     const sf::Event::KeyPressed* key_press = event.getIf<sf::Event::KeyPressed>();
     if(!key_press) return false;
+
+    if(key_press->code == sf::Keyboard::Key::LShift || key_press->code == sf::Keyboard::Key::RShift)
+    {
+        __drawPen();
+        return true;
+    }
 
     // edit (CTRL)
     if(key_press->control)
@@ -841,14 +883,14 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
             return false;
     }
 
-    const LineState new_state = (key_press->control && m_pen) ? m_pen->state :
+    const LineState final_value = (key_press->control && m_pen.anchor) ? m_pen.anchor->state :
                                 static_cast<LineState>(LINE_SET | apply_mask(apply_shift(1u, THICKNESS_OFFSET), THICKNESS_MASK));
 
     // continue from last point (SHIFT)
     RectRange<unsigned int> rect;
     if(key_press->shift)
     {
-        if(!m_pen) return false;
+        if(!m_pen.anchor) return false;
 
         /*
         * Problem here is that rect.p0 can be larger than rect.p1
@@ -857,7 +899,7 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
         * - and from which side of the line to start from
         * so we need to find p.start first
         */
-        const RectRange<unsigned int>& prev = m_pen->range;
+        const RectRange<unsigned int>& prev = m_pen.anchor->range;
         const unsigned int ROW_LOW = std::min(prev.x0, prev.x1);
         const unsigned int ROW_HIGH = std::max(prev.x0, prev.x1);
         const unsigned int COL_LOW = std::min(prev.y0, prev.y1);
@@ -878,7 +920,7 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
             start = {prev.x1, prev.y1};
 
         // by default, this ignores identical lines
-        const std::optional<RectRange<unsigned int>> next = _findNextAnchorPoint(start, {prev.x1, prev.y1}, dir, new_state);
+        const std::optional<RectRange<unsigned int>> next = __findNextAnchorPoint(start, {prev.x1, prev.y1}, dir, final_value);
         if(!next) return false;
         rect = *next;
     }
@@ -900,7 +942,8 @@ bool Canvas::postProcessKeyEvents(const sf::Event& event)
         }
     }
 
-    _setLineValue(rect, new_state);
+    _setLineValue(rect, final_value);
+    __drawPen();
     return true;
 }
 void Canvas::drawWidget()
@@ -1199,6 +1242,80 @@ bool Canvas::isRectSealed(const RectRange<unsigned int>& rect) const
     return true;
 }
 
+bool Canvas::setCellColor(std::size_t cell_id, sf::Color color)
+{
+    GridCell* Pcell = getCell(cell_id);
+    if(Pcell)
+    {
+        m_renderedCells[cell_id * 6].color = color;
+        m_renderedCells[cell_id * 6 + 1].color = color;
+        m_renderedCells[cell_id * 6 + 2].color = color;
+        m_renderedCells[cell_id * 6 + 3].color = color;
+        m_renderedCells[cell_id * 6 + 4].color = color;
+        m_renderedCells[cell_id * 6 + 5].color = color;
+        return true;
+    }
+    return false;
+}
+
+bool Canvas::setCellTexture(std::size_t cell_id, const std::string& image_path)
+{
+    GridCell* cell = getCell(cell_id);
+    if(!cell) return false;
+
+    if(cell->texture_path == image_path) return false;
+
+    const RectRange<float> PIXELS_RECT = mapGridRectToCoords(cell->grid);
+    const sf::Vector2f CELL_SIZE = PIXELS_RECT.distance();
+    if(CELL_SIZE.x < 1.f || CELL_SIZE.y < 1.f) return false;
+
+    auto texture_pair = __getTexture(image_path);
+    if(!texture_pair.second) return false;
+
+    cell->releaseTexture();
+    cell->texture_path = texture_pair.first;
+    cell->texture = texture_pair.second;
+
+    _emplaceCellTexture(cell_id);
+    return true;
+}
+
+int Canvas::getColorIndex(sf::Color color)
+{
+    if(color == DEFAULT_COLOR) return -1;
+
+    for(std::size_t i{0}; i < MAX_COLOR_STORAGE; ++i)
+    {
+        if(!m_reservedLineColors[i].has_value())
+        {
+            m_reservedLineColors[i].emplace(color);
+            return i;
+        }
+
+        if(m_reservedLineColors[i].has_value() && *m_reservedLineColors[i] == color)
+            return i;
+    }
+    return -1;
+}
+
+int Canvas::getTypeIndex(const std::string& line_type) const
+{
+    const std::size_t current_size = m_lineRenderers.size();
+    for(std::size_t i{0}; i < current_size; ++i)
+    {
+        if(m_lineRenderers[i]->getType() == line_type) return i;
+    }
+    return 0;
+}
+
+void Canvas::_pushEditHistory(EditAction&& action)
+{
+    m_history.erase(m_history.begin() + static_cast<std::ptrdiff_t>(m_historyCursor), m_history.end());
+    m_history.push_back(std::move(action));
+    if(m_history.size() > s_MAX_HISTORY) m_history.pop_front();
+    m_historyCursor = m_history.size();
+}
+
 bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, std::uint16_t mask, bool replace)
 {
     if(rect.x0 > m_GRID_MAP.x || rect.x1 > m_GRID_MAP.x || rect.y0 > m_GRID_MAP.y || rect.y1 > m_GRID_MAP.y) return false;
@@ -1234,66 +1351,17 @@ bool Canvas::_setLineValue(const RectRange<unsigned int>& rect, LineState val, s
         action.changes.push_back({static_cast<std::uint32_t>(&line - m_lines.data()), PREV_VAL, line});
     }
 
-    if(replace && (val & LINE_SET)) m_pen = EditAnchor{rect, val};
+    /*
+    * why only replace gets a cached state? cuz i'm an idiot
+    */
+    if(m_quickDrawEnable && replace && (val & LINE_SET)) m_pen.anchor = EditAnchor{rect, val};
 
     if(action.changes.empty()) return false;
 
-    action.pen = m_pen;
+    action.pen = m_pen.anchor;
     m_updateLines = true;
-    pushEditHistory(std::move(action));
+    _pushEditHistory(std::move(action));
     return true;
-}
-
-bool Canvas::setCellColor(std::size_t cell_id, sf::Color color)
-{
-    GridCell* Pcell = getCell(cell_id);
-    if(Pcell)
-    {
-        m_renderedCells[cell_id * 6].color = color;
-        m_renderedCells[cell_id * 6 + 1].color = color;
-        m_renderedCells[cell_id * 6 + 2].color = color;
-        m_renderedCells[cell_id * 6 + 3].color = color;
-        m_renderedCells[cell_id * 6 + 4].color = color;
-        m_renderedCells[cell_id * 6 + 5].color = color;
-        return true;
-    }
-    return false;
-}
-
-int Canvas::getColorIndex(sf::Color color)
-{
-    if(color == DEFAULT_COLOR) return -1;
-
-    for(std::size_t i{0}; i < MAX_COLOR_STORAGE; ++i)
-    {
-        if(!m_reservedLineColors[i].has_value())
-        {
-            m_reservedLineColors[i].emplace(color);
-            return i;
-        }
-
-        if(m_reservedLineColors[i].has_value() && *m_reservedLineColors[i] == color)
-            return i;
-    }
-    return -1;
-}
-
-void Canvas::pushEditHistory(EditAction&& action)
-{
-    m_history.erase(m_history.begin() + static_cast<std::ptrdiff_t>(m_historyCursor), m_history.end());
-    m_history.push_back(std::move(action));
-    if(m_history.size() > s_MAX_HISTORY) m_history.pop_front();
-    m_historyCursor = m_history.size();
-}
-
-int Canvas::getTypeIndex(const std::string& line_type) const
-{
-    const std::size_t current_size = m_lineRenderers.size();
-    for(std::size_t i{0}; i < current_size; ++i)
-    {
-        if(m_lineRenderers[i]->getType() == line_type) return i;
-    }
-    return 0;
 }
 
 void Canvas::_updateLines()
@@ -1523,26 +1591,26 @@ void Canvas::_updateGrid()
     m_updateGridLines = false;
 }
 
-bool Canvas::setCellTexture(std::size_t cell_id, const std::string& image_path)
+void Canvas::_drawPenIndicator()
 {
-    GridCell* cell = getCell(cell_id);
-    if(!cell) return false;
+    if(!m_quickDrawEnable || !m_pen.anchor || !m_pen.show) return;
 
-    if(cell->texture_path == image_path) return false;
+    if(m_pen.timer.getElapsedTime() >= s_PEN_DURATION) return;
 
-    const RectRange<float> PIXELS_RECT = mapGridRectToCoords(cell->grid);
-    const sf::Vector2f CELL_SIZE = PIXELS_RECT.distance();
-    if(CELL_SIZE.x < 1.f || CELL_SIZE.y < 1.f) return false;
+    const float x = m_deadZone + static_cast<float>(m_pen.anchor->range.y1) * m_cellMinSize.x;
+    const float y = m_deadZone + static_cast<float>(m_pen.anchor->range.x1) * m_cellMinSize.y;
+    const float half = s_PEN_WIDTH / 2.f;
 
-    auto texture_pair = _getTexture(image_path);
-    if(!texture_pair.second) return false;
-
-    cell->releaseTexture();
-    cell->texture_path = texture_pair.first;
-    cell->texture = texture_pair.second;
-
-    _emplaceCellTexture(cell_id);
-    return true;
+    const sf::Vertex quad[6] =
+    {
+        sf::Vertex{{x - half, y - half}, m_pen.color},
+        sf::Vertex{{x + half, y - half}, m_pen.color},
+        sf::Vertex{{x + half, y + half}, m_pen.color},
+        sf::Vertex{{x + half, y + half}, m_pen.color},
+        sf::Vertex{{x - half, y + half}, m_pen.color},
+        sf::Vertex{{x - half, y - half}, m_pen.color}
+    };
+    m_texture.draw(quad, 6, sf::PrimitiveType::Triangles);
 }
 
 void Canvas::_emplaceCellTexture(std::size_t cell_id)
@@ -1560,33 +1628,6 @@ void Canvas::_emplaceCellTexture(std::size_t cell_id)
     m_renderedCellTextures[base + 3] = sf::Vertex{{rect.x1, rect.y1}, sf::Color::White, {size.x, size.y}};
     m_renderedCellTextures[base + 4] = sf::Vertex{{rect.x0, rect.y1}, sf::Color::White, {0.f, size.y}};
     m_renderedCellTextures[base + 5] = sf::Vertex{{rect.x0, rect.y0}, sf::Color::White, {0.f, 0.f}};
-}
-
-std::pair<std::string, const sf::Texture*> Canvas::_getTexture(const std::string& path)
-{
-    auto it = m_textureCache.find(path);
-    if(it != m_textureCache.end())
-    {
-        ++it->second.ref_count;
-        return {path, &it->second.texture};
-    }
-
-    sfml_widgets::Widget::ImageCache& image_cache = sfml_widgets::Widget::ImageCache::getInstance();
-    std::optional<const sf::Image*> source = image_cache.getImage(path);
-    if(!source) return {"", nullptr};
-    
-    // this is fine since local cache is checked first
-    // so disk wouldn't be accessed if another cell requests the texture
-    image_cache.decrementRefCounter(path);
-
-    sf::Texture texture;
-    if(!texture.loadFromImage(**source)) return {"", nullptr};
-    
-    texture.setSmooth(true);
-    TexSource& entry = m_textureCache[path];
-    entry.texture = std::move(texture);
-    entry.ref_count = 1;
-    return {path, &entry.texture};
 }
 
 void Canvas::_releaseTexture(GridCell& cell)
@@ -1647,7 +1688,7 @@ bool Canvas::_undoLine()
     if(m_historyCursor == 0) return false;
 
     __applyAction(m_history[--m_historyCursor], true);
-    m_pen = m_historyCursor ? m_history[m_historyCursor - 1].pen : std::nullopt;
+    m_pen.anchor = m_historyCursor ? m_history[m_historyCursor - 1].pen : std::nullopt;
     return true;
 }
 
@@ -1656,7 +1697,8 @@ bool Canvas::_redoLine()
     if(m_historyCursor >= m_history.size()) return false;
 
     __applyAction(m_history[m_historyCursor], false);
-    m_pen = m_history[m_historyCursor++].pen;
+    m_pen.anchor = m_history[m_historyCursor].pen;
+    ++m_historyCursor;
     return true;
 }
 
@@ -1673,7 +1715,34 @@ void Canvas::__applyAction(const EditAction& action, bool undo)
     m_updateLines = true;
 }
 
-std::optional<RectRange<unsigned int>> Canvas::_findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const
+std::pair<std::string, const sf::Texture*> Canvas::__getTexture(const std::string& path)
+{
+    auto it = m_textureCache.find(path);
+    if(it != m_textureCache.end())
+    {
+        ++it->second.ref_count;
+        return {path, &it->second.texture};
+    }
+
+    sfml_widgets::Widget::ImageCache& image_cache = sfml_widgets::Widget::ImageCache::getInstance();
+    std::optional<const sf::Image*> source = image_cache.getImage(path);
+    if(!source) return {"", nullptr};
+    
+    // this is fine since local cache is checked first
+    // so disk wouldn't be accessed if another cell requests the texture
+    image_cache.decrementRefCounter(path);
+
+    sf::Texture texture;
+    if(!texture.loadFromImage(**source)) return {"", nullptr};
+    
+    texture.setSmooth(true);
+    TexSource& entry = m_textureCache[path];
+    entry.texture = std::move(texture);
+    entry.ref_count = 1;
+    return {path, &entry.texture};
+}
+
+std::optional<RectRange<unsigned int>> Canvas::__findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const
 {
     const std::size_t AXIS = delta.x != 0 ? 1u : 0u;    // 0u->horizontal; 1u->vertical
 
@@ -1694,6 +1763,7 @@ std::optional<RectRange<unsigned int>> Canvas::_findNextAnchorPoint(sf::Vector2u
 
     std::optional<RectRange<unsigned int>> one_unit_step;
     if(!out_of_board(pen_point)) one_unit_step = step_range(pen_point);
+    if(!m_quickDrawSkipIdentical) return one_unit_step;
 
     while(true)
     {
@@ -1708,25 +1778,43 @@ std::optional<RectRange<unsigned int>> Canvas::_findNextAnchorPoint(sf::Vector2u
     }
 }
 
-void Canvas::_drawPenIndicator()
+void Canvas::__clearType(int type_idx)
 {
-    if(!m_pen || !checkFlag(m_flags, FLAGS::INDICATOR)) return;
+    const unsigned int REMOVED_IDX = static_cast<unsigned int>(type_idx);
 
-    const float x = m_deadZone + static_cast<float>(m_pen->range.y1) * m_cellMinSize.x;
-    const float y = m_deadZone + static_cast<float>(m_pen->range.x1) * m_cellMinSize.y;
-    const float half = s_PEN_INDICATOR_SIZE / 2.f;
-    const sf::Color color = sf::Color::Red;
-
-    const sf::Vertex quad[6] =
+    const auto re_assign = [REMOVED_IDX](LineState state) -> LineState
     {
-        sf::Vertex{{x - half, y - half}, color},
-        sf::Vertex{{x + half, y - half}, color},
-        sf::Vertex{{x + half, y + half}, color},
-        sf::Vertex{{x + half, y + half}, color},
-        sf::Vertex{{x - half, y + half}, color},
-        sf::Vertex{{x - half, y - half}, color}
+        const unsigned int idx = apply_mask(state, TYPE_MASK, TYPE_OFFSET);
+        if(idx == REMOVED_IDX) // reset to normal line
+        {
+            return static_cast<LineState>(state & TYPE_OFF);
+        }
+        if(idx > REMOVED_IDX) // decrement type index
+        {
+            return static_cast<LineState>((state & TYPE_OFF) |
+                   apply_shift(static_cast<LineState>(idx - 1u), TYPE_OFFSET));
+        }
+        return state;
     };
-    m_texture.draw(quad, 6, sf::PrimitiveType::Triangles);
+
+    for(LineState& line : m_lines) line = re_assign(line);
+
+    for(EditAction& action : m_history)
+    {
+        for(UnitEditDetails& change : action.changes)
+        {
+            change.prev_val = re_assign(change.prev_val);
+            change.new_val = re_assign(change.new_val);
+        }
+        if(action.pen) action.pen->state = re_assign(action.pen->state);
+    }
+    if(m_pen.anchor) m_pen.anchor->state = re_assign(m_pen.anchor->state);
+}
+
+void Canvas::__drawPen()
+{
+    if(!m_quickDrawEnable) return;
+    m_pen.timer.restart();
 }
 }
 

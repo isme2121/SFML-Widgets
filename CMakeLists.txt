@@ -12,7 +12,7 @@ option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/
 option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" ON)
 
 option(SFML_WIDGETS_SHARED "Build SFML widgets as shared libraries" ON)
-option(CANVAS_MORE_LINE_TYPES "Defines more default lines for GridCanvas" OFF)
+option(CANVAS_MORE_LINE_TYPES "Defines more default lines for GridCanvas" ON)
 
 #======SFML setup====================================================
 find_package(SFML 3 CONFIG QUIET)
@@ -50,7 +50,7 @@ add_library(widgets
 target_compile_definitions(widgets PUBLIC 
     STB_IMAGE_RESIZE_IMPLEMENTATION
 )
-foreach(compile_option CANVAS_MORE_LINE_TYPES BUILD_TESTS BUILD_EXAMPLES)
+foreach(compile_option BUILD_DEBUG_GUI CANVAS_MORE_LINE_TYPES BUILD_TESTS BUILD_EXAMPLES)
     if(${compile_option})
         target_compile_definitions(widgets PUBLIC ${compile_option})
     endif()
