@@ -217,8 +217,7 @@ private:
 
     ButtonStyle m_buttonTheme;
     TextureStyle m_frameTheme;
-    CanvasStyle m_canvasTheme;
-    TextureStyle m_gridCanvasTheme;
+    CanvasStyle m_gridCanvasTheme;
     TextureStyle m_imageFrameTheme;
     CheckboxStyle m_checkboxTheme;
     EntryStyle m_entryTheme;
@@ -230,7 +229,6 @@ private:
 
     std::size_t m_buttonToken{0};
     std::size_t m_frameToken{0};
-    std::size_t m_canvasToken{0};
     std::size_t m_gridCanvasToken{0};
     std::size_t m_imageFrameToken{0};
     std::size_t m_checkboxToken{0};
@@ -247,7 +245,7 @@ public:
     /// until the shared counter goes to zero.
     ///
     /// @param s_button style for button
-    /// @param s_texture style for frame, canvas, and image frame (can be differentiated using `setStyle` method)
+    /// @param s_texture style for frame, GridCanvas, and image frame (can be differentiated using `setStyle` method)
     /// @param s_checkbox style for checkbox
     /// @param s_entry style for entry
     /// @param s_label style for label
@@ -792,27 +790,6 @@ constexpr TextureStyle DEFAULT_LIGHT_STYLE =
     2.0f,                   // transparent_outline_thickness  
 };
 
-constexpr TextureStyle CANVAS_LIGHT_STYLE =
-{
-    {245, 245, 247, 255},   // bg_color
-    {245, 245, 247, 255},   // hover_bg_color
-    {245, 245, 247, 255},   // active_bg_color
-    {220, 220, 223, 255},   // blocked_bg_color
-    {255, 255, 255, 15},    // transparent_bg_color
-
-    {205, 205, 212, 255},   // outline_color
-    {205, 205, 212, 255},   // hover_outline_color
-    {205, 205, 212, 255},   // active_outline_color
-    {215, 215, 218, 255},   // blocked_outline_color
-    {185, 185, 198, 70},    // transparent_outline_color
-
-    1.0f,                   // outline_thickness          
-    1.0f,                   // hovered_outline_thickness
-    1.0f,                   // active_outline_thickness
-    1.0f,                   // blocked_outline_thickness
-    2.0f,                   // transparent_outline_thickness  
-};
-
 constexpr sfml_widgets::TextureStyle DEFAULT_DARK_STYLE =
 {
     {28, 28, 32, 255},      // bg_color
@@ -855,29 +832,6 @@ constexpr TextureStyle MENUBAR_TEXTURE_DARK =
     0.0f,                   // active_outline_thickness
     0.0f,                   // blocked_outline_thickness
     0.0f,                   // transparent_outline_thickness
-};
-
-
-
-constexpr sfml_widgets::TextureStyle CANVAS_DARK_STYLE =
-{
-    {28, 28, 32, 255},      // bg_color
-    {28, 28, 32, 255},      // hover_bg_color
-    {28, 28, 32, 255},      // active_bg_color
-    {34, 34, 38, 255},      // blocked_bg_color
-    {28, 28, 32, 15},       // transparent_bg_color
-
-    {58, 58, 68, 255},      // outline_color
-    {58, 58, 68, 255},      // hover_outline_color
-    {58, 58, 68, 255},      // active_outline_color
-    {44, 44, 50, 255},      // blocked_outline_color
-    {78, 78, 95, 72},       // transparent_outline_color
-
-    1.0f,                   // outline_thickness
-    1.0f,                   // hovered_outline_thickness
-    1.0f,                   // active_outline_thickness
-    1.0f,                   // blocked_outline_thickness
-    2.0f,                   // transparent_outline_thickness
 };
 
 constexpr TextureStyle MENUBAR_TEXTURE_LIGHT =
@@ -2710,34 +2664,6 @@ constexpr ToolTipStyle TOOLTIP_SANDSTONE_DUNE =
     1.5f
 };
 }
-
-constexpr CellColor DEFAULT_CELL_COLOR =
-{
-    sf::Color::White,
-    sf::Color::Black,
-    sf::Color::Black,
-    sf::Color::Black,
-    sf::Color::Black,
-    1.f, 1.f, 1.f, 1.f
-};
-
-constexpr sfml_widgets::CellColor LIGHT_CELL = {
-    sf::Color::Transparent,
-    sf::Color(205, 205, 212),
-    sf::Color(205, 205, 212),
-    sf::Color(205, 205, 212),
-    sf::Color(205, 205, 212),
-    0.f, 0.f, 1.f, 1.f
-};
-
-constexpr sfml_widgets::CellColor DARK_CELL = {
-    sf::Color::Transparent,
-    sf::Color(58,  58,  68),
-    sf::Color(58,  58,  68),
-    sf::Color(58,  58,  68),
-    sf::Color(58,  58,  68),
-    1.f, 1.f, 0.f, 0.f
-};
 
 inline static std::shared_ptr<WidgetTheme> dark_theme = WidgetTheme::make_theme(button_style::BUTTON_DARK_STYLE, texture_style::DEFAULT_DARK_STYLE, checkbox_style::CHECKBOX_DARK_STYLE, entry_style::ENTRY_DARK_STYLE, label_style::LABEL_DARK_STYLE, canvas_style::CANVAS_DARK_STYLE);
 inline static std::shared_ptr<WidgetTheme> light_theme = WidgetTheme::make_theme(button_style::BUTTON_LIGHT_STYLE, texture_style::DEFAULT_LIGHT_STYLE, checkbox_style::CHECKBOX_LIGHT_STYLE, entry_style::ENTRY_LIGHT_STYLE, label_style::LABEL_LIGHT_STYLE, canvas_style::CANVAS_LIGHT_STYLE);

@@ -133,7 +133,7 @@ void main()
 #ifdef CANVAS_MORE_LINE_TYPES
 constexpr std::string_view OPEN_LINE_SHADER_FRAG = R"(
 /*
-* Default shader for open line type in canvas
+* Default shader for open line type in GridCanvas
 */
 uniform int join_lines;             // 0->opening for each unit; 1->single opening
 uniform float zero_space_width_ratio;

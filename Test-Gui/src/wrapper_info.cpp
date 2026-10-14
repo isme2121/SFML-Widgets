@@ -388,20 +388,10 @@ void InfoWrapper::renderEditSection()
         {
             if(m_selected.enable_if_frame_ptr)
             {
-                addWidget<GridCanvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{100}, 0.f, true);
+                addWidget<GridCanvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
                 refreshValues();
             }
-            else addWidget<GridCanvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, std::size_t{100}, 0.f, true);
-        }
-        ImGui::TableNextColumn();
-        if(ImGui::Button("Canvas", ImVec2(-FLT_MIN, 0)))
-        {
-            if(m_selected.enable_if_frame_ptr)
-            {
-                addWidget<Canvas>(*m_selected.enable_if_frame_ptr, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
-                refreshValues();
-            }
-            else addWidget<Canvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
+            else addWidget<GridCanvas>(m_window, sf::Vector2f{10.f, 10.f}, sf::Vector2u{320, 320}, sf::Vector2u{10, 10});
         }
         ImGui::EndTable();
     }
@@ -599,12 +589,12 @@ void InfoWrapper::renderAccessorSections()
         });
     }
 
-    if(Canvas* canvas = dynamic_cast<Canvas*>(m_selected.widget_ptr))
+    if(GridCanvas* canvas = dynamic_cast<GridCanvas*>(m_selected.widget_ptr))
     {
         auto it = m_cache.find(m_selected.widget_ptr);
         if(it != m_cache.end())
         {
-            CanvasCache& cache = it->second.canvas;
+            CanvasCache& cache = it->second.GridCanvas;
             append_section("Canvas (Lines)", [&](){_renderCanvasLineSection(canvas, cache);});
             append_section("Canvas (Cell)",[&](){_renderCanvasCellSection(canvas, cache);});
             append_section("Canvas (Pen)",[&](){_renderCanvasQuickDrawSection(canvas, cache);});
@@ -1418,11 +1408,6 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
             ImGui::SameLine();
             ImGui::TextUnformatted("dist");
         },
-        [&](Cell* v)
-        {
-            if(v) ImGui::Text("Selected Cell Coords:(%u, %u)", v->getCellCoordinates().x, v->getCellCoordinates().y);
-            else ImGui::TextUnformatted("No Cell Selected.");
-        },
         [&](sf::String& v)
         {
             std::string str = v.toAnsiString();
@@ -1499,7 +1484,7 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
             if(v.has_value()) ImGui::Text("(%u, %u)", v->x, v->y);
             else ImGui::TextUnformatted("(Nan, Nan)");
         },
-        [&](Canvas::cell_ptr p)
+        [&](GridCanvas::cell_ptr p)
         {
             if(p) ImGui::Text("Cell ID: %zu", p->getID());
             else ImGui::TextUnformatted("None");
@@ -1574,7 +1559,7 @@ const char* InfoWrapper::getRootLabel(Widget* w) const
     return it->second.label.c_str();
 }
 
-void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
+void InfoWrapper::_renderCanvasLineSection(GridCanvas* canvas, CanvasCache& cache)
 {
     constexpr std::size_t TYPES_COUNT = enum_literals::LINE_TYPE_LITERAL.size();
 
@@ -1608,7 +1593,7 @@ void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
     if(ImGui::Button("Set Thickness")) thickness_button_clicked = true;
     ImGui::Spacing();
 
-    ImGui::Checkbox("Use Canvas Outline Color##canvas_line_defcolor", &cache.line_use_default_color);
+    ImGui::Checkbox("Use canvas Outline Color##canvas_line_defcolor", &cache.line_use_default_color);
     ImGui::BeginDisabled(cache.line_use_default_color);
     ImGui::ColorEdit4("Color##canvas_line_color", cache.line_color, ImGuiColorEditFlags_NoInputs);
     ImGui::SameLine();
@@ -1648,9 +1633,9 @@ void InfoWrapper::_renderCanvasLineSection(Canvas* canvas, CanvasCache& cache)
     ImGui::PopStyleColor(3);
 }
 
-void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
+void InfoWrapper::_renderCanvasCellSection(GridCanvas* canvas, CanvasCache& cache)
 {
-    Canvas::cell_ptr selected = canvas->getSelectedCell();
+    GridCanvas::cell_ptr selected = canvas->getSelectedCell();
     if(!selected)
     {
         ImGui::TextDisabled("No cell currently selected.");
@@ -1695,7 +1680,7 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
 
     ImGui::Spacing();
 
-    ImGui::Checkbox("Use Canvas Outline Color##canvas_cell_defoutline", &cache.cell_use_default_outline_color);
+    ImGui::Checkbox("Use GridCanvas Outline Color##canvas_cell_defoutline", &cache.cell_use_default_outline_color);
     ImGui::BeginDisabled(cache.cell_use_default_outline_color);
     ImGui::ColorEdit4("Outline Color##canvas_cell_outlinecolor", cache.cell_outline_color, ImGuiColorEditFlags_NoInputs);
     ImGui::SameLine();
@@ -1766,7 +1751,7 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
     }
 }
 
-void InfoWrapper::_renderCanvasQuickDrawSection(Canvas* canvas, CanvasCache& cache)
+void InfoWrapper::_renderCanvasQuickDrawSection(GridCanvas* canvas, CanvasCache& cache)
 {
     bool setQuickDraw_call{false}, showPen_call{false};
     if(ImGui::Checkbox("Enable Quick Draw##canvas_quick_draw", &cache.quick_draw_enabled))
@@ -1792,7 +1777,7 @@ void InfoWrapper::_renderCanvasQuickDrawSection(Canvas* canvas, CanvasCache& cac
     if(ImGui::IsItemHovered()) ImGui::SetTooltip("Gives a visual dot for the current drawing anchor");
     ImGui::Spacing();
 
-    if(ImGui::Checkbox("Use Canvas Outline Color##canvas_quick_draw", &cache.quick_draw_use_outline_color))
+    if(ImGui::Checkbox("Use GridCanvas Outline Color##canvas_quick_draw", &cache.quick_draw_use_outline_color))
     {
         showPen_call = true;
     }

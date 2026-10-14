@@ -75,7 +75,7 @@ target_link_libraries(entry PUBLIC widgets)
 add_library(checkbox src/checkbox.cpp)
 target_link_libraries(checkbox PUBLIC widgets)
 
-#grid canvas library
+#gridcanvas library
 add_library(grid_canvas src/grid_canvas.cpp)
 target_link_libraries(grid_canvas PUBLIC widgets)
 

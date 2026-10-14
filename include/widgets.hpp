@@ -16,7 +16,6 @@ namespace sfml_widgets
 class Widget;
 class Button;
 class Frame;
-class Canvas;
 class GridCanvas;
 class ImageFrame;
 class CheckBox;
@@ -28,9 +27,7 @@ template <typename DERIVED_TYPE> struct WidgetStyle;
 class CaptureSequence;
 struct Key;
 class RenderContext;
-class CellOutline;
 class Cell;
-class GridCell;
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////         Types               ///////////////////

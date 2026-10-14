@@ -20,14 +20,14 @@ namespace sfml_widgets
 *  2. add to `AccessorLink`
 *  3. add default constructor to `InfoWrapper::renderEditSection`
 */
-using Widget_t = std::variant<Button, Frame, Label, Entry, CheckBox, ImageFrame, GridCanvas, Canvas>;
+using Widget_t = std::variant<Button, Frame, Label, Entry, CheckBox, ImageFrame, GridCanvas>;
 
 // All accessor types collapsed here
 using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, std::string, sfml_widgets::Button::SIDE,
                            Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
-                           DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign, Cell*,
+                           DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign,
                            sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>, Canvas::cell_ptr, const Frame*, const sf::RenderWindow*>;
+                           std::optional<sf::Vector2u>, GridCanvas::cell_ptr, const Frame*, const sf::RenderWindow*>;
 
 // Compile time check if a type is part of our variant
 template<typename T, typename variant_t> struct is_part_of_variant;
@@ -378,7 +378,7 @@ struct ShaderCache
 };
 
 ///////////////////////////////////////////////////////////////////
-/// @brief for `Canvas` class only
+/// @brief for `GridCanvas` class only
 ///
 ///////////////////////////////////////////////////////////////////
 struct CanvasCache
@@ -421,7 +421,7 @@ struct CachedAttributes
     ShaderCache clip_shader_cache;
     ShaderCache color_shader_cache;
     ToolTipCache tooltip;
-    CanvasCache canvas;
+    CanvasCache GridCanvas;
     int theme_idx{-1};                                      //!< -1 == None
     sf::Vector2f grab_offset{0.f, 0.f};
     std::string label;
@@ -1006,63 +1006,17 @@ struct AccessorsLink<GridCanvas>
         set_lookup(vec, "local pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
         set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapLocalToView(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "coordinates" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapCoordinates(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getSelectedCellPtr();}, EnumSection::Pointer);
-        set_lookup(vec, "clicked cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getClickedCellPtr();}, EnumSection::Pointer);
+        set_lookup(vec, "coords to grid" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->mapCoordsToGrid(sf::Mouse::getPosition(*static_cast<const GridCanvas*>(w)->getRootWindow()));}, EnumSection::State);
+        set_lookup(vec, "hovered cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getHoveredCell();}, EnumSection::Pointer);
+        set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getSelectedCell();}, EnumSection::Pointer);
         set_lookup(vec, "cell count" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getCellsCount();}, EnumSection::State);
+        set_lookup(vec, "cell max count" ,+ [](const void* w) -> Accessed_t {return static_cast<const GridCanvas*>(w)->getMaxCellsCount();}, EnumSection::State);
 
         /* Setters */
-        set_lookup(vec, "insert" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<sf::Vector2u>(&v))
-                return invoke_setter([&]{return static_cast<GridCanvas*>(w)->insert(*s);});
-            return false;
-        }, EnumSection::Any, "Vector2u{row, col}");
-        set_lookup(vec, "remove" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<sf::Vector2u>(&v))
-                return invoke_setter([&]{return static_cast<GridCanvas*>(w)->remove(*s);});
-            return false;
-        }, EnumSection::Any, "Vector2u{row, col}");
         set_lookup(vec, "dead zone" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
                 return invoke_setter([&]{return static_cast<GridCanvas*>(w)->setDeadZone(*s);});
-            return false;
-        }, EnumSection::State, "Float [0.f, 0.1f]");
-        set_lookup(vec, "is taken" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<sf::Vector2u>(&v))
-                return invoke_setter([&]{return static_cast<GridCanvas*>(w)->isTaken(*s);});
-            return false;
-        }, EnumSection::State, "Vector2u{row, col}");
-    }
-};
-
-///////////////////////////////////////////////////////////////////
-/// @brief Links accessors for derived widget type `Canvas`
-///
-///////////////////////////////////////////////////////////////////
-template<>
-struct AccessorsLink<Canvas>
-{
-    static void link(LookupVec_t& vec)
-    {
-        /* Getters */
-        set_lookup(vec, "local pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getLocalPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "view pixel" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getViewPixel(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "local to view" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapLocalToView(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "coords to grid" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->mapCoordsToGrid(sf::Mouse::getPosition(*static_cast<const Canvas*>(w)->getRootWindow()));}, EnumSection::State);
-        set_lookup(vec, "hovered cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getHoveredCell();}, EnumSection::Pointer);
-        set_lookup(vec, "selected cell" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getSelectedCell();}, EnumSection::Pointer);
-        set_lookup(vec, "cell count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getCellsCount();}, EnumSection::State);
-        set_lookup(vec, "cell max count" ,+ [](const void* w) -> Accessed_t {return static_cast<const Canvas*>(w)->getMaxCellsCount();}, EnumSection::State);
-
-        /* Setters */
-        set_lookup(vec, "dead zone" ,+[](void* w, const Accessed_t& v) -> bool
-        {
-            if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<Canvas*>(w)->setDeadZone(*s);});
             return false;
         }, EnumSection::State, "Float [0.f, 0.1f]");
 
@@ -1070,42 +1024,42 @@ struct AccessorsLink<Canvas>
         set_lookup(vec, "join mode" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<bool>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setJoinMode(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setJoinMode(*s);});
             return false;
         }, EnumSection::State, "true/false");
 
         set_lookup(vec, "door width" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setDoorWidthRatio(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setDoorWidthRatio(*s);});
             return false;
         }, EnumSection::State, "Float (default=0.4)");
 
         set_lookup(vec, "stub ratio" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setStubRatio(*s);});
+                return invoke_setter([&]{return static_cast<OpenLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(OPEN_LINE_LABEL))->setStubRatio(*s);});
             return false;
         }, EnumSection::State, "Float (default=0.3)");
 
         set_lookup(vec, "dotted line spacing" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setSpacing(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setSpacing(*s);});
             return false;
         }, EnumSection::State, "Float (default=4)");
 
         set_lookup(vec, "dotted line radius" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setPixelRadius(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setPixelRadius(*s);});
             return false;
         }, EnumSection::State, "Float (default=1.5)");
 
         set_lookup(vec, "dotted line row height" ,+[](void* w, const Accessed_t& v) -> bool
         {
             if(const auto* s = std::get_if<float>(&v))
-                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<Canvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setRowPixelHeight(*s);});
+                return invoke_setter([&]{return static_cast<DottedLineRenderer*>(static_cast<GridCanvas*>(w)->getLineRenderer(DOTS_LINE_LABEL))->setRowPixelHeight(*s);});
             return false;
         }, EnumSection::State, "Float (default=1.5)");
         #endif

@@ -625,9 +625,9 @@ private:
     ///////////////////////////////////////////////////////////////////
     void _renderWidgetGroups();
 
-    void _renderCanvasLineSection(Canvas* canvas, CanvasCache& cache);
-    void _renderCanvasCellSection(Canvas* canvas, CanvasCache& cache);
-    void _renderCanvasQuickDrawSection(Canvas* canvas, CanvasCache& cache);
+    void _renderCanvasLineSection(GridCanvas* GridCanvas, CanvasCache& cache);
+    void _renderCanvasCellSection(GridCanvas* GridCanvas, CanvasCache& cache);
+    void _renderCanvasQuickDrawSection(GridCanvas* GridCanvas, CanvasCache& cache);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders a single shader type in the UI
