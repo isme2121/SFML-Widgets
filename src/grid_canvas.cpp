@@ -1,6 +1,7 @@
 #include "frame.hpp"
 #include "grid_canvas.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace
 {
@@ -636,7 +637,7 @@ void Canvas::setQuickDraw(bool enabled, bool shift_skip_identical_lines)
 void Canvas::showPen(bool show, sf::Color color)
 {
     m_pen.show = show;
-    m_pen.color = color == DEFAULT_COLOR ? m_style.outline_color : color;
+    m_pen.color = color;
 }
 
 sf::Vector2i Canvas::getLocalPixel(sf::Vector2i mouse_position) const
@@ -1601,14 +1602,16 @@ void Canvas::_drawPenIndicator()
     const float y = m_deadZone + static_cast<float>(m_pen.anchor->range.x1) * m_cellMinSize.y;
     const float half = s_PEN_WIDTH / 2.f;
 
+    const sf::Color pen_color = m_pen.color == DEFAULT_COLOR ? m_style.outline_color : m_pen.color;
+
     const sf::Vertex quad[6] =
     {
-        sf::Vertex{{x - half, y - half}, m_pen.color},
-        sf::Vertex{{x + half, y - half}, m_pen.color},
-        sf::Vertex{{x + half, y + half}, m_pen.color},
-        sf::Vertex{{x + half, y + half}, m_pen.color},
-        sf::Vertex{{x - half, y + half}, m_pen.color},
-        sf::Vertex{{x - half, y - half}, m_pen.color}
+        sf::Vertex{{x - half, y - half}, pen_color},
+        sf::Vertex{{x + half, y - half}, pen_color},
+        sf::Vertex{{x + half, y + half}, pen_color},
+        sf::Vertex{{x + half, y + half}, pen_color},
+        sf::Vertex{{x - half, y + half}, pen_color},
+        sf::Vertex{{x - half, y - half}, pen_color}
     };
     m_texture.draw(quad, 6, sf::PrimitiveType::Triangles);
 }

@@ -1,5 +1,6 @@
 #include "wrapper_info.hpp"
 #include "tinyfiledialogs.h"
+#include <iostream>
 
 #ifdef WRAPPER_DEFINED
 
@@ -46,7 +47,6 @@ namespace
     constexpr const char* NULL_TEXT = "NOT FOUND";
     constexpr const char* ROOT_WIN_TEXT = "Main Window";
 
-    // anonymous namespace, alongside the existing UI constants
     constexpr float TOOLTIP_TREE_HEIGHT = 120.f;
 
     sf::Color toSfColor(const float rgba[4])
@@ -608,6 +608,7 @@ void InfoWrapper::renderAccessorSections()
             CanvasCache& cache = it->second.canvas;
             append_section("Canvas (Lines)", [&](){_renderCanvasLineSection(canvas, cache);});
             append_section("Canvas (Cell)",[&](){_renderCanvasCellSection(canvas, cache);});
+            append_section("Canvas (Pen)",[&](){_renderCanvasQuickDrawSection(canvas, cache);});
         }
     }
 
@@ -1765,6 +1766,57 @@ void InfoWrapper::_renderCanvasCellSection(Canvas* canvas, CanvasCache& cache)
         selected->clearCellTexture();
     }
 }
+
+void InfoWrapper::_renderCanvasQuickDrawSection(Canvas* canvas, CanvasCache& cache)
+{
+    bool setQuickDraw_call{false}, showPen_call{false};
+    if(ImGui::Checkbox("Enable Quick Draw##canvas_quick_draw", &cache.quick_draw_enabled))
+    {
+        setQuickDraw_call = true;
+    }
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Use arrow keys to draw where you're hovering\n+SHIFT to continue drawing from pen\n+CTRL to copy previous line value\nCTRL+Z/CTRL+Y to undo/redo");
+    ImGui::Spacing();
+    
+    ImGui::BeginDisabled(!cache.quick_draw_enabled);
+
+    if(ImGui::Checkbox("Skip Identical lines##canvas_quick_draw", &cache.quick_draw_skip_identical))
+    {
+        setQuickDraw_call = true;
+    }
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("arrow+shift leaps over lines with the same value");
+    ImGui::Spacing();
+
+    if(ImGui::Checkbox("Show Pen##canvas_quick_draw", &cache.quick_draw_show_pen))
+    {
+        showPen_call = true;
+    }
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Gives a visual dot for the current drawing anchor");
+    ImGui::Spacing();
+
+    if(ImGui::Checkbox("Use Canvas Outline Color##canvas_quick_draw", &cache.quick_draw_use_outline_color))
+    {
+        showPen_call = true;
+    }
+    ImGui::Spacing();
+
+    ImGui::BeginDisabled(cache.quick_draw_use_outline_color);
+    ImGui::ColorEdit4("Pen Color##canvas_quick_draw", cache.quick_draw_pen_color, ImGuiColorEditFlags_NoInputs);
+    ImGui::SameLine();
+    if(ImGui::Button("Set Color##canvas_quick_draw"))
+    {
+        showPen_call = true;
+    }
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+
+    if(setQuickDraw_call) canvas->setQuickDraw(cache.quick_draw_enabled, cache.quick_draw_skip_identical);
+    if(showPen_call)
+    {
+        sf::Color color = cache.quick_draw_use_outline_color ? DEFAULT_COLOR : toSfColor(cache.quick_draw_pen_color);
+        canvas->showPen(cache.quick_draw_show_pen, color);
+    }
+}
+
 }
 
 #endif

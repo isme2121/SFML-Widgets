@@ -377,15 +377,20 @@ struct ShaderCache
     std::array<char, 256> file_path{};
 };
 
+///////////////////////////////////////////////////////////////////
+/// @brief for `Canvas` class only
+///
+///////////////////////////////////////////////////////////////////
 struct CanvasCache
 {
+    // lines
     unsigned int line_x0{0}, line_y0{0}, line_x1{0}, line_y1{0};
     unsigned int line_thickness{1};
     bool line_use_default_color{true};
     float line_color[4]{1.f, 1.f, 1.f, 1.f};
     int line_type_idx{0};
 
-    // Cell editor
+    // selected Cell editor
     int cell_side_idx{0};
     float cell_fill_color[4]{1.f, 1.f, 1.f, 1.f};
     unsigned int cell_outline_thickness{1};
@@ -393,6 +398,13 @@ struct CanvasCache
     float cell_outline_color[4]{1.f, 1.f, 1.f, 1.f};
     int cell_outline_type_idx{0};
     std::array<char, 256> cell_texture_path{};
+
+    // quick draw cached accessors
+    float quick_draw_pen_color[4]{1.f, 0.f, 0.f, 1.f};
+    bool quick_draw_enabled{true};
+    bool quick_draw_skip_identical{false};
+    bool quick_draw_show_pen{true};
+    bool quick_draw_use_outline_color{false};
 };
 
 ///////////////////////////////////////////////////////////////////
