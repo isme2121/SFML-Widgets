@@ -27,7 +27,6 @@ template <typename DERIVED_TYPE> struct WidgetStyle;
 class CaptureSequence;
 struct Key;
 class RenderContext;
-class CellOutline;
 class Cell;
 
 ///////////////////////////////////////////////////////////////////
@@ -428,7 +427,7 @@ public:
     /// of the window drawing it.
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::RenderWindow* getRootWindowPtr();
+    sf::RenderWindow* getRootWindowPtr() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief returns a pointer to frame if available

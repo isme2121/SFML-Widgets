@@ -1,5 +1,5 @@
+#if defined(BUILD_DEBUG_GUI)
 #include "wrapper_info.hpp"
-#ifdef BUILD_TESTS
 
 using namespace sfml_widgets;
 

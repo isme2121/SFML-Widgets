@@ -1,6 +1,10 @@
 #include "wrapper_base.hpp"
+
 #ifdef WRAPPER_DEFINED
 #include <stdexcept>
+
+namespace
+{
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Overall a mouse event
@@ -25,6 +29,7 @@ bool is_keyboard_event(const sf::Event& event)
     return event.is<sf::Event::KeyPressed>() ||
            event.is<sf::Event::KeyReleased>() ||
            event.is<sf::Event::TextEntered>();
+}
 }
 
 namespace sfml_widgets

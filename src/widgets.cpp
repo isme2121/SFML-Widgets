@@ -317,7 +317,7 @@ const sf::RenderWindow* RenderContext::getWindowPtr() const
     return m_window;
 } 
 
-sf::RenderWindow* RenderContext::getRootWindowPtr() 
+sf::RenderWindow* RenderContext::getRootWindowPtr() const
 {
     if(m_frame) return m_frame->getWindowPtr();
     return m_window;
@@ -377,16 +377,16 @@ namespace sfml_widgets // WidgetTheme
 {
 WidgetTheme::WidgetTheme(P) {}
 
-WidgetTheme::WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label) :
-m_buttonTheme(s_button), m_frameTheme(s_texture), m_gridCanvasTheme(s_texture), m_imageFrameTheme(s_texture),
-m_checkboxTheme(s_checkbox), m_entryTheme(s_entry), m_labelTheme(s_label)
+WidgetTheme::WidgetTheme(P, ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas) :
+m_buttonTheme(s_button), m_frameTheme(s_texture), m_imageFrameTheme(s_texture),
+m_checkboxTheme(s_checkbox), m_entryTheme(s_entry), m_labelTheme(s_label), m_gridCanvasTheme(s_canvas)
 {
 
 }
 
-std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label)
+std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(ButtonStyle s_button, TextureStyle s_texture, CheckboxStyle s_checkbox, EntryStyle s_entry, LabelStyle s_label, CanvasStyle s_canvas)
 {
-    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, s_button, s_texture, s_checkbox, s_entry, s_label));
+    return std::shared_ptr<WidgetTheme>(new WidgetTheme(P{}, s_button, s_texture, s_checkbox, s_entry, s_label, s_canvas));
 }
 
 std::shared_ptr<WidgetTheme> WidgetTheme::make_theme(const WidgetTheme& t)
@@ -410,7 +410,6 @@ void WidgetTheme::copy_theme(const WidgetTheme& t)
 
         ++m_buttonToken;
         ++m_frameToken;
-        ++m_gridCanvasToken;
         ++m_imageFrameToken;
         ++m_checkboxToken;
         ++m_entryToken;

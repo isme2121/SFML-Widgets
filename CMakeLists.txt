@@ -7,9 +7,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-option(SFML_WIDGETS_SHARED "Build SFML widgets as dynamic libraries" OFF)
-option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" OFF)
-option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" OFF)
+option(BUILD_DEBUG_GUI "Build debugging GUI" ON)
+option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" ON)
+option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" ON)
+
+option(SFML_WIDGETS_SHARED "Build SFML widgets as shared libraries" ON)
+option(CANVAS_MORE_LINE_TYPES "Defines more default lines for GridCanvas" ON)
 
 #======SFML setup====================================================
 find_package(SFML 3 CONFIG QUIET)
@@ -24,7 +27,6 @@ if(NOT SFML_FOUND)
     )
     set(SFML_BUILD_AUDIO OFF)
     set(SFML_BUILD_NETWORK OFF)
-
     set(BUILD_SHARED_LIBS ON)
     FetchContent_MakeAvailable(SFML)
     unset(BUILD_SHARED_LIBS)
@@ -47,8 +49,10 @@ add_library(widgets
 )
 target_compile_definitions(widgets PUBLIC 
     STB_IMAGE_RESIZE_IMPLEMENTATION
-    BUILD_TESTS
 )
+if(CANVAS_MORE_LINE_TYPES)
+    target_compile_definitions(widgets PUBLIC CANVAS_MORE_LINE_TYPES)
+endif()
 target_include_directories(widgets PUBLIC 
     "${WIDGET_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"
@@ -71,7 +75,7 @@ target_link_libraries(entry PUBLIC widgets)
 add_library(checkbox src/checkbox.cpp)
 target_link_libraries(checkbox PUBLIC widgets)
 
-#grid canvas library
+#gridcanvas library
 add_library(grid_canvas src/grid_canvas.cpp)
 target_link_libraries(grid_canvas PUBLIC widgets)
 
@@ -83,6 +87,15 @@ target_link_libraries(image_frame PUBLIC widgets)
 add_library(label src/label.cpp)
 target_link_libraries(label PUBLIC widgets)
 unset(BUILD_SHARED_LIBS)
+
+#======Debug GUI setup====================================================
+if(BUILD_DEBUG_GUI)
+    if(EXISTS "${PROJECT_SOURCE_DIR}/Test-Gui/CMakeLists.txt")
+        add_subdirectory("${PROJECT_SOURCE_DIR}/Test-Gui")
+    else()
+        message(WARNING "'${PROJECT_SOURCE_DIR}/Test-Gui/CMakeLists.txt' is missing, skipping build.")
+    endif()
+endif()
 
 #======Examples setup====================================================
 if(BUILD_EXAMPLES)

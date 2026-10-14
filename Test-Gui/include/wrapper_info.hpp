@@ -2,8 +2,7 @@
 #include "info_base.hpp"
 #include <iostream>
 
-#if defined(WIDGETS_HPP) && defined(BUILD_TESTS)
-
+#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
 
 namespace sfml_widgets
 {
@@ -31,6 +30,7 @@ public:
         // link all getters/setters for this widget
         BaseAccessorsLink<WidgetT>::link(m_lookup);
         AccessorsLink<WidgetT>::link(m_lookup);
+        updateValues();
     }
 
     explicit InfoWidget(WidgetT* w) : m_widget(w), m_isManaged(true)
@@ -38,6 +38,7 @@ public:
         // link all getters/setters for this widget
         BaseAccessorsLink<WidgetT>::link(m_lookup);
         AccessorsLink<WidgetT>::link(m_lookup);
+        updateValues();
     }
 
     ~InfoWidget()
@@ -623,6 +624,10 @@ private:
     ///
     ///////////////////////////////////////////////////////////////////
     void _renderWidgetGroups();
+
+    void _renderCanvasLineSection(GridCanvas* GridCanvas, CanvasCache& cache);
+    void _renderCanvasCellSection(GridCanvas* GridCanvas, CanvasCache& cache);
+    void _renderCanvasQuickDrawSection(GridCanvas* GridCanvas, CanvasCache& cache);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Renders a single shader type in the UI

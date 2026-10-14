@@ -549,7 +549,7 @@ public:
     /// to apply the changes visually at the same frame.
     ///
     ///////////////////////////////////////////////////////////////////
-    void poke();
+    virtual void poke();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns widget position relative to it's local {0, 0} coordinates
