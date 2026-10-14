@@ -2,8 +2,7 @@
 #include "info_base.hpp"
 #include <iostream>
 
-#if defined(WIDGETS_HPP) && defined(BUILD_TESTS)
-
+#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
 
 namespace sfml_widgets
 {

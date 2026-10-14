@@ -1,7 +1,7 @@
 #pragma once
 #include "wrapper_base.hpp"
 
-#if defined(WIDGETS_HPP) && defined(BUILD_TESTS)
+#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
 #include "button.hpp"
 #include "frame.hpp"
 #include "label.hpp"

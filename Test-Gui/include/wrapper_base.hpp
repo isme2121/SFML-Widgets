@@ -1,7 +1,7 @@
 #pragma once
 #include "widget.hpp"
 
-#if defined(WIDGETS_HPP) && defined(BUILD_TESTS)
+#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
 #include <imgui.h>
 #include <imgui-SFML.h>
 

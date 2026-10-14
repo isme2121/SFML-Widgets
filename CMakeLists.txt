@@ -50,11 +50,9 @@ add_library(widgets
 target_compile_definitions(widgets PUBLIC 
     STB_IMAGE_RESIZE_IMPLEMENTATION
 )
-foreach(compile_option BUILD_DEBUG_GUI CANVAS_MORE_LINE_TYPES BUILD_TESTS BUILD_EXAMPLES)
-    if(${compile_option})
-        target_compile_definitions(widgets PUBLIC ${compile_option})
-    endif()
-endforeach()
+if(CANVAS_MORE_LINE_TYPES)
+    target_compile_definitions(widgets PUBLIC CANVAS_MORE_LINE_TYPES)
+endif()
 target_include_directories(widgets PUBLIC 
     "${WIDGET_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"

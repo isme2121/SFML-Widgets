@@ -45,6 +45,10 @@ add_library(widgets-dbgGui STATIC
     "${PROJECT_SOURCE_DIR}/Test-Gui/src/wrapper_info.cpp"
 )
 
+if(BUILD_DEBUG_GUI)
+    target_compile_definitions(widgets-dbgGui PUBLIC BUILD_DEBUG_GUI)
+endif()
+
 target_include_directories(widgets-dbgGui
     PUBLIC "${PROJECT_SOURCE_DIR}/Test-Gui/include"
 )

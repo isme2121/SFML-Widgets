@@ -1,8 +1,7 @@
 #include "wrapper_info.hpp"
-#include "tinyfiledialogs.h"
-#include <iostream>
-
 #ifdef WRAPPER_DEFINED
+
+#include "tinyfiledialogs.h"
 
 namespace
 {

@@ -5,18 +5,17 @@ file(GLOB SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 foreach(source ${SOURCES})
     get_filename_component(test_name "${source}" NAME_WE)
     add_executable(${test_name} "${source}")
-
-    if(BUILD_DEBUG_GUI)
+    
+    target_link_libraries(${test_name} PRIVATE
+        button
+        checkbox
+        entry
+        grid_canvas
+        image_frame
+        label
+    )
+    if(TARGET widgets-dbgGui)
         target_link_libraries(${test_name} PRIVATE widgets-dbgGui)
-    else()
-        target_link_libraries(${test_name} PRIVATE
-            button
-            checkbox
-            entry
-            grid_canvas
-            image_frame
-            label
-        )
     endif()
 
 endforeach()

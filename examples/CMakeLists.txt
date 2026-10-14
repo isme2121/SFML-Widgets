@@ -25,23 +25,17 @@ foreach(source ${SOURCES})
     add_executable(${BASENAME} "${source}")
 
     # include file dialog's source file if the source is ImageViewer.cpp
-    if(FILENAME STREQUAL "ImageViewer.cpp")
+    if(BASENAME STREQUAL "ImageViewer")
         target_link_libraries(${BASENAME} PRIVATE widgets-tinyfd)
     endif()
 
-
-    if(BUILD_DEBUG_GUI)
-        target_link_libraries(${BASENAME} PRIVATE widgets-dbgGui)
-    else()
-        target_link_libraries(${BASENAME} PRIVATE
-            button
-            checkbox
-            entry
-            image_frame
-            label
-            grid_canvas
-        )
-    endif()
-
+    target_link_libraries(${BASENAME} PRIVATE
+        button
+        checkbox
+        entry
+        image_frame
+        label
+        grid_canvas
+    )
 endforeach()
 

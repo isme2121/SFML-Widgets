@@ -1,4 +1,4 @@
-#if defined(BUILD_TESTS) && defined(BUILD_DEBUG_GUI)
+#if defined(BUILD_DEBUG_GUI)
 #include "wrapper_info.hpp"
 
 using namespace sfml_widgets;
