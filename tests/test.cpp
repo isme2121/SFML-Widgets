@@ -1,12 +1,13 @@
-#if defined(BUILD_DEBUG_GUI)
-#include "wrapper_info.hpp"
+#if defined(BUILD_EDITOR_GUI)
+#include "editor.hpp"
 
 using namespace sfml_widgets;
 
 int main()
 {
+    Widget::assignWidget<WidgetEditor>();
     sf::RenderWindow window(sf::VideoMode({960, 640}), "Widget Sandbox");
-    InfoWrapper imgui(window, "Test");
+    WidgetEditor imgui(window, "Test");
     imgui.addWidget<Frame>(window, sf::Vector2f{0.f, 0.f}, static_cast<sf::Vector2u>(window.getSize()));
     imgui.enableFps(true);
 
@@ -21,7 +22,7 @@ int main()
         }
 
         window.clear({0, 0, 0});
-        imgui.render();
+        imgui.draw();
         window.display();
     }
     return 0;

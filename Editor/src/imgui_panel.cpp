@@ -1,8 +1,8 @@
-#include "wrapper_base.hpp"
-
+#include "imgui_panel.hpp"
 #ifdef WRAPPER_DEFINED
+#include <imgui.h>
+#include <imgui-SFML.h>
 #include <stdexcept>
-
 namespace
 {
 
@@ -34,7 +34,7 @@ bool is_keyboard_event(const sf::Event& event)
 
 namespace sfml_widgets
 {
-ImGuiWrapper::ImGuiWrapper(sf::RenderWindow& window, const std::string& title) : m_window(window), m_title(title)
+ImGuiFrame::ImGuiFrame(sf::RenderWindow& window, const std::string& title) : m_window(window), m_title(title)
 {
     if(!ImGui::SFML::Init(m_window))
         throw std::runtime_error("Failed to initialize ImGui-Test.");
@@ -43,12 +43,12 @@ ImGuiWrapper::ImGuiWrapper(sf::RenderWindow& window, const std::string& title) :
     setTitle(m_title);
 }
 
-ImGuiWrapper::~ImGuiWrapper()
+ImGuiFrame::~ImGuiFrame()
 {
     ImGui::SFML::Shutdown(m_window);
 }
 
-void ImGuiWrapper::render()
+void ImGuiFrame::draw()
 {
     if(!m_guiVisible)
     {
@@ -59,53 +59,55 @@ void ImGuiWrapper::render()
     }
 
     ImGui::SFML::Update(m_window, m_deltaClock.restart());
+
     ImGui::Begin(m_title.c_str());
     renderWinElements();
     renderWidgets();
     ImGui::End();
+
     m_hovered = ImGui::GetIO().WantCaptureMouse;
     m_keyboardEventUsed = ImGui::GetIO().WantCaptureKeyboard;
     ImGui::SFML::Render(m_window);
 }
 
-bool ImGuiWrapper::captureEvents(const sf::Event& event)
+bool ImGuiFrame::captureEvents(const sf::Event& event)
 {
     if(!m_guiVisible)
     {
-        Widget::s_externalEventUsed = false;
+        s_eventUsed = false;
     }
     else
     {
         ImGui::SFML::ProcessEvent(m_window, event);
-        Widget::s_externalEventUsed = (m_hovered && is_mouse_event(event)) ||
-                                      (m_keyboardEventUsed && is_keyboard_event(event));
+        s_eventUsed = (m_hovered && is_mouse_event(event)) ||
+                      (m_keyboardEventUsed && is_keyboard_event(event));
     }
 
-    return processEvents(event) || Widget::s_externalEventUsed;
+    return processEvents(event) || s_eventUsed;
 }
 
-void ImGuiWrapper::setTitle(const std::string& title)
+void ImGuiFrame::setTitle(const std::string& title)
 {
     // ## keeps the id invisible, frame maintains a unique internal label
     m_title = title + "##" + std::to_string(m_ID);
 }
 
-void ImGuiWrapper::show()
+void ImGuiFrame::show()
 {
     m_guiVisible = true;
 }
 
-void ImGuiWrapper::hide()
+void ImGuiFrame::hide()
 {
     m_guiVisible = false;
 }
 
-void ImGuiWrapper::toggle()
+void ImGuiFrame::toggle()
 {
     m_guiVisible = !m_guiVisible;
 }
 
-bool ImGuiWrapper::isHidden() const
+bool ImGuiFrame::isHidden() const
 {
     return !m_guiVisible;
 }

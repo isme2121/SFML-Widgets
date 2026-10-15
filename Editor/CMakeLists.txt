@@ -39,27 +39,21 @@ target_include_directories(widgets-tinyfd PUBLIC
     "${tinyfiledialogs_SOURCE_DIR}"
 )
 
-#======TestGui=======================================
+#======Editor=======================================
 add_library(widgets-dbgGui STATIC
-    "${PROJECT_SOURCE_DIR}/Test-Gui/src/wrapper_base.cpp"
-    "${PROJECT_SOURCE_DIR}/Test-Gui/src/wrapper_info.cpp"
+    "${PROJECT_SOURCE_DIR}/Editor/src/imgui_panel.cpp"
+    "${PROJECT_SOURCE_DIR}/Editor/src/editor.cpp"
 )
 
-if(BUILD_DEBUG_GUI)
-    target_compile_definitions(widgets-dbgGui PUBLIC BUILD_DEBUG_GUI)
+if(BUILD_EDITOR_GUI)
+    target_compile_definitions(widgets-dbgGui PUBLIC BUILD_EDITOR_GUI)
 endif()
 
 target_include_directories(widgets-dbgGui
-    PUBLIC "${PROJECT_SOURCE_DIR}/Test-Gui/include"
+    PUBLIC "${PROJECT_SOURCE_DIR}/Editor/include"
 )
 
-target_link_libraries(widgets-dbgGui PUBLIC
-    ImGui-SFML::ImGui-SFML
-    button
-    checkbox
-    entry
-    grid_canvas
-    image_frame
-    label
-    widgets-tinyfd
+target_link_libraries(widgets-dbgGui
+    PRIVATE ImGui-SFML::ImGui-SFML widgets-tinyfd
+    PUBLIC button checkbox entry grid_canvas image_frame label
 )

@@ -1,10 +1,6 @@
 #pragma once
-#include "widget.hpp"
-
-#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
-#include <imgui.h>
-#include <imgui-SFML.h>
-
+#include "widgets.hpp"
+#if defined(WIDGETS_HPP) && defined(BUILD_EDITOR_GUI)
 #define WRAPPER_DEFINED
 
 namespace sfml_widgets
@@ -13,33 +9,33 @@ namespace sfml_widgets
 /// @brief Base wrapper class for ImGui
 ///
 ///////////////////////////////////////////////////////////////////
-class ImGuiWrapper
+class ImGuiFrame : public external_widget
 {
 public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs ImGui frame on window
     ///
     ///////////////////////////////////////////////////////////////////
-    explicit ImGuiWrapper(sf::RenderWindow&, const std::string& = "");
+    explicit ImGuiFrame(sf::RenderWindow&, const std::string& = "");
 
-    ImGuiWrapper(const ImGuiWrapper&) = delete;
-    ImGuiWrapper& operator=(const ImGuiWrapper&) = delete;
-    ImGuiWrapper(ImGuiWrapper&&) = delete;
-    ImGuiWrapper& operator=(ImGuiWrapper&&) = delete;
+    ImGuiFrame(const ImGuiFrame&) = delete;
+    ImGuiFrame& operator=(const ImGuiFrame&) = delete;
+    ImGuiFrame(ImGuiFrame&&) = delete;
+    ImGuiFrame& operator=(ImGuiFrame&&) = delete;
 
-    virtual ~ImGuiWrapper();
+    virtual ~ImGuiFrame();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates and draws the frame to the window
     ///
     ///////////////////////////////////////////////////////////////////
-    void render();
+    void draw() override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Captures all events
     ///
     ///////////////////////////////////////////////////////////////////
-    bool captureEvents(const sf::Event&);
+    bool captureEvents(const sf::Event&) override;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the ImGui frame title

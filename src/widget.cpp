@@ -191,7 +191,7 @@ bool Widget::captureMouseEvents(const sf::Event& event, std::optional<sf::Vector
     }
 
     // hidden or blocked widgets can't trigger mouse events, or the external signal is set for this loop
-    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || s_externalEventUsed || updateMouseState(event, mouse_position)) return false;
+    if(checkFlag(m_flags, FLAGS::HIDDEN | FLAGS::BLOCKED) || *s_externalEventUsed || updateMouseState(event, mouse_position)) return false;
 
     // indicate if event is already consumed by other widgets
     // blocks event callbacks but allows for state update
@@ -346,7 +346,7 @@ bool Widget::captureKeyEvents(const sf::Event& event)
     }
 
     // key event won't trigger if:
-    if(s_externalEventUsed ||                                                                           //!< ImGui event
+    if(*s_externalEventUsed ||                                                                           //!< ImGui event
        s_GUARD_EVENT && s_keyEventUsed && !checkFlag(m_flags, FLAGS::ALWAYSSELECTED) ||                 //!< key event already used this loop && widget is not always selected
        checkFlag(m_flags, FLAGS::BLOCKED | FLAGS::RESTRICTED) ||                                        //!< widget is either blocked or restricted
       !checkFlag(m_flags, FLAGS::SELECTED | FLAGS::ALWAYSSELECTED)) return false;                       //!< widget is neither selected, nor always selected

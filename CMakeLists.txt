@@ -7,7 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-option(BUILD_DEBUG_GUI "Build debugging GUI" ON)
+option(BUILD_EDITOR_GUI "Build Editor GUI" ON)
 option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" ON)
 option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" ON)
 
@@ -89,11 +89,11 @@ target_link_libraries(label PUBLIC widgets)
 unset(BUILD_SHARED_LIBS)
 
 #======Debug GUI setup====================================================
-if(BUILD_DEBUG_GUI)
-    if(EXISTS "${PROJECT_SOURCE_DIR}/Test-Gui/CMakeLists.txt")
-        add_subdirectory("${PROJECT_SOURCE_DIR}/Test-Gui")
+if(BUILD_EDITOR_GUI)
+    if(EXISTS "${PROJECT_SOURCE_DIR}/Editor/CMakeLists.txt")
+        add_subdirectory("${PROJECT_SOURCE_DIR}/Editor")
     else()
-        message(WARNING "'${PROJECT_SOURCE_DIR}/Test-Gui/CMakeLists.txt' is missing, skipping build.")
+        message(WARNING "'${PROJECT_SOURCE_DIR}/Editor/CMakeLists.txt' is missing, skipping build.")
     endif()
 endif()
 

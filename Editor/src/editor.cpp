@@ -1,6 +1,9 @@
-#include "wrapper_info.hpp"
-#ifdef WRAPPER_DEFINED
+#include "editor.hpp"
+#include "editor_literals.hpp"
 
+#ifdef WRAPPER_DEFINED
+#include <imgui.h>
+#include <imgui-SFML.h>
 #include "tinyfiledialogs.h"
 
 namespace
@@ -65,11 +68,22 @@ namespace
         out[2] = c.b / 255.f;
         out[3] = c.a / 255.f;
     }
+
+    void textHeader(const char* title, bool add_space, bool add_sep, ImVec4 color)
+    {
+        if(add_space) ImGui::Spacing();
+        if(add_sep) ImGui::Separator();
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::TextUnformatted(title);
+        ImGui::PopStyleColor();
+        if(add_sep) ImGui::Separator();
+        if(add_space) ImGui::Spacing();
+    }
 }
 
 namespace sfml_widgets
 {
-InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title) : ImGuiWrapper(window, title)
+WidgetEditor::WidgetEditor(sf::RenderWindow& window, const std::string& title) : ImGuiFrame(window, title)
 {
     for(int idx{0}; idx < s_GROUPS_COUNT; idx++)
     {
@@ -78,17 +92,17 @@ InfoWrapper::InfoWrapper(sf::RenderWindow& window, const std::string& title) : I
     }
 }
 
-InfoWrapper::~InfoWrapper()
+WidgetEditor::~WidgetEditor()
 {
     if(m_dialog.thread.joinable()) m_dialog.thread.join();
 }
 
-void InfoWrapper::enableFps(bool show_fps)
+void WidgetEditor::enableFps(bool show_fps)
 {
     m_revealFps = show_fps;
 }
 
-void InfoWrapper::resetUI()
+void WidgetEditor::resetUI()
 {
     unselectWidget();
     for(std::optional<Widget_t>& widget : m_widgets)
@@ -102,7 +116,7 @@ void InfoWrapper::resetUI()
     m_widgetsCount = 0;
 }
 
-void InfoWrapper::deleteSelectedWidget()
+void WidgetEditor::deleteSelectedWidget()
 {
     if(!m_selected.widget_ptr) return;
 
@@ -122,30 +136,19 @@ void InfoWrapper::deleteSelectedWidget()
     }
 }
 
-void InfoWrapper::refreshValues()
+void WidgetEditor::refreshValues()
 {
     if(!m_selected.widget_info_ptr) return;
     m_selected.widget_info_ptr.info_Update(m_selected.widget_info_ptr.m_wrappedWidget);
 }
 
-void InfoWrapper::refreshUI()
+void WidgetEditor::refreshUI()
 {
     if(!m_selected.widget_info_ptr) return;
     m_rows = m_selected.widget_info_ptr.info_Fetch(m_selected.widget_info_ptr.m_wrappedWidget);
 }
 
-void InfoWrapper::textHeader(const char* title, bool add_space, bool add_sep, ImVec4 color) const
-{
-    if(add_space) ImGui::Spacing();
-    if(add_sep) ImGui::Separator();
-    ImGui::PushStyleColor(ImGuiCol_Text, color);
-    ImGui::TextUnformatted(title);
-    ImGui::PopStyleColor();
-    if(add_sep) ImGui::Separator();
-    if(add_space) ImGui::Spacing();
-}
-
-void InfoWrapper::trySetFromText(const std::string& key, const std::string& text)
+void WidgetEditor::trySetFromText(const std::string& key, const std::string& text)
 {
     // attempt to call setter with unknown accessor type
     auto try_set_from_val = [&](Accessed_t v) -> bool
@@ -207,7 +210,7 @@ void InfoWrapper::trySetFromText(const std::string& key, const std::string& text
     return;
 }
 
-void InfoWrapper::openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc)
+void WidgetEditor::openFileDialog(const std::string& key, const char* title, const char* const* filters, int filter_count, const char* filter_desc)
 {
     if(m_dialog.is_open.load()) return;
     if(m_dialog.thread.joinable()) m_dialog.thread.join();
@@ -228,7 +231,7 @@ void InfoWrapper::openFileDialog(const std::string& key, const char* title, cons
     });
 }
 
-bool InfoWrapper::processEvents(const sf::Event& event)
+bool WidgetEditor::processEvents(const sf::Event& event)
 {
     bool event_used{false};
 
@@ -266,7 +269,7 @@ bool InfoWrapper::processEvents(const sf::Event& event)
     return event_used;
 }
 
-void InfoWrapper::renderWidgets()
+void WidgetEditor::renderWidgets()
 {
     pullDialogPath();
 
@@ -289,7 +292,7 @@ void InfoWrapper::renderWidgets()
     ImGui::PopID();
 }
 
-void InfoWrapper::renderWinElements()
+void WidgetEditor::renderWinElements()
 {
     for(std::optional<Widget_t>& widget : m_widgets)
     {
@@ -304,7 +307,7 @@ void InfoWrapper::renderWinElements()
     }
 }
 
-void InfoWrapper::renderEditSection()
+void WidgetEditor::renderEditSection()
 {
     ImGui::Separator();
     ImGui::PushStyleColor(ImGuiCol_Text, HEADER_1);
@@ -417,7 +420,7 @@ void InfoWrapper::renderEditSection()
     if(ImGui::Button("Refresh")) refreshUI();
 }
 
-void InfoWrapper::renderSelectedSection()
+void WidgetEditor::renderSelectedSection()
 {
     auto it = m_cache.find(m_selected.widget_ptr);
     if(it == m_cache.end())
@@ -454,7 +457,7 @@ void InfoWrapper::renderSelectedSection()
     ImGui::EndGroup();
 }
 
-void InfoWrapper::renderFlagsSection()
+void WidgetEditor::renderFlagsSection()
 {
     textHeader("Flags", true, false, HEADER_2);
 
@@ -528,7 +531,7 @@ void InfoWrapper::renderFlagsSection()
     ImGui::EndGroup();
 }
 
-void InfoWrapper::renderAccessorSections()
+void WidgetEditor::renderAccessorSections()
 {
     textHeader("Attributes", true, false, HEADER_2);
 
@@ -604,7 +607,7 @@ void InfoWrapper::renderAccessorSections()
     ImGui::SetCursorPosY(max_bottom_y);
 }
 
-void InfoWrapper::renderShadersSection()
+void WidgetEditor::renderShadersSection()
 {
     textHeader("Shaders", true, true, HEADER_2);
     auto it = m_cache.find(m_selected.widget_ptr);
@@ -615,7 +618,7 @@ void InfoWrapper::renderShadersSection()
     _addShaderUI("Color Shader:", ShaderType::Color, it->second.color_shader_cache);
 }
 
-void InfoWrapper::renderToolTipSection()
+void WidgetEditor::renderToolTipSection()
 {
     auto it_cache = m_cache.find(m_selected.widget_ptr);
     if(it_cache == m_cache.end()) return;
@@ -786,7 +789,7 @@ void InfoWrapper::renderToolTipSection()
     ImGui::EndGroup();
 }
 
-void InfoWrapper::_renderProperties(CacheMap_t::iterator& cached_data)
+void WidgetEditor::_renderProperties(CacheMap_t::iterator& cached_data)
 {
     textHeader("Properties", true, false, HEADER_2);
 
@@ -805,7 +808,7 @@ void InfoWrapper::_renderProperties(CacheMap_t::iterator& cached_data)
     ImGui::TextDisabled("%s", getRootLabel(m_selected.widget_ptr));
 }
 
-void InfoWrapper::_renderBindings(CacheMap_t::iterator& cached_data)
+void WidgetEditor::_renderBindings(CacheMap_t::iterator& cached_data)
 {
     textHeader("Bindings", true, false, HEADER_2);
 
@@ -820,7 +823,7 @@ void InfoWrapper::_renderBindings(CacheMap_t::iterator& cached_data)
     }
 }
 
-void InfoWrapper::_renderTheme(CacheMap_t::iterator& cached_data)
+void WidgetEditor::_renderTheme(CacheMap_t::iterator& cached_data)
 {
     textHeader("Theme", true, false, HEADER_2);
 
@@ -858,7 +861,7 @@ void InfoWrapper::_renderTheme(CacheMap_t::iterator& cached_data)
     ImGui::TextDisabled(curr_theme_idx != -1 ? "Theme Linked" : "No theme is currently linked");
 }
 
-void InfoWrapper::_renderWidgetGroups()
+void WidgetEditor::_renderWidgetGroups()
 {
 
     textHeader("Groups", true, false, HEADER_2);
@@ -905,7 +908,7 @@ void InfoWrapper::_renderWidgetGroups()
     }
 }
 
-void InfoWrapper::_addShaderUI(const char* label_id, ShaderType shader_type, ShaderCache& state)
+void WidgetEditor::_addShaderUI(const char* label_id, ShaderType shader_type, ShaderCache& state)
 {
     bool memory_selected{state.mode == Widget::W_LoadType::Memory};
 
@@ -996,7 +999,7 @@ void InfoWrapper::_addShaderUI(const char* label_id, ShaderType shader_type, Sha
     }
 }
 
-void InfoWrapper::_renderToolTipEditor(ToolTipCache& tooltip_cache, ToolTipObject& selected_obj)
+void WidgetEditor::_renderToolTipEditor(ToolTipCache& tooltip_cache, ToolTipObject& selected_obj)
 {
     ImGui::PushID(static_cast<int>(selected_obj.id));
     
@@ -1184,7 +1187,7 @@ void InfoWrapper::_renderToolTipEditor(ToolTipCache& tooltip_cache, ToolTipObjec
     ImGui::PopID();
 }
 
-void InfoWrapper::renderRow(Accessor_ptr& row)
+void WidgetEditor::renderRow(Accessor_ptr& row)
 {
     const bool CAN_BE_MODIFIED = static_cast<bool>(row.setter);
 
@@ -1235,7 +1238,7 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
 
     if(!CAN_BE_MODIFIED) ImGui::BeginDisabled();
 
-    std::visit(visitor{
+    std::visit(accessor_visitor{
         [&](bool& v)
         {
             was_modified = ImGui::Checkbox("##key", &v);
@@ -1523,7 +1526,7 @@ void InfoWrapper::renderRow(Accessor_ptr& row)
     }
 }
 
-void InfoWrapper::renderFps() const
+void WidgetEditor::renderFps() const
 {
     if(m_revealFps)
     {
@@ -1536,7 +1539,7 @@ void InfoWrapper::renderFps() const
     }
 }
 
-void InfoWrapper::pullDialogPath()
+void WidgetEditor::pullDialogPath()
 {
     if(m_dialog.path_found.exchange(false))
     {
@@ -1546,7 +1549,7 @@ void InfoWrapper::pullDialogPath()
     }
 }
 
-const char* InfoWrapper::getRootLabel(Widget* w) const
+const char* WidgetEditor::getRootLabel(Widget* w) const
 {
     if(!w) return NULL_TEXT;
     if(w->getRootWindow()) return ROOT_WIN_TEXT;
@@ -1559,7 +1562,7 @@ const char* InfoWrapper::getRootLabel(Widget* w) const
     return it->second.label.c_str();
 }
 
-void InfoWrapper::_renderCanvasLineSection(GridCanvas* canvas, CanvasCache& cache)
+void WidgetEditor::_renderCanvasLineSection(GridCanvas* canvas, CanvasCache& cache)
 {
     constexpr std::size_t TYPES_COUNT = enum_literals::LINE_TYPE_LITERAL.size();
 
@@ -1633,7 +1636,7 @@ void InfoWrapper::_renderCanvasLineSection(GridCanvas* canvas, CanvasCache& cach
     ImGui::PopStyleColor(3);
 }
 
-void InfoWrapper::_renderCanvasCellSection(GridCanvas* canvas, CanvasCache& cache)
+void WidgetEditor::_renderCanvasCellSection(GridCanvas* canvas, CanvasCache& cache)
 {
     GridCanvas::cell_ptr selected = canvas->getSelectedCell();
     if(!selected)
@@ -1751,7 +1754,7 @@ void InfoWrapper::_renderCanvasCellSection(GridCanvas* canvas, CanvasCache& cach
     }
 }
 
-void InfoWrapper::_renderCanvasQuickDrawSection(GridCanvas* canvas, CanvasCache& cache)
+void WidgetEditor::_renderCanvasQuickDrawSection(GridCanvas* canvas, CanvasCache& cache)
 {
     bool setQuickDraw_call{false}, showPen_call{false};
     if(ImGui::Checkbox("Enable Quick Draw##canvas_quick_draw", &cache.quick_draw_enabled))
@@ -1800,7 +1803,6 @@ void InfoWrapper::_renderCanvasQuickDrawSection(GridCanvas* canvas, CanvasCache&
         canvas->showPen(cache.quick_draw_show_pen, color);
     }
 }
-
 }
 
 #endif

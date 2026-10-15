@@ -21,9 +21,12 @@ class ImageFrame;
 class CheckBox;
 class Entry;
 class Label;
-class NewToolTip;
+
+class external_widget;
+class ToolTip;
 class WidgetGroup;
 template <typename DERIVED_TYPE> struct WidgetStyle;
+
 class CaptureSequence;
 struct Key;
 class RenderContext;
@@ -526,6 +529,19 @@ private:
     std::vector<Widget*> m_cult;    //!< ooga booga
 
     friend class Widget;
+};
+
+class external_widget
+{
+    friend class Widget;
+
+public:
+    virtual ~external_widget() = default;
+    virtual void draw() = 0;
+    virtual bool captureEvents(const sf::Event&) = 0;
+
+protected:
+    inline static bool s_eventUsed{false};
 };
 
 namespace constants

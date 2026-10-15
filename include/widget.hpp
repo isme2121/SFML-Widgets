@@ -19,7 +19,6 @@ class Widget : protected sf::Shape
 {
     friend class Frame;
     friend class WidgetGroup;
-    friend class ImGuiWrapper;
 
 protected:
     struct ImageCache;
@@ -934,6 +933,7 @@ private:
 ///////////////////////////////////////////////////////////////////
 // Static Methods
 ///////////////////////////////////////////////////////////////////
+
 public:
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates event ID
@@ -1021,8 +1021,9 @@ private:
     inline static bool s_requestFocusUpdate{false};                                 //!< Requests for a new widget to obtain the resource
     inline static bool s_mouseEventUsed{true};                                      //!< Indicates whether a mouse event was used in the current loop, works with `s_GUARD_EVENT`
     inline static bool s_keyEventUsed{true};                                        //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
-    inline static bool s_externalEventUsed{false};                                  //!< External event coming from `ImGuiWrapper` class, prevents any widget event if set
     inline static bool s_setOriginals{true};                                        //!< Widgets update their original dimensions if set, otherwise skips the process
+    inline static bool s_dummy{false};
+    inline static bool* s_externalEventUsed{&s_dummy};                               //!< External event coming from `ImGuiFrame` class, prevents any widget event if set
 
 public:
     static constexpr sf::Mouse::Button s_FOCUS_BUTTON{sf::Mouse::Button::Left};     //!< Mouse button that triggers focus and hold events
@@ -1033,6 +1034,25 @@ public:
     static constexpr bool s_GUARD_EVENT{true};                                      //!< Blocks multiple event triggers in a single loop
     static constexpr bool s_RESTRICT_AFTER_KEYEVENT{false};                         //!< Blocks the widget from triggering any key events for `s_RESTRICTION_DURATION` period after using a key event
     static constexpr bool s_UNSELECT_WHEN_HELD{true};                               //!< Prevents a widget from triggering mouse release callback at the end of a hold event
+
+    template<typename external_t>
+    static void assignWidget() noexcept
+    {
+        static_assert(std::is_base_of_v<external_widget, external_t>,
+                    "Cannot assign type that doesn\'t inherit from external_widget.");
+
+        static_assert(!std::is_same_v<external_t, external_widget>,
+                    "Cannot assign external_widget itself.");
+
+        static_assert(!std::is_base_of_v<Widget, external_t>,
+                    "Cannot assign a Widget derived class as it\'s already managed.");
+
+        static_assert(!std::is_abstract_v<external_t>,
+                    "Cannot assign incomplete type.");
+
+        if(s_widgets.size()) assert(false && "Cannot assign after initializing a widget.");
+        s_externalEventUsed = &external_t::s_eventUsed;
+    }
 
 ///////////////////////////////////////////////////////////////////
 /// Widget objects

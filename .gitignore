@@ -7,7 +7,7 @@ build-windows/
 docs/
 libs/
 external-include/profile.h
-Test-Gui/temp
+Editor/temp
 examples/temp.cpp
 examples/SettingsPanel.cpp
 tests/test_canvas.cpp

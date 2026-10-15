@@ -1,55 +1,34 @@
 #pragma once
-#include "wrapper_base.hpp"
+#include "editor_types.hpp"
+#if defined(WIDGETS_HPP) && defined(BUILD_EDITOR_GUI)
 
-#if defined(WIDGETS_HPP) && defined(BUILD_DEBUG_GUI)
-#include "button.hpp"
-#include "frame.hpp"
-#include "label.hpp"
-#include "entry.hpp"
-#include "checkbox.hpp"
-#include "image_frame.hpp"
-#include "grid_canvas.hpp"
-#include <thread>
-#include <atomic>
-
+/*
+* Contains: definition for each widget's accessor linking
+*
+* EnumSection ==> custom sections (SYNC WITH "editor_literals.hpp"->ENUM_SECTION_LITERAL) i'm not using C++26 til 2040
+*
+* Accessor_ptr ==> full definition, contains function pointers and custom attributes
+*
+* set_lookup ==> creates Accessor_ptr or assigns data to an existing one
+*
+* invoke_setter ==> for every setter, to match Accessor_ptr::Setter_t pointer
+*
+* get_widget_ptr ==> returns a ptr to base widget memory from a variant Widget_t
+*
+* AccessorLink ==> links accessor functions with WidgetInfo object
+*
+* BaseAccessorLink ==> links base widget accessor functions with WidgetInfo object
+*/
 namespace sfml_widgets
 {
-/* All derived widget types
-*  To fully support a new derived widget type:
-*  1. add here
-*  2. add to `AccessorLink`
-*  3. add default constructor to `InfoWrapper::renderEditSection`
-*/
-using Widget_t = std::variant<Button, Frame, Label, Entry, CheckBox, ImageFrame, GridCanvas>;
-
-// All accessor types collapsed here
-using Accessed_t = std::variant<bool, char, float, unsigned int, std::size_t, std::string, sfml_widgets::Button::SIDE,
-                           Frame::F_SeparatorInfo, Frame::F_SeparatorType, Frame::F_AfterPreProcess,
-                           DIRECTION, sf::Text::Style, Label::HAlign, Label::VAlign,
-                           sf::String, sf::FloatRect, sf::Angle, sf::Vector2f, sf::Vector2u, sf::Vector2i,
-                           std::optional<sf::Vector2u>, GridCanvas::cell_ptr, const Frame*, const sf::RenderWindow*>;
-
-// Compile time check if a type is part of our variant
-template<typename T, typename variant_t> struct is_part_of_variant;
-template<typename T, typename... Ts>
-struct is_part_of_variant<T, std::variant<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
-
-// For widget type check
-template<typename WidgetT>
-inline constexpr bool is_widget_type_v = is_part_of_variant<WidgetT, Widget_t>::value;
-
-
-// Default visitor
-template<class... Ts>
-struct visitor : Ts...
-{
-    using Ts::operator()...;
-};
-template<class... Ts>
-visitor(Ts...) -> visitor<Ts...>;
-
-
-// For UI classification
+///////////////////////////////////////////////////////////////////
+/// @brief UI sections for accessors
+///
+/// @note to add a new type, first add here, then add it's reflection
+/// in "editor_literals.hpp"->`ENUM_SECTION_LITERAL` for the UI rendering,
+/// then add any accessor with the enum value.
+///
+///////////////////////////////////////////////////////////////////
 enum class EnumSection : std::uint8_t
 {
     Any,
@@ -61,172 +40,7 @@ enum class EnumSection : std::uint8_t
 };
 
 ///////////////////////////////////////////////////////////////////
-/// @brief Widget bindings in `InfoWrapper`
-///
-/// Adding a value here is not enough, it should also get included to
-/// `QUICK_BINDINGS_LITERAL` array for literal, followed up by the implementation
-/// of the binding in `InfoWrapper::addWidget` method.
-///
-///////////////////////////////////////////////////////////////////
-enum class BuiltinBindFlags : std::uint8_t
-{
-    None = 0,
-    Drag = 1 << 0,
-    ScrollResize = 1 << 1,
-    RightClickDelete = 1 << 2,
-    HighlightOnHover = 1 << 3
-};
-
-constexpr BuiltinBindFlags operator|(BuiltinBindFlags first, BuiltinBindFlags second)
-{
-    return static_cast<BuiltinBindFlags>(static_cast<std::uint8_t>(first) | static_cast<std::uint8_t>(second));
-}
-constexpr BuiltinBindFlags operator&(BuiltinBindFlags first, BuiltinBindFlags second)
-{
-    return static_cast<BuiltinBindFlags>(static_cast<std::uint8_t>(first) & static_cast<std::uint8_t>(second));
-}
-constexpr BuiltinBindFlags operator~(BuiltinBindFlags first)
-{
-    return static_cast<BuiltinBindFlags>(~static_cast<std::uint8_t>(first));
-}
-constexpr bool isBuiltinFlagSet(BuiltinBindFlags& self, BuiltinBindFlags other)
-{
-    return (self & other) == other;
-}
-
-namespace enum_literals
-{
-///////////////////////////////////////////////////////////////////
-/// @brief Custom attributes type
-///
-/// @tparam Ts each attribute type
-///
-///////////////////////////////////////////////////////////////////
-template<typename... Ts>
-struct VecN
-{
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Constructed with thoughts and prayers
-    ///
-    /// @param args values types and order must match the object template
-    /// types
-    ///
-    ///////////////////////////////////////////////////////////////////
-    constexpr VecN(Ts... args) : attrib(args...)
-    {
-
-    }
-
-    ///////////////////////////////////////////////////////////////////
-    /// @brief Return the proper attribute relative to it's index on the
-    /// object
-    ///
-    /// @tparam I attribute index
-    /// @return pre-declared type
-    /// @throw asserts if index is out of range
-    ///
-    ///////////////////////////////////////////////////////////////////
-    template<std::size_t I> decltype(auto) get() const
-    {
-        return std::get<I>(attrib);
-    }
-
-private:
-    std::tuple<Ts...> attrib;
-};
-
-constexpr auto BUTTON_SIDE_LITERAL = std::array<VecN<const char*>, 3>{"Center", "Left", "Right"};
-constexpr auto SEPARATOR_TYPE_LITERAL = std::array<VecN<const char*>, 3>{"NoSeparator", "Horizontal", "Vertical"};
-constexpr auto AFTER_PREPROCESS_LITERAL = std::array<VecN<const char*>, 3>{"NO_SKIP", "SKIP_CALLBACK", "SKIP_ALL"};
-constexpr auto DIRECTION_LITERAL = std::array<VecN<const char*>, 4>{"TOP", "BOTTOM", "LEFT", "RIGHT"};
-constexpr auto HALIGN_LITERAL = std::array<VecN<const char*>, 3>{"Left", "Center", "Right"};
-constexpr auto VALIGN_LITERAL = std::array<VecN<const char*>, 3>{"Top", "Middle", "Bottom"};
-
-constexpr auto TEXT_STYLE_LITERAL = std::array<VecN<const char*, sf::Text::Style>, 4>{
-        {{"Bold", sf::Text::Bold}, {"Italic", sf::Text::Italic},
-        {"Underlined", sf::Text::Underlined}, {"StrikeThrough", sf::Text::StrikeThrough}}
-};
-
-constexpr auto FLAG_BITS_LITERAL = std::array<VecN<const char*, FLAGS, bool>, 32>{
-    {{"IDLE", FLAGS::IDLE, false}, {"MODIFIED", FLAGS::MODIFIED, false},
-    {"FOCUSED", FLAGS::FOCUSED, false}, {"HOVERED", FLAGS::HOVERED, false},
-    {"ALPHAREDUCED", FLAGS::ALPHAREDUCED, false},{"SELECTED", FLAGS::SELECTED, false},
-    {"RESTRICTED", FLAGS::RESTRICTED, false}, {"ACTIVE", FLAGS::ACTIVE, false},
-    {"DRAWING", FLAGS::DRAWING, false}, {"SHORTSKIP", FLAGS::SHORTSKIP, false},
-    {"LONGSKIP", FLAGS::LONGSKIP, false}, {"UPDATE", FLAGS::UPDATE, false},
-    {"SET", FLAGS::SET, false}, {"RESET", FLAGS::RESET, false},
-    {"TEXT", FLAGS::TEXT, false}, {"IMAGE", FLAGS::IMAGE, false},
-    {"SEPARATORS", FLAGS::SEPARATORS, false}, {"Hidden", FLAGS::HIDDEN, true},
-    {"Blocked", FLAGS::BLOCKED, true}, {"Transparent", FLAGS::TRANSPARENT, true},
-    {"Resize", FLAGS::RESIZE, true}, {"AlwaysSelected", FLAGS::ALWAYSSELECTED, true},
-    {"AutoHide", FLAGS::AUTOHIDE, true}, {"AutoTransparent", FLAGS::AUTOTRANSPARENT, true},
-    {"NoBgImage", FLAGS::NOBGIMAGE, true}, {"NoClipShader", FLAGS::NOCLIPSHADER, true},
-    {"NoColorShader", FLAGS::NOCOLORSHADER, true}, {"Indicator", FLAGS::INDICATOR, true},
-    {"Grid", FLAGS::GRID, true}, {"Scroll", FLAGS::SCROLL, true},
-    {"Zoom", FLAGS::ZOOM, true}, {"Pan", FLAGS::PAN, true}}
-};
-
-constexpr auto ENUM_SECTION_LITERAL = std::array<VecN<const char*, EnumSection>, 6>{
-        {{"Base", EnumSection::Base},
-        {"State", EnumSection::State},
-        {"Text", EnumSection::Text},
-        {"Image", EnumSection::Image},
-        {"Pointer", EnumSection::Pointer},
-        {"Any", EnumSection::Any}}
-};
-
-constexpr auto QUICK_BINDINGS_LITERAL = std::array<VecN<const char*, BuiltinBindFlags>, 4>{
-    {{"Drag to move", BuiltinBindFlags::Drag},
-    {"Scroll to resize", BuiltinBindFlags::ScrollResize},
-    {"Right-click delete", BuiltinBindFlags::RightClickDelete},
-    {"Highlight on hover", BuiltinBindFlags::HighlightOnHover}}
-};
-
-const auto THEME_LITERAL = std::array<VecN<const char*, std::shared_ptr<WidgetTheme>>, 14>{
-    {{"Dark", Theme::dark_theme},
-    {"Light", Theme::light_theme},
-    {"Stale Violet", Theme::stale_violet_theme},
-    {"Carbon Cyan", Theme::carbon_cyan_theme},
-    {"Midnight Rose", Theme::midnight_rose_theme},
-    {"Obsidian Ember", Theme::obsidian_ember_theme},
-    {"Emerald Forest", Theme::emerald_forest_theme},
-    {"Golden Amber", Theme::golden_amber_theme},
-    {"Crimson Ash", Theme::crimson_ash_theme},
-    {"Steel Graphite", Theme::steel_graphite_theme},
-    {"Lavender Dusk", Theme::lavender_dusk_theme},
-    {"Sky Azure", Theme::sky_azure_theme},
-    {"Arctic Frost", Theme::arctic_frost_theme},
-    {"Sandstone Dune", Theme::sandstone_dune_theme}}
-};
-
-const auto TT_STYLE_LITERAL = std::array<VecN<const char*, ToolTipStyle>, 10>{
-    {{"Dark", Theme::tooltip_style::TOOLTIP_DEFAULT_DARK},
-    {"Light", Theme::tooltip_style::TOOLTIP_DEFAULT_LIGHT},
-    {"Emerald Forest", Theme::tooltip_style::TOOLTIP_EMERALD_FOREST},
-    {"Golden Amber", Theme::tooltip_style::TOOLTIP_GOLDEN_AMBER},
-    {"Crimson Ash", Theme::tooltip_style::TOOLTIP_CRIMSON_ASH},
-    {"Steel Graphite", Theme::tooltip_style::TOOLTIP_STEEL_GRAPHITE},
-    {"Lavender Dusk", Theme::tooltip_style::TOOLTIP_LAVENDER_DUSK},
-    {"Sky Azure", Theme::tooltip_style::TOOLTIP_SKY_AZURE},
-    {"Arctic Frost", Theme::tooltip_style::TOOLTIP_ARCTIC_FROST},
-    {"Sandstone Dune", Theme::tooltip_style::TOOLTIP_SANDSTONE_DUNE}}
-};
-
-constexpr auto BUILTIN_SHADERS_LITERAL = std::array<VecN<const char*, std::string_view>, 3>{
-    {{"Button Shader", BUTTON_SHADER_FRAG},
-     {"Sprite Shader", SPRITE_SHADER_FRAG},
-     {"Texture Shader", TEXTURE_SHADER_FRAG}}
-};
-
-#ifdef CANVAS_MORE_LINE_TYPES
-constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 3>{NORMAL_LINE_LABEL, OPEN_LINE_LABEL, DOTS_LINE_LABEL};
-#else
-constexpr auto LINE_TYPE_LITERAL = std::array<VecN<const char*>, 1>{NORMAL_LINE_LABEL};
-#endif
-}
-
-///////////////////////////////////////////////////////////////////
-/// @brief Holds accessor information in `InfoWidget` class
+/// @brief Holds accessor information in `WidgetWrapper` class
 ///
 ///////////////////////////////////////////////////////////////////
 struct Accessor_ptr
@@ -294,9 +108,6 @@ struct Accessor_attrib
     }
 };
 
-// Storage type for accessor lookup
-using LookupVec_t = std::vector<Accessor_ptr>;
-
 ///////////////////////////////////////////////////////////////////
 /// @brief Assigns a function pointer to the proper accessor type
 /// in map
@@ -340,116 +151,6 @@ void set_lookup(LookupVec_t& vec, const std::string& key, Fn&& fn, EnumSection k
         vec.push_back(std::move(accessor));
     }
 }
-
-///////////////////////////////////////////////////////////////////
-/// @brief Represents a `ToolTip` class rendered object, the attributes
-/// maintain a reference to the object itself and it's state
-///
-///////////////////////////////////////////////////////////////////
-struct ToolTipObject
-{
-    std::size_t id{0};
-    TT_RenderedType type{TT_RenderedType::Text};
-    std::string pending_image_path;
-    sf::Vector2u image_size_param{0, 0};
-};
-
-///////////////////////////////////////////////////////////////////
-/// @brief Cache object for `ToolTip`
-///
-///////////////////////////////////////////////////////////////////
-struct ToolTipCache
-{
-    ToolTip* ptr{nullptr};
-    std::vector<ToolTipObject> content;
-    std::optional<std::size_t> selected_id{std::nullopt};
-    std::size_t style_idx{0};
-};
-
-///////////////////////////////////////////////////////////////////
-/// @brief cache for shader
-///
-///////////////////////////////////////////////////////////////////
-struct ShaderCache
-{
-    Widget::W_LoadType mode{Widget::W_LoadType::Memory};
-    int combo_idx{-1};                                      //!< -1 == None
-    std::array<char, 256> file_path{};
-};
-
-///////////////////////////////////////////////////////////////////
-/// @brief for `GridCanvas` class only
-///
-///////////////////////////////////////////////////////////////////
-struct CanvasCache
-{
-    // lines
-    unsigned int line_x0{0}, line_y0{0}, line_x1{0}, line_y1{0};
-    unsigned int line_thickness{1};
-    bool line_use_default_color{true};
-    float line_color[4]{1.f, 1.f, 1.f, 1.f};
-    int line_type_idx{0};
-
-    // selected Cell editor
-    int cell_side_idx{0};
-    float cell_fill_color[4]{1.f, 1.f, 1.f, 1.f};
-    unsigned int cell_outline_thickness{1};
-    bool cell_use_default_outline_color{true};
-    float cell_outline_color[4]{1.f, 1.f, 1.f, 1.f};
-    int cell_outline_type_idx{0};
-    std::array<char, 256> cell_texture_path{};
-
-    // quick draw cached accessors
-    float quick_draw_pen_color[4]{1.f, 0.f, 0.f, 1.f};
-    bool quick_draw_enabled{true};
-    bool quick_draw_skip_identical{false};
-    bool quick_draw_show_pen{true};
-    bool quick_draw_use_outline_color{false};
-};
-
-///////////////////////////////////////////////////////////////////
-/// @brief Memory attributes for any widget
-///
-/// These attributes can't be obtained from the widget itself, so they
-/// are stored and maintained externally, used in `InfoWrapper` class,
-/// and they are not accurate by default.
-///
-///////////////////////////////////////////////////////////////////
-struct CachedAttributes
-{
-    BuiltinBindFlags flags{BuiltinBindFlags::None};
-    ShaderCache clip_shader_cache;
-    ShaderCache color_shader_cache;
-    ToolTipCache tooltip;
-    CanvasCache GridCanvas;
-    int theme_idx{-1};                                      //!< -1 == None
-    sf::Vector2f grab_offset{0.f, 0.f};
-    std::string label;
-};
-
-/// Widget cache type in `InfoWrapper`
-using CacheMap_t = std::unordered_map<const Widget*, CachedAttributes>;
-
-struct DialogThread
-{
-    std::thread thread;
-    std::string protected_path;                 //!< obtained from thread
-    std::optional<std::string> safe_path;       //!< main thread storage
-    
-    std::mutex guard;
-    std::atomic<bool> is_open{false};
-    std::atomic<bool> path_found{false};
-
-    std::string req_key;
-    unsigned int req_token{0};
-};
-
-// Widget group with a label
-struct LabeledGroup
-{
-    std::string group_name;
-    std::shared_ptr<WidgetGroup> group_ptr;
-};
 
 ///////////////////////////////////////////////////////////////////
 /// @brief Runs fn function and returns a boolean
