@@ -671,7 +671,7 @@ public:
     /// @see `getLineRenderer`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
+    bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes an assigned line renderer for this instance
@@ -683,7 +683,7 @@ public:
     /// @see  `addLineType`, `getLineRenderer`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] bool removeLineType(const std::string& line_type_label);
+    bool removeLineType(const std::string& line_type_label);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns an array of available line types for this instance
@@ -1142,7 +1142,7 @@ private:
     /// @return true if cell exists, otherwise false
     ///
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] bool setCellColor(std::size_t cell_id, sf::Color color);
+    bool setCellColor(std::size_t cell_id, sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Fetches and assigns a texture to the cell with cell_id
@@ -1152,7 +1152,7 @@ private:
     /// @return true if process is successful, otherwise false
     /// 
     ///////////////////////////////////////////////////////////////////
-    [[nodiscard]] bool setCellTexture(std::size_t cell_id, const std::string& image_path);
+    bool setCellTexture(std::size_t cell_id, const std::string& image_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns color index from colors storage

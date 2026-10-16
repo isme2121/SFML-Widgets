@@ -435,8 +435,8 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     addLineType(std::make_unique<LineRenderer>());
 
     #ifdef CANVAS_MORE_LINE_TYPES
-    (void)addLineType(std::make_unique<OpenLineRenderer>());
-    (void)addLineType(std::make_unique<DottedLineRenderer>());
+    addLineType(std::make_unique<OpenLineRenderer>());
+    addLineType(std::make_unique<DottedLineRenderer>());
     #endif
 
     setWidgetPosition(m_position);
@@ -461,8 +461,8 @@ m_texture(size), m_sprite(m_texture.getTexture()), m_MAX_CELL_COUNT(grid.x * gri
     addLineType(std::make_unique<LineRenderer>());
 
     #ifdef CANVAS_MORE_LINE_TYPES
-    (void)addLineType(std::make_unique<OpenLineRenderer>());
-    (void)addLineType(std::make_unique<DottedLineRenderer>());
+    addLineType(std::make_unique<OpenLineRenderer>());
+    addLineType(std::make_unique<DottedLineRenderer>());
     #endif
 
     setWidgetPosition(m_position);

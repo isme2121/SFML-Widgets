@@ -12,7 +12,6 @@ examples/temp.cpp
 examples/SettingsPanel.cpp
 tests/test_canvas.cpp
 tests/temp
-README.md
 imgui.ini
 *.sh
 *.cmake
