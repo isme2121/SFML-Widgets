@@ -2,7 +2,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/examples")
 file(GLOB SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/examples/*.cpp")
 
 #======libtinyfiledialogs setup=======================================
-if(NOT TARGET widgets-tinyfd)
+if(NOT TARGET sfmlwidgets_tinyfd)
     enable_language(C)
 
     FetchContent_Declare(
@@ -12,10 +12,10 @@ if(NOT TARGET widgets-tinyfd)
     )
     FetchContent_MakeAvailable(tinyfiledialogs)
 
-    add_library(widgets-tinyfd STATIC
+    add_library(sfmlwidgets_tinyfd STATIC
         "${tinyfiledialogs_SOURCE_DIR}/tinyfiledialogs.c"
     )
-    target_include_directories(widgets-tinyfd PUBLIC
+    target_include_directories(sfmlwidgets_tinyfd PUBLIC
         "${tinyfiledialogs_SOURCE_DIR}"
     )
 endif()
@@ -26,16 +26,16 @@ foreach(source ${SOURCES})
 
     # include file dialog's source file if the source is ImageViewer.cpp
     if(BASENAME STREQUAL "ImageViewer")
-        target_link_libraries(${BASENAME} PRIVATE widgets-tinyfd)
+        target_link_libraries(${BASENAME} PRIVATE sfmlwidgets_tinyfd)
     endif()
 
     target_link_libraries(${BASENAME} PRIVATE
-        button
-        checkbox
-        entry
-        image_frame
-        label
-        grid_canvas
+        sfmlwidgets_button
+        sfmlwidgets_checkbox
+        sfmlwidgets_entry
+        sfmlwidgets_image_frame
+        sfmlwidgets_label
+        sfmlwidgets_grid_canvas
     )
 endforeach()
 

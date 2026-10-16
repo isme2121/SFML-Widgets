@@ -5,7 +5,7 @@ using namespace sfml_widgets;
 
 int main()
 {
-    Widget::assignWidget<WidgetEditor>();
+    Widget::assign_external<WidgetEditor>();
     sf::RenderWindow window(sf::VideoMode({960, 640}), "Widget Sandbox");
     WidgetEditor imgui(window, "Test");
     imgui.addWidget<Frame>(window, sf::Vector2f{0.f, 0.f}, static_cast<sf::Vector2u>(window.getSize()));

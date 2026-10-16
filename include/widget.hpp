@@ -1023,7 +1023,7 @@ private:
     inline static bool s_keyEventUsed{true};                                        //!< Indicates whether a key event was used in the current loop, works with `s_GUARD_EVENT`
     inline static bool s_setOriginals{true};                                        //!< Widgets update their original dimensions if set, otherwise skips the process
     inline static bool s_dummy{false};
-    inline static bool* s_externalEventUsed{&s_dummy};                               //!< External event coming from `ImGuiFrame` class, prevents any widget event if set
+    inline static bool* s_externalEventUsed{&s_dummy};                              //!< External event coming from an assigned class that inherits from `external_widget`
 
 public:
     static constexpr sf::Mouse::Button s_FOCUS_BUTTON{sf::Mouse::Button::Left};     //!< Mouse button that triggers focus and hold events
@@ -1035,8 +1035,19 @@ public:
     static constexpr bool s_RESTRICT_AFTER_KEYEVENT{false};                         //!< Blocks the widget from triggering any key events for `s_RESTRICTION_DURATION` period after using a key event
     static constexpr bool s_UNSELECT_WHEN_HELD{true};                               //!< Prevents a widget from triggering mouse release callback at the end of a hold event
 
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Allows the type `external_t` to be assigned as an external
+    /// widget without inheriting from `Widget` class
+    ///
+    /// @tparam external_t must inherit from `external_widget` but not from
+    /// `Widget`
+    ///
+    /// @note Assignment is done before any widget is constructed and mostly
+    /// one type can be assigned at any given point.
+    ///
+    ///////////////////////////////////////////////////////////////////
     template<typename external_t>
-    static void assignWidget() noexcept
+    static void assign_external()
     {
         static_assert(std::is_base_of_v<external_widget, external_t>,
                     "Cannot assign type that doesn\'t inherit from external_widget.");
@@ -1050,7 +1061,12 @@ public:
         static_assert(!std::is_abstract_v<external_t>,
                     "Cannot assign incomplete type.");
 
-        if(s_widgets.size()) assert(false && "Cannot assign after initializing a widget.");
+        if(s_widgets.size())
+        {
+            assert(false && "Cannot assign after initializing a widget.");
+            return;
+        }
+
         s_externalEventUsed = &external_t::s_eventUsed;
     }
 

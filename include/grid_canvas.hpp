@@ -175,13 +175,13 @@ public:
     /// @brief Returns the current vertex count
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getVertexCount() const;
+    [[nodiscard]] std::size_t getVertexCount() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns assigned line type 
     /// 
     ///////////////////////////////////////////////////////////////////
-    const std::string& getType() const;
+    [[nodiscard]] const std::string& getType() const;
 
 protected:
     ///////////////////////////////////////////////////////////////////
@@ -414,7 +414,7 @@ public:
     /// @return true if point is inside rect
     ///
     ///////////////////////////////////////////////////////////////////
-    bool inRange(sf::Vector2u grid_coords) const;
+    [[nodiscard]] bool inRange(sf::Vector2u grid_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks if pixel point collides with cell rect
@@ -423,13 +423,13 @@ public:
     /// @return true if point is inside rect
     ///
     ///////////////////////////////////////////////////////////////////
-    bool inRange(sf::Vector2f pixel_coords) const;
+    [[nodiscard]] bool inRange(sf::Vector2f pixel_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the cell's ID
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getID() const;
+    [[nodiscard]] std::size_t getID() const;
 
     bool operator==(const Cell& other) const;
 
@@ -458,7 +458,7 @@ private:
     /// @return rect with start and end unit coords for line
     ///
     ///////////////////////////////////////////////////////////////////
-    RectRange<unsigned int> getLineRange(DIRECTION _s) const;
+    [[nodiscard]] RectRange<unsigned int> getLineRange(DIRECTION _s) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief partial move between different cell generations and moves
@@ -494,10 +494,26 @@ class GridCanvas : public Widget
     struct EditAnchor;
     struct EditAction;
     struct UnitEditDetails;
-
     friend class Cell;
 
 public:
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Lifetime & access manager for a `Cell` object, use like a
+    /// smart pointer to access the resource
+    ///
+    /// @warning Managed object will go out of scope if the root canvas
+    /// had a content change (line added/removed) even if it doesn't affect
+    /// this cell, so instead of storing a cell_ptr externally, use this
+    /// pattern instead:
+    ///
+    /// ```cpp
+    /// if(cell_ptr cell = canvas.at(0))
+    /// {
+    ///     ...
+    /// }
+    /// ```
+    ///
+    ///////////////////////////////////////////////////////////////////
     class cell_ptr
     {
     public:
@@ -639,7 +655,7 @@ public:
     /// @see `LineRenderer`, `addLineType`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
-    LineRenderer* getLineRenderer(const std::string& type);
+    [[nodiscard]] LineRenderer* getLineRenderer(const std::string& type);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Assigns a new line type to this GridCanvas instance
@@ -655,7 +671,7 @@ public:
     /// @see `getLineRenderer`, `removeLineType`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
+    [[nodiscard]] bool addLineType(std::unique_ptr<LineRenderer> new_line_type);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Removes an assigned line renderer for this instance
@@ -667,7 +683,7 @@ public:
     /// @see  `addLineType`, `getLineRenderer`, `listLineTypes`
     ///
     ///////////////////////////////////////////////////////////////////
-    bool removeLineType(const std::string& line_type_label);
+    [[nodiscard]] bool removeLineType(const std::string& line_type_label);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns an array of available line types for this instance
@@ -675,7 +691,7 @@ public:
     /// @see  `addLineType`, `removeLineType`, `getLineRenderer`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::vector<std::string> listLineTypes() const;
+    [[nodiscard]] std::vector<std::string> listLineTypes() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a reference to the cell in parameter unit coords
@@ -686,7 +702,7 @@ public:
     /// @see `getHoveredCell`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr at(sf::Vector2u grid_coords) const;
+    [[nodiscard]] cell_ptr at(sf::Vector2u grid_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a reference to the cell in parameter pixel coords
@@ -698,7 +714,7 @@ public:
     /// @see `getHoveredCell`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr at(sf::Vector2f pixel_coords) const;
+    [[nodiscard]] cell_ptr at(sf::Vector2f pixel_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a reference to the cell in parameter id
@@ -711,7 +727,7 @@ public:
     /// @see `getHoveredCell`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr at(std::size_t cell_id) const;
+    [[nodiscard]] cell_ptr at(std::size_t cell_id) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current hovered cell
@@ -721,7 +737,7 @@ public:
     /// @see `at`, `getSelectedCell`
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr getHoveredCell() const;
+    [[nodiscard]] cell_ptr getHoveredCell() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current selected cell
@@ -731,7 +747,7 @@ public:
     /// @see `at`, `getHoveredCell`
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr getSelectedCell() const;
+    [[nodiscard]] cell_ptr getSelectedCell() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the current cells count
@@ -739,7 +755,7 @@ public:
     /// @see `getMaxCellsCount`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getCellsCount() const;
+    [[nodiscard]] std::size_t getCellsCount() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the max number of cells possible (units.x * units.y)
@@ -747,7 +763,7 @@ public:
     /// @see `getCellsCount`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getMaxCellsCount() const;
+    [[nodiscard]] std::size_t getMaxCellsCount() const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Enables or disables quick drawing, enabled by default
@@ -790,7 +806,7 @@ public:
     /// @see `getViewPixel`, `mapLocalToView`
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::Vector2i getLocalPixel(sf::Vector2i mouse_position) const;
+    [[nodiscard]] sf::Vector2i getLocalPixel(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates relative to GridCanvas' view,
@@ -801,7 +817,7 @@ public:
     /// @see `getLocalPixel`, `mapLocalToView`
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::Vector2f getViewPixel(sf::Vector2i mouse_position) const;
+    [[nodiscard]] sf::Vector2f getViewPixel(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates relative to GridCanvas' view,
@@ -812,7 +828,7 @@ public:
     /// @see `getLocalPixel`, `getViewPixel`
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
+    [[nodiscard]] sf::Vector2f mapLocalToView(sf::Vector2i local_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns unit coordinates relative to parameter pixel coordinates
@@ -824,7 +840,7 @@ public:
     /// @see `mapGridToCoords`, `mapGridRectToCoords`, `mapCoordsRectToGrid`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<sf::Vector2u> mapCoordsToGrid(sf::Vector2i mouse_position) const;
+    [[nodiscard]] std::optional<sf::Vector2u> mapCoordsToGrid(sf::Vector2i mouse_position) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates relative to parameter unit coordinates
@@ -836,7 +852,7 @@ public:
     /// @see `mapCoordsToGrid`, `mapGridRectToCoords`, `mapCoordsRectToGrid`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<sf::Vector2f> mapGridToCoords(sf::Vector2u grid_coordinates) const;
+    [[nodiscard]] std::optional<sf::Vector2f> mapGridToCoords(sf::Vector2u grid_coordinates) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns pixel coordinates relative to parameter unit rect
@@ -851,7 +867,7 @@ public:
     /// @see `mapCoordsRectToGrid`, `mapGridToCoords`, `mapCoordsToGrid`
     ///
     ///////////////////////////////////////////////////////////////////
-    RectRange<float> mapGridRectToCoords(RectRange<unsigned int> grid_rect) const;
+    [[nodiscard]] RectRange<float> mapGridRectToCoords(RectRange<unsigned int> grid_rect) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns unit coordinates relative to parameter pixel rect
@@ -867,7 +883,7 @@ public:
     /// @see `mapGridRectToCoords`, `mapCoordsToGrid`, `mapGridToCoords`
     ///
     ///////////////////////////////////////////////////////////////////
-    RectRange<unsigned int> mapCoordsRectToGrid(RectRange<float> coords_rect) const;
+    [[nodiscard]] RectRange<unsigned int> mapCoordsRectToGrid(RectRange<float> coords_rect) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates the extra surface out of units range, deadzone is 0
@@ -908,7 +924,7 @@ public:
     /// @see `linkTheme`, `setTheme`, `fetchTheme`, `poke`
     ///
     ///////////////////////////////////////////////////////////////////
-    CanvasStyle& style();
+    [[nodiscard]] CanvasStyle& style();
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Forces an update to GridCanvas visual style, it also updates
@@ -1017,7 +1033,7 @@ private:
     /// @param index cell's id
     ///
     ///////////////////////////////////////////////////////////////////
-    cell_ptr makeHandle(std::size_t index) const;
+    [[nodiscard]] cell_ptr makeHandle(std::size_t index) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns single unit line value
@@ -1030,7 +1046,7 @@ private:
     /// controlled
     /// 
     ///////////////////////////////////////////////////////////////////
-    LineState& getLine(std::size_t row, std::size_t col, std::size_t axis);
+    [[nodiscard]] LineState& getLine(std::size_t row, std::size_t col, std::size_t axis);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns single unit line value
@@ -1043,7 +1059,7 @@ private:
     /// controlled
     /// 
     ///////////////////////////////////////////////////////////////////
-    const LineState& getLine(std::size_t row, std::size_t col, std::size_t axis) const;
+    [[nodiscard]] const LineState& getLine(std::size_t row, std::size_t col, std::size_t axis) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a pointer to existing cell
@@ -1052,7 +1068,7 @@ private:
     /// @return cell's address if found, otherwise nullptr
     ///
     ///////////////////////////////////////////////////////////////////
-    Cell* getCell(std::size_t index);
+    [[nodiscard]] Cell* getCell(std::size_t index);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns a read-only pointer to existing cell
@@ -1061,7 +1077,7 @@ private:
     /// @return cell's address if found, otherwise nullptr
     ///
     ///////////////////////////////////////////////////////////////////
-    const Cell* getCell(std::size_t index) const;
+    [[nodiscard]] const Cell* getCell(std::size_t index) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns cell's id that occupies grid coords unit
@@ -1070,7 +1086,7 @@ private:
     /// @return cell id if found, otherwise `NULL_CELL`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getCellIndex(sf::Vector2u grid_coords) const;
+    [[nodiscard]] std::size_t getCellIndex(sf::Vector2u grid_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns cell's id that occupies pixel coord
@@ -1079,25 +1095,25 @@ private:
     /// @return cell id if found, otherwise `NULL_CELL`
     ///
     ///////////////////////////////////////////////////////////////////
-    std::size_t getCellIndex(sf::Vector2f pixel_coords) const;
+    [[nodiscard]] std::size_t getCellIndex(sf::Vector2f pixel_coords) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns current thickness value from line state
     ///
     ///////////////////////////////////////////////////////////////////
-    float LineExtractThickness(LineState line_flags);
+    [[nodiscard]] float LineExtractThickness(LineState line_flags);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns current color determined from line state 
     ///
     ///////////////////////////////////////////////////////////////////
-    sf::Color LineExtractColor(LineState line_flags);
+    [[nodiscard]] sf::Color LineExtractColor(LineState line_flags);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns current line type from line state
     ///
     ///////////////////////////////////////////////////////////////////
-    const std::string& LineExtractType(LineState line_flags);
+    [[nodiscard]] const std::string& LineExtractType(LineState line_flags);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks if rect surface in GridCanvas has any lines insides,
@@ -1107,7 +1123,7 @@ private:
     /// @param rect range in units 
     /// 
     ///////////////////////////////////////////////////////////////////
-    bool isRectClear(const RectRange<unsigned int>& rect) const;
+    [[nodiscard]] bool isRectClear(const RectRange<unsigned int>& rect) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Checks if rect bounds are all constructed lines if rect
@@ -1116,7 +1132,7 @@ private:
     /// @param rect range in units 
     ///
     ///////////////////////////////////////////////////////////////////
-    bool isRectSealed(const RectRange<unsigned int>& rect) const;
+    [[nodiscard]] bool isRectSealed(const RectRange<unsigned int>& rect) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Updates a cell's visual fill color
@@ -1126,7 +1142,7 @@ private:
     /// @return true if cell exists, otherwise false
     ///
     ///////////////////////////////////////////////////////////////////
-    bool setCellColor(std::size_t cell_id, sf::Color color);
+    [[nodiscard]] bool setCellColor(std::size_t cell_id, sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Fetches and assigns a texture to the cell with cell_id
@@ -1136,7 +1152,7 @@ private:
     /// @return true if process is successful, otherwise false
     /// 
     ///////////////////////////////////////////////////////////////////
-    bool setCellTexture(std::size_t cell_id, const std::string& image_path);
+    [[nodiscard]] bool setCellTexture(std::size_t cell_id, const std::string& image_path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns color index from colors storage
@@ -1145,7 +1161,7 @@ private:
     /// @return color index, or -1 if color is not found
     ///
     ///////////////////////////////////////////////////////////////////
-    int getColorIndex(sf::Color color);
+    [[nodiscard]] int getColorIndex(sf::Color color);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the index of the specific line type
@@ -1153,7 +1169,7 @@ private:
     /// @param line_type line type
     /// @return index to renderer if found, otherwise defaults to 
     ///////////////////////////////////////////////////////////////////
-    int getTypeIndex(const std::string& line_type) const;
+    [[nodiscard]] int getTypeIndex(const std::string& line_type) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief The actual line value setter
@@ -1287,13 +1303,12 @@ private:
     ///
     /// Loaded texture is placed in cache for cells to reference.
     ///
-    /// @param key  
-    /// @param path 
-    /// @param target_size 
-    /// @return 
+    /// @param path path to image
+    /// @return path + texture pointer, or an empty string + nullptr if
+    /// process fails
     ///
     ///////////////////////////////////////////////////////////////////
-    std::pair<std::string, const sf::Texture*> __getTexture(const std::string& path);
+    [[nodiscard]] std::pair<std::string, const sf::Texture*> __getTexture(const std::string& path);
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Returns the next anchor point relative to delta, managed
@@ -1306,7 +1321,7 @@ private:
     /// @return new line range
     ///
     ///////////////////////////////////////////////////////////////////
-    std::optional<RectRange<unsigned int>> __findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const;
+    [[nodiscard]] std::optional<RectRange<unsigned int>> __findNextAnchorPoint(sf::Vector2u point, sf::Vector2u pen_point, sf::Vector2i delta, LineState line_value) const;
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Safely clears the line type from every existing line

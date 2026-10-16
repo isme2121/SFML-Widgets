@@ -7,15 +7,15 @@ foreach(source ${SOURCES})
     add_executable(${test_name} "${source}")
     
     target_link_libraries(${test_name} PRIVATE
-        button
-        checkbox
-        entry
-        grid_canvas
-        image_frame
-        label
+        sfmlwidgets_button
+        sfmlwidgets_checkbox
+        sfmlwidgets_entry
+        sfmlwidgets_grid_canvas
+        sfmlwidgets_image_frame
+        sfmlwidgets_label
     )
-    if(TARGET widgets-dbgGui)
-        target_link_libraries(${test_name} PRIVATE widgets-dbgGui)
+    if(TARGET sfmlwidgets_editor)
+        target_link_libraries(${test_name} PRIVATE sfmlwidgets_editor)
     endif()
 
 endforeach()

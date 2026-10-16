@@ -531,6 +531,16 @@ private:
     friend class Widget;
 };
 
+///////////////////////////////////////////////////////////////////
+/// @brief Qualifies the inheriting object as a widget without
+/// being part of the `Widget` tree
+///
+/// Override of `captureEvents` must manage the event resource and
+/// set it to true if the object uses the event.
+///
+/// @see `Widget::assign_external`, `ImGuiPanel`
+///
+///////////////////////////////////////////////////////////////////
 class external_widget
 {
     friend class Widget;

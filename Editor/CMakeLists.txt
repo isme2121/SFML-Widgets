@@ -32,28 +32,33 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tinyfiledialogs)
 
-add_library(widgets-tinyfd STATIC
+add_library(sfmlwidgets_tinyfd STATIC
     "${tinyfiledialogs_SOURCE_DIR}/tinyfiledialogs.c"
 )
-target_include_directories(widgets-tinyfd PUBLIC
+target_include_directories(sfmlwidgets_tinyfd PUBLIC
     "${tinyfiledialogs_SOURCE_DIR}"
 )
 
 #======Editor=======================================
-add_library(widgets-dbgGui STATIC
+add_library(sfmlwidgets_editor STATIC
     "${PROJECT_SOURCE_DIR}/Editor/src/imgui_panel.cpp"
     "${PROJECT_SOURCE_DIR}/Editor/src/editor.cpp"
 )
-
 if(BUILD_EDITOR_GUI)
-    target_compile_definitions(widgets-dbgGui PUBLIC BUILD_EDITOR_GUI)
+    target_compile_definitions(sfmlwidgets_editor PUBLIC BUILD_EDITOR_GUI)
 endif()
-
-target_include_directories(widgets-dbgGui
+target_include_directories(sfmlwidgets_editor
     PUBLIC "${PROJECT_SOURCE_DIR}/Editor/include"
 )
+add_library(sfml-widgets::editor ALIAS sfmlwidgets_editor)
 
-target_link_libraries(widgets-dbgGui
-    PRIVATE ImGui-SFML::ImGui-SFML widgets-tinyfd
-    PUBLIC button checkbox entry grid_canvas image_frame label
+target_link_libraries(sfmlwidgets_editor
+    PRIVATE ImGui-SFML::ImGui-SFML sfmlwidgets_tinyfd
+    PUBLIC
+    sfmlwidgets_button
+    sfmlwidgets_checkbox
+    sfmlwidgets_entry
+    sfmlwidgets_grid_canvas
+    sfmlwidgets_image_frame
+    sfmlwidgets_label
 )

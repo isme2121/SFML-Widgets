@@ -7,9 +7,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-option(BUILD_EDITOR_GUI "Build Editor GUI" ON)
-option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" ON)
-option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" ON)
+option(BUILD_EDITOR_GUI "Build Editor GUI" OFF)
+option(BUILD_EXAMPLES "Build examples to '${PROJECT_SOURCE_DIR}/bin/executables/'" OFF)
+option(BUILD_TESTS "Build tests to '${PROJECT_SOURCE_DIR}/bin/tests/'" OFF)
 
 option(SFML_WIDGETS_SHARED "Build SFML widgets as shared libraries" ON)
 option(CANVAS_MORE_LINE_TYPES "Defines more default lines for GridCanvas" ON)
@@ -41,51 +41,59 @@ set(WIDGET_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(BUILD_SHARED_LIBS ${SFML_WIDGETS_SHARED})
 
 #core library
-add_library(widgets
+add_library(sfmlwidgets_widgets
     src/widgets.cpp
     src/widget.cpp
     src/frame.cpp
     src/tooltip.cpp
 )
-target_compile_definitions(widgets PUBLIC 
+target_compile_definitions(sfmlwidgets_widgets PUBLIC 
     STB_IMAGE_RESIZE_IMPLEMENTATION
 )
 if(CANVAS_MORE_LINE_TYPES)
-    target_compile_definitions(widgets PUBLIC CANVAS_MORE_LINE_TYPES)
+    target_compile_definitions(sfmlwidgets_widgets PUBLIC CANVAS_MORE_LINE_TYPES)
 endif()
-target_include_directories(widgets PUBLIC 
+target_include_directories(sfmlwidgets_widgets PUBLIC 
     "${WIDGET_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"
 )
-target_link_libraries(widgets PUBLIC
+target_link_libraries(sfmlwidgets_widgets PUBLIC
     SFML::Graphics
     SFML::Window
     SFML::System
 )
+add_library(sfml-widgets::widgets ALIAS sfmlwidgets_widgets)
 
 #button library
-add_library(button src/button.cpp)
-target_link_libraries(button PUBLIC widgets)
+add_library(sfmlwidgets_button src/button.cpp)
+target_link_libraries(sfmlwidgets_button PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::button ALIAS sfmlwidgets_button)
 
 #entry library
-add_library(entry src/entry.cpp)
-target_link_libraries(entry PUBLIC widgets)
+add_library(sfmlwidgets_entry src/entry.cpp)
+target_link_libraries(sfmlwidgets_entry PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::entry ALIAS sfmlwidgets_entry)
 
 #checkbox library
-add_library(checkbox src/checkbox.cpp)
-target_link_libraries(checkbox PUBLIC widgets)
+add_library(sfmlwidgets_checkbox src/checkbox.cpp)
+target_link_libraries(sfmlwidgets_checkbox PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::checkbox ALIAS sfmlwidgets_checkbox)
 
 #gridcanvas library
-add_library(grid_canvas src/grid_canvas.cpp)
-target_link_libraries(grid_canvas PUBLIC widgets)
+add_library(sfmlwidgets_grid_canvas src/grid_canvas.cpp)
+target_link_libraries(sfmlwidgets_grid_canvas PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::grid_canvas ALIAS sfmlwidgets_grid_canvas)
 
 #image frame library
-add_library(image_frame src/image_frame.cpp)
-target_link_libraries(image_frame PUBLIC widgets)
+add_library(sfmlwidgets_image_frame src/image_frame.cpp)
+target_link_libraries(sfmlwidgets_image_frame PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::image_frame ALIAS sfmlwidgets_image_frame)
 
 #label library
-add_library(label src/label.cpp)
-target_link_libraries(label PUBLIC widgets)
+add_library(sfmlwidgets_label src/label.cpp)
+target_link_libraries(sfmlwidgets_label PUBLIC sfmlwidgets_widgets)
+add_library(sfml-widgets::label ALIAS sfmlwidgets_label)
+
 unset(BUILD_SHARED_LIBS)
 
 #======Debug GUI setup====================================================
