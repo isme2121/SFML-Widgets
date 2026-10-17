@@ -489,7 +489,7 @@ void ToolTip::RenderedText::updatePosition(sf::Vector2f new_pos)
 /// RenderedImage
 ///////////////////////////////////////////////////////////////////
 
-ToolTip::RenderedImage::RenderedImage(bool* flag) : RenderedObjectBase(flag), m_texture({1, 1}), m_sprite(m_texture)
+ToolTip::RenderedImage::RenderedImage(bool* flag) : RenderedObjectBase(flag), m_texture(sf::Vector2u{1, 1}), m_sprite(m_texture)
 {
 
 }

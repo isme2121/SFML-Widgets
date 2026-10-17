@@ -5,7 +5,6 @@
 #include "tinyfiledialogs.h"
 #include "base.hpp"
 #include <filesystem>
-#include <algorithm>
 #include <thread>
 #include <atomic>
 #include <cmath>

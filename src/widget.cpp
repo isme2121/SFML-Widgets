@@ -98,9 +98,9 @@ void Widget::configure(FLAGS flags)
     }
 
     /* updates related to explicit function calls happen directly */
-    if(checkFlag(mask, FLAGS::NOBGIMAGE) and !checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
-    if(checkFlag(mask, FLAGS::NOCLIPSHADER) and !checkFlag(m_flags, FLAGS::NOCLIPSHADER)) resetClipShader();
-    if(checkFlag(mask, FLAGS::NOCOLORSHADER) and !checkFlag(m_flags, FLAGS::NOCOLORSHADER)) resetColorShader();
+    if(checkFlag(mask, FLAGS::NOBGIMAGE) && !checkFlag(m_flags, FLAGS::NOBGIMAGE)) resetBackgroundTexture();
+    if(checkFlag(mask, FLAGS::NOCLIPSHADER) && !checkFlag(m_flags, FLAGS::NOCLIPSHADER)) resetClipShader();
+    if(checkFlag(mask, FLAGS::NOCOLORSHADER) && !checkFlag(m_flags, FLAGS::NOCOLORSHADER)) resetColorShader();
     
     /* flags that should be immediately updated */
 

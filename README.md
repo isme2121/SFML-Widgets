@@ -96,4 +96,6 @@ int main()
 }
 ```
 
+## Documentation
+
 `/docs` will be available soon.

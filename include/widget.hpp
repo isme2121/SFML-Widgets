@@ -31,6 +31,43 @@ public:
     struct W_QueueEvent;
     struct W_RepeatEvent;
 
+#ifdef MSVC_BUILD
+    ///////////////////////////////////////////////////////////////////
+    /// @brief Stores queued callbacks for `Widget`
+    ///
+    /// Stored callbacks trigger after the specified delay is reached
+    /// within the widget, delay can be paused if a more priority queued
+    /// event is pushed onto the stack.
+    ///
+    /// @see `addToQueue`, `checkQueue`
+    ///
+    ///////////////////////////////////////////////////////////////////
+    struct W_QueueEvent
+    {
+        W_QueueEvent(sf::Time ms_delay, std::function<void()> callback);
+        W_QueueEvent(std::size_t frames_delay, std::function<void()> callback);
+
+        ///////////////////////////////////////////////////////////////////
+        /// @brief Updates the counter and triggers callback
+        ///
+        ///////////////////////////////////////////////////////////////////
+        bool advance();
+
+        ///////////////////////////////////////////////////////////////////
+        /// @brief for Time based queues, pauses the internal clock
+        ///
+        ///////////////////////////////////////////////////////////////////
+        void pause();
+
+    private:
+        W_CounterType m_type;
+        sf::Clock m_timer;
+        std::function<void()> m_callback;
+        sf::Time m_delay{sf::Time::Zero};
+        std::size_t m_framesCount{0};
+    };
+#endif
+
     ///////////////////////////////////////////////////////////////////
     /// @brief Constructs the widget with `sf::RenderWindow`
     ///
@@ -1132,6 +1169,7 @@ public:
         bool is_used{false};
     };
 
+#ifndef MSVC_BUILD
     ///////////////////////////////////////////////////////////////////
     /// @brief Stores queued callbacks for `Widget`
     ///
@@ -1166,6 +1204,7 @@ public:
         sf::Time m_delay{sf::Time::Zero};
         std::size_t m_framesCount{0};
     };
+#endif
 
     ///////////////////////////////////////////////////////////////////
     /// @brief Stores a routine information

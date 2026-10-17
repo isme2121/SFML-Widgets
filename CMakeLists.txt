@@ -53,6 +53,9 @@ target_compile_definitions(sfmlwidgets_widgets PUBLIC
 if(CANVAS_MORE_LINE_TYPES)
     target_compile_definitions(sfmlwidgets_widgets PUBLIC CANVAS_MORE_LINE_TYPES)
 endif()
+if(MSVC)
+    target_compile_definitions(sfmlwidgets_widgets PUBLIC MSVC_BUILD)
+endif()
 target_include_directories(sfmlwidgets_widgets PUBLIC 
     "${WIDGET_INCLUDE_DIR}"
     "${EXTERNAL_INCLUDE_DIR}"

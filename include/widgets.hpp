@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "shaders.hpp"
 #include "fonts.hpp"
 
